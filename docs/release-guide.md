@@ -375,3 +375,110 @@ The compensating script **must** be documented in `RELEASE_NOTES.md` before the 
 If rollback is needed, restore from the backup. This is the highest-risk tier — schema changes (new tables, altered columns, new DV entities) cannot be easily reversed with compensating scripts.
 
 For UAT: the development team can restore from backup. For Prod: coordinate with the infrastructure team.
+
+---
+
+## 8. Per-Org Deployment Automation
+
+### Current Approach
+
+Several release steps must run once per active organisation (e.g. `sp_DeployObjects`, `sp_GenerateDataVaultTables`, targeted table creation). Delta folders include pre-built cursor wrapper scripts that loop all active organisations.
+
+### Cursor Wrapper: sp_DeployObjects
+
+```sql
+DECLARE @DbName NVARCHAR(128)
+DECLARE org_cursor CURSOR FOR
+    SELECT DatabaseName FROM core.core.Organisations
+    WHERE DatabaseStatus = 'ACTIVE'
+    ORDER BY OrganisationName
+OPEN org_cursor
+FETCH NEXT FROM org_cursor INTO @DbName
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    PRINT 'Deploying objects to: ' + @DbName
+    EXEC core.sp_DeployObjects @DatabaseName = @DbName
+    FETCH NEXT FROM org_cursor INTO @DbName
+END
+CLOSE org_cursor
+DEALLOCATE org_cursor
+```
+
+### Cursor Wrapper: sp_GenerateDataVaultTables
+
+```sql
+DECLARE @DbName NVARCHAR(128)
+DECLARE org_cursor CURSOR FOR
+    SELECT DatabaseName FROM core.core.Organisations
+    WHERE DatabaseStatus = 'ACTIVE'
+    ORDER BY OrganisationName
+OPEN org_cursor
+FETCH NEXT FROM org_cursor INTO @DbName
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    PRINT 'Generating DV tables in: ' + @DbName
+    EXEC core.sp_GenerateDataVaultTables @DatabaseName = @DbName
+    FETCH NEXT FROM org_cursor INTO @DbName
+END
+CLOSE org_cursor
+DEALLOCATE org_cursor
+```
+
+### Cursor Wrapper: Targeted Presentation Table Creation
+
+See the full pattern in [Section 3](#targeted-presentation-table-creation-pattern). The cursor iterates active orgs and uses `IF NOT EXISTS` to create only missing tables.
+
+> **Gotchas:**
+> - The column is **`DatabaseStatus`** (not `DatabaseState`) — using the wrong name silently returns zero rows
+> - To include FAILED orgs for recovery runs, add `OR DatabaseStatus = 'FAILED'` to the WHERE clause
+> - Always `ORDER BY OrganisationName` for predictable execution order and readable PRINT output
+
+### Future Enhancement
+
+A dedicated `sp_DeployToAllOrgs` stored procedure that accepts an action list, logs per-org success/failure, and skips non-ACTIVE orgs. Not required from day one — cursor wrappers in delta folders are sufficient for now.
+
+---
+
+## 9. Document Sync Requirements
+
+### Existing Rules
+
+CLAUDE.md defines three document sync triggers — these apply to every release:
+
+1. **DV entity changes** → update `docs/data-vault-reference.md`, `docs/data-vault-diagram.html`, `docs/integration-mappings.html`, `docs/index.html`
+2. **Integration mapping changes** → update `docs/integrations-reference.md`, `docs/integration-mappings.html`, `docs/data-vault-reference.md` §6
+3. **Presentation layer changes** → update `docs/presentation-and-visualisation.md`, `docs/index.html`
+
+See the full rules in CLAUDE.md under "Document Sync" sections.
+
+### Release-Specific Additions
+
+- Every `RELEASE_NOTES.md` must list which docs were updated as part of the release
+- Claude Code sessions creating delta scripts must also update affected docs **in the same feature branch**
+- Scripts promoted from `ClaudeDevelopment/` should have their `QUERY_STATUS.md` entries updated to "deployed"
+
+---
+
+## 10. Claude Code Session Rules
+
+When working on release-related tasks, Claude Code sessions must follow these rules:
+
+1. **Never edit numbered release files directly during development** — work in `ClaudeDevelopment/` first. Master files are only updated when preparing a release.
+
+2. **When preparing a release, create `releases/v{X.Y}/`** with ordered delta scripts + `RELEASE_NOTES.md` + `DEPLOY_ORDER.txt`.
+
+3. **Update master files in the same commit as the delta folder** — they must stay in sync.
+
+4. **All delta scripts must be idempotent** — use MERGE, CREATE OR ALTER, IF NOT EXISTS. No bare INSERTs for control table records.
+
+5. **Flag per-org deployment steps explicitly** in both delta scripts and `DEPLOY_ORDER.txt`. Include cursor wrapper scripts (see [Section 8](#8-per-org-deployment-automation)).
+
+6. **Always call `UploadEntityMappings`** after any EntityMappings changes — without it, data stops at staging and never reaches the Data Vault.
+
+7. **Follow document sync rules** from CLAUDE.md — update affected docs in the same feature branch.
+
+8. **Never execute data-modifying SQL via MCP** — all MCP queries must be read-only (`SELECT`/`WITH` only).
+
+9. **Include a rollback section in every `RELEASE_NOTES.md`** — state the tier and specific compensating steps or backup reference.
+
+10. **Include cursor wrapper scripts for per-org steps** — delta folders must be self-contained; the person executing should not need to write their own cursor loops.
