@@ -1,0 +1,970 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XMS BI Platform - Technical Documentation</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#161822;--bg3:#1e2030;
+  --text:#c8cad8;--text2:#8b8fa8;--text3:#5c6080;
+  --accent:#6c8aff;--accent2:#4ecdc4;--accent3:#ff6b9d;--accent4:#ffd93d;
+  --border:#2a2d42;--border2:#363a54;
+  --code-bg:#1a1d2e;--card:#1a1d2e;
+  --shadow:0 4px 24px rgba(0,0,0,.3);
+  --radius:10px;--radius-sm:6px;
+  --sidebar-w:280px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'SF Mono','Cascadia Code','Fira Code',Consolas,monospace;
+  --transition:0.25s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="light"]{
+  --bg:#f5f6fa;--bg2:#ffffff;--bg3:#eef0f6;
+  --text:#2c2e3e;--text2:#5a5d72;--text3:#8b8fa8;
+  --border:#d8dae8;--border2:#c8cad8;
+  --code-bg:#eef0f6;--card:#ffffff;
+  --shadow:0 4px 24px rgba(0,0,0,.08);
+}
+html{scroll-behavior:smooth;font-size:15px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none;transition:color var(--transition)}
+a:hover{color:var(--accent2)}
+code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:2px 7px;border-radius:4px;color:var(--accent2)}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 20px;overflow-x:auto;margin:12px 0}
+pre code{background:none;padding:0;font-size:.82em;line-height:1.6;color:var(--text)}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+.sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;background:var(--bg2);border-right:1px solid var(--border);z-index:100;display:flex;flex-direction:column;transition:transform var(--transition)}
+.sidebar-header{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+.sidebar-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.sidebar-logo svg{width:28px;height:28px;flex-shrink:0}
+.sidebar-logo h1{font-size:1.1rem;font-weight:700;color:var(--text);letter-spacing:-.02em}
+.sidebar-logo span{font-size:.7rem;background:var(--accent);color:#fff;padding:2px 7px;border-radius:10px;font-weight:600}
+.sidebar-search{margin-top:12px;position:relative}
+.sidebar-search input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:.85rem;outline:none;transition:border var(--transition)}
+.sidebar-search input:focus{border-color:var(--accent)}
+.sidebar-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text3)}
+.sidebar-nav{flex:1;overflow-y:auto;padding:12px 0}
+.nav-section{margin-bottom:2px}
+.nav-section-title{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);cursor:pointer;user-select:none;transition:color var(--transition)}
+.nav-section-title:hover{color:var(--text2)}
+.nav-section-title svg{width:14px;height:14px;transition:transform var(--transition)}
+.nav-section-title.collapsed svg{transform:rotate(-90deg)}
+.nav-items{overflow:hidden;transition:max-height .3s ease}
+.nav-items.collapsed{max-height:0!important}
+.nav-item{display:block;padding:6px 20px 6px 28px;font-size:.83rem;color:var(--text2);transition:all var(--transition);border-left:2px solid transparent;cursor:pointer}
+.nav-item:hover,.nav-item.active{color:var(--accent);background:rgba(108,138,255,.06);border-left-color:var(--accent)}
+.main{margin-left:var(--sidebar-w);min-height:100vh}
+.topbar{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 32px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(12px)}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--text3)}
+.breadcrumb span{color:var(--text2)}
+.theme-toggle{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;cursor:pointer;color:var(--text2);font-size:.8rem;display:flex;align-items:center;gap:6px;transition:all var(--transition)}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.content{max-width:960px;margin:0 auto;padding:32px 40px 80px}
+.hero{margin-bottom:40px;padding:40px 0 32px}
+.hero h1{font-size:2.2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:1.05rem;color:var(--text2);max-width:640px;line-height:1.7}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:28px 0 36px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;transition:all var(--transition)}
+.stat-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+.stat-card .stat-value{font-size:1.6rem;font-weight:700;color:var(--accent);line-height:1.2}
+.stat-card .stat-label{font-size:.78rem;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.04em}
+.stat-card.green .stat-value{color:var(--accent2)}
+.stat-card.pink .stat-value{color:var(--accent3)}
+.stat-card.yellow .stat-value{color:var(--accent4)}
+.doc-section{margin-bottom:48px;scroll-margin-top:60px}
+.doc-section h2{font-size:1.5rem;font-weight:700;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--border);letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.doc-section h2 .section-icon{width:28px;height:28px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+.doc-section h3{font-size:1.15rem;font-weight:600;margin:24px 0 10px;color:var(--text)}
+.doc-section h4{font-size:1rem;font-weight:600;margin:18px 0 8px;color:var(--text2)}
+.doc-section p{margin-bottom:12px;color:var(--text)}
+.table-wrap{overflow-x:auto;margin:14px 0;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:var(--bg3);padding:10px 14px;text-align:left;font-weight:600;color:var(--text2);text-transform:uppercase;font-size:.75rem;letter-spacing:.04em;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(108,138,255,.03)}
+.accordion{border:1px solid var(--border);border-radius:var(--radius);margin:14px 0;overflow:hidden}
+.accordion-item{border-bottom:1px solid var(--border)}
+.accordion-item:last-child{border-bottom:none}
+.accordion-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:var(--card);transition:background var(--transition);user-select:none}
+.accordion-header:hover{background:var(--bg3)}
+.accordion-header h4{font-size:.9rem;font-weight:600;color:var(--text);margin:0}
+.accordion-header .badge{font-size:.72rem;padding:3px 10px;border-radius:12px;font-weight:600;margin-left:10px}
+.badge-pos{background:rgba(108,138,255,.15);color:var(--accent)}
+.badge-inv{background:rgba(78,205,196,.15);color:var(--accent2)}
+.badge-survey{background:rgba(255,107,157,.15);color:var(--accent3)}
+.accordion-chevron{width:18px;height:18px;transition:transform var(--transition);color:var(--text3)}
+.accordion-item.open .accordion-chevron{transform:rotate(180deg)}
+.accordion-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.accordion-item.open .accordion-body{max-height:none}
+.accordion-content{padding:0 18px 18px}
+.flow-diagram{display:flex;flex-direction:column;gap:0;margin:20px 0;align-items:center}
+.flow-step{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 24px;text-align:center;min-width:320px;max-width:480px;width:100%;transition:all var(--transition)}
+.flow-step:hover{border-color:var(--accent);box-shadow:0 0 20px rgba(108,138,255,.1)}
+.flow-step .step-label{font-weight:700;font-size:.88rem;margin-bottom:4px}
+.flow-step .step-desc{font-size:.78rem;color:var(--text3)}
+.flow-step .step-schema{font-family:var(--mono);font-size:.75rem;color:var(--accent2);margin-top:4px}
+.flow-arrow{display:flex;align-items:center;justify-content:center;height:32px;color:var(--text3)}
+.flow-arrow::after{content:'\25BC';display:block;font-size:1.2rem}
+.flow-step.highlight{border-color:var(--accent);background:rgba(108,138,255,.06)}
+.tag{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.72rem;font-weight:600;margin:2px 4px 2px 0}
+.tag-blue{background:rgba(108,138,255,.15);color:var(--accent)}
+.tag-green{background:rgba(78,205,196,.15);color:var(--accent2)}
+.tag-pink{background:rgba(255,107,157,.15);color:var(--accent3)}
+.tag-yellow{background:rgba(255,217,61,.15);color:var(--accent4)}
+.callout{padding:16px 20px;border-radius:var(--radius);margin:14px 0;border-left:4px solid}
+.callout-info{background:rgba(108,138,255,.06);border-color:var(--accent)}
+.callout-tip{background:rgba(78,205,196,.06);border-color:var(--accent2)}
+.callout-warn{background:rgba(255,217,61,.06);border-color:var(--accent4)}
+.callout-title{font-weight:600;font-size:.85rem;margin-bottom:4px}
+.callout p{font-size:.85rem;margin:0}
+.tabs{margin:14px 0}
+.tab-headers{display:flex;border-bottom:2px solid var(--border)}
+.tab-header{padding:10px 20px;font-size:.83rem;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all var(--transition);user-select:none}
+.tab-header:hover{color:var(--text2)}
+.tab-header.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-panel{display:none;padding:18px 0}
+.tab-panel.active{display:block}
+.launch-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:var(--radius-sm);font-size:.85rem;font-weight:600;text-decoration:none;transition:all var(--transition);border:1px solid}
+.launch-btn-primary{background:rgba(108,138,255,.12);border-color:var(--accent);color:var(--accent)}
+.launch-btn-primary:hover{background:rgba(108,138,255,.22);color:var(--accent);transform:translateY(-1px)}
+.launch-btn-secondary{background:rgba(78,205,196,.1);border-color:var(--accent2);color:var(--accent2)}
+.launch-btn-secondary:hover{background:rgba(78,205,196,.2);color:var(--accent2);transform:translateY(-1px)}
+.launch-row{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
+.entity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin:14px 0}
+.entity-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;transition:all var(--transition)}
+.entity-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.entity-card .entity-name{font-family:var(--mono);font-size:.82rem;font-weight:600;color:var(--accent)}
+.entity-card .entity-type{font-size:.72rem;color:var(--text3);margin-top:2px}
+.convention-list{list-style:none;margin:12px 0}
+.convention-list li{padding:10px 16px;border-left:3px solid var(--border);margin-bottom:8px;background:var(--card);border-radius:0 var(--radius-sm) var(--radius-sm) 0;transition:border-color var(--transition)}
+.convention-list li:hover{border-left-color:var(--accent)}
+.convention-list li strong{color:var(--accent2)}
+.doc-section>h2{cursor:pointer;user-select:none}
+.doc-section>h2 .collapse-chevron{width:20px;height:20px;transition:transform var(--transition);color:var(--text3);flex-shrink:0;margin-left:auto}
+.doc-section.section-collapsed>h2 .collapse-chevron{transform:rotate(-90deg)}
+.doc-section.section-collapsed>h2{border-bottom-color:transparent;margin-bottom:0;padding-bottom:6px}
+.doc-section>.section-content{transition:max-height .4s ease;overflow:hidden}
+.doc-section.section-collapsed>.section-content{max-height:0!important}
+.back-to-top{position:fixed;bottom:24px;right:24px;width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;visibility:hidden;transition:all var(--transition);box-shadow:var(--shadow);z-index:90;border:none;font-size:1.1rem}
+.back-to-top.visible{opacity:1;visibility:visible}
+.back-to-top:hover{transform:translateY(-3px);background:var(--accent2)}
+.menu-toggle{display:none;position:fixed;top:12px;left:12px;z-index:200;width:36px;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text);cursor:pointer;align-items:center;justify-content:center;font-size:1.1rem}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .menu-toggle{display:flex}
+  .content{padding:24px 18px 60px}
+  .hero h1{font-size:1.6rem}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .flow-step{min-width:unset}
+}
+.search-results{padding:8px 20px;font-size:.8rem;color:var(--accent2)}
+@media print{
+  .sidebar,.topbar,.menu-toggle,.back-to-top,.theme-toggle{display:none!important}
+  .main{margin-left:0}
+  .content{max-width:100%;padding:20px}
+}
+</style>
+</head>
+<body>
+<button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Toggle menu">&#9776;</button>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#6c8aff"/><path d="M7 14h4l3-7 4 14 3-7h4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1>XMS BI</h1><span>v1.0</span>
+    </div>
+    <div class="sidebar-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" placeholder="Search docs..." autocomplete="off">
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="search-results" id="searchResults" style="display:none"></div>
+    <div class="nav-section">
+      <div class="nav-section-title" onclick="toggleSection(this)">Overview<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="nav-items">
+        <a class="nav-item" href="#overview">Platform Overview</a>
+        <a class="nav-item" href="#data-flow">End-to-End Data Flow</a>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title" onclick="toggleSection(this)">Architecture<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="nav-items">
+        <a class="nav-item" href="#arch-db-layout">Database Layout</a>
+        <a class="nav-item" href="#arch-control-plane">Core Control Plane</a>
+        <a class="nav-item" href="#arch-client-plane">Client Data Plane</a>
+        <a class="nav-item" href="#arch-deployment">Deployment Engine</a>
+        <a class="nav-item" href="#arch-datavault">Data Vault 2.0</a>
+        <a class="nav-item" href="#arch-org-provision">Org Provisioning</a>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title" onclick="toggleSection(this)">Data Pipeline<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="nav-items">
+        <a class="nav-item" href="#pipe-integration">Integration Framework</a>
+        <a class="nav-item" href="#pipe-staging">Staging Process</a>
+        <a class="nav-item" href="#pipe-dv-loading">Data Vault Loading</a>
+        <a class="nav-item" href="#pipe-cdc">CDC Detection</a>
+        <a class="nav-item" href="#pipe-hubsat">Hub &amp; Sat Processing</a>
+        <a class="nav-item" href="#pipe-link">Link Processing</a>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title" onclick="toggleSection(this)">Integrations<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="nav-items">
+        <a class="nav-item" href="#integrations">Integration Summary</a>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title" onclick="toggleSection(this)">Presentation &amp; Vis<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="nav-items">
+        <a class="nav-item" href="#pres-deploy">Deployment Procedure</a>
+        <a class="nav-item" href="#pres-tables">Presentation Tables</a>
+        <a class="nav-item" href="#vis-queries">Visualisation Queries &amp; Cards</a>
+        <a class="nav-item" href="#vis-suggestions">Suggestion Engine</a>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title" onclick="toggleSection(this)">Reference<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="nav-items">
+        <a class="nav-item" href="#ref-conventions">Key Conventions</a>
+        <a class="nav-item" href="#ref-file-map">File Map</a>
+      </div>
+    </div>
+  </nav>
+</aside>
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+      <span id="breadcrumbText">Overview</span>
+    </div>
+    <div>
+      <button class="theme-toggle" onclick="toggleTheme()"><span id="themeIcon">&#9790;</span> <span id="themeLabel">Light</span></button>
+    </div>
+  </div>
+  <div class="content" id="content">
+
+    <div class="hero" id="overview">
+      <h1>XMS BI Platform</h1>
+      <p>XMS BI is a multi-organisation analytics platform running on SQL Server Managed Instance. Each organisation gets an isolated database provisioned from a shared control plane, which holds all integration definitions, Data Vault entity schemas, deployment objects, and visualisation templates. Data is ingested from external APIs on a scheduled basis (refresh frequency is configurable per integration) and flows through a fixed pipeline: raw landing tables &rarr; typed staging &rarr; CDC-detected load tables &rarr; Data Vault 2.0 storage (HUB/SAT/LNK/SAT_LNK) &rarr; flattened presentation tables &rarr; parameterised dashboard queries. The platform is configuration-driven &mdash; Data Vault structures, staging pipelines, and presentation tables are generated automatically from definitions stored in the control plane, rather than being hand-authored per organisation.</p>
+    </div>
+
+
+    <div class="callout callout-info" style="margin-bottom:32px">
+      <div class="callout-title">Interactive Reference Tools</div>
+      <p style="margin-bottom:12px">Full entity-relationship diagrams and integration mapping detail live in dedicated interactive tools &mdash; the canonical source of truth for those areas.</p>
+      <div class="launch-row">
+        <a class="launch-btn launch-btn-primary" href="data-vault-diagram.html" target="_blank">&#127981; Data Vault Diagram</a>
+        <a class="launch-btn launch-btn-secondary" href="integration-mappings.html" target="_blank">&#128268; Integration Mappings</a>
+      </div>
+    </div>
+
+    <div class="doc-section" id="data-flow">
+      <h2><span class="section-icon" style="background:rgba(108,138,255,.15);color:var(--accent)">&#8644;</span> End-to-End Data Flow</h2>
+      <p>Data moves through six discrete layers, each with a distinct responsibility and isolated in its own schema within the per-organisation client database. The early layers normalise and type raw API data; the CDC layer detects what has actually changed; the Data Vault layer historises changes in a hub-satellite-link model; and the presentation layer flattens that history into query-ready fact and dimension tables.</p>
+      <div class="flow-diagram">
+        <div class="flow-step"><div class="step-label">Integration API / Source DB</div><div class="step-desc">External POS, inventory, and survey systems</div></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-step"><div class="step-label">Data Landing (DL) Tables</div><div class="step-desc">Raw API data &mdash; all columns NVARCHAR(MAX) + LOADTS_UTC + INT_FETCH_DATE</div><div class="step-schema">{clientDB}.int_{name}_{version}.DL_*</div></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-step"><div class="step-label">Staging Tables</div><div class="step-desc">Typed, transformed, deduplicated. Tier-based execution via StagingControl.</div><div class="step-schema">{clientDB}.stage.*</div></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-step highlight"><div class="step-label">Load Tables + CDC</div><div class="step-desc">CHECKSUM-based change detection: N (new) / T1 (Type 1) / T2 (Type 2) / NC (no change)</div><div class="step-schema">{clientDB}.load.{Entity} + load.CDC_{Entity}</div></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-step"><div class="step-label">Data Vault</div><div class="step-desc">HUB, SAT, LNK, SAT_LNK &mdash; SCD Type 2 historization</div><div class="step-schema">{clientDB}.datavault.HUB/SAT/LNK/SAT_LNK.*</div></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-step"><div class="step-label">Presentation Layer</div><div class="step-desc">12 dimensions, 5 fact tables, calendar, forecasts &mdash; built by 22 PresentationControl steps</div><div class="step-schema">{clientDB}.presentation.F/D_*</div></div>
+        <div class="flow-arrow"></div>
+        <div class="flow-step" style="border-color:var(--accent2)"><div class="step-label" style="color:var(--accent2)">Dashboard</div><div class="step-desc">109 parameterized queries across 16 card types; WHERE 1=1 @FilterClause injection; dual result sets</div><div class="step-schema">{clientDB}.core.{card SP}</div></div>
+      </div>
+    </div>
+
+
+    <div class="doc-section" id="arch-db-layout">
+      <h2><span class="section-icon" style="background:rgba(108,138,255,.15);color:var(--accent)">&#127959;</span> Database Layout</h2>
+      <p>The platform uses two database tiers. A single <code>core</code> database acts as the control plane for the entire fleet &mdash; it holds organisation registrations, integration definitions, entity schemas, and visualisation templates. Each organisation gets its own isolated database, named <code>{prefix}_XMS_{GUID}</code>, which is provisioned automatically when the organisation is registered. The organisation database contains all integration-specific schemas, the full Data Vault store, presentation tables, and the objects that serve and populate them. Both databases carry a <code>core</code> schema, but they serve different purposes: in the control plane it holds platform management objects; in the organisation database it holds the ELT stored procedures that run the data pipeline (staging, CDC, Data Vault loading, presentation builds) as well as the visualisation stored procedures that serve dashboard queries.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Database</th><th>Role</th><th>Schemas</th></tr></thead>
+        <tbody>
+          <tr><td><code>core</code></td><td>Central control plane &mdash; organisation registry, integration registry, entity definitions, deployment objects, visualisation templates</td><td><code>core</code>, <code>int_{name}_{ver}</code> (per registered integration)</td></tr>
+          <tr><td><code>{prefix}_XMS_{GUID}</code></td><td>Per-organisation data plane &mdash; one database per organisation, holds all integration data, DV storage, and analytics output</td><td><code>core</code>, <code>stage</code>, <code>load</code>, <code>datavault</code>, <code>presentation</code>, <code>reference</code>, <code>int_{name}_{ver}</code></td></tr>
+        </tbody>
+      </table></div>
+      <p style="margin-top:12px;color:var(--text2);font-size:.9rem">Schema details are documented in the <a href="#arch-control-plane">Core Control Plane</a> and <a href="#arch-client-plane">Client Data Plane</a> sections below.</p>
+    </div>
+
+    <div class="doc-section" id="arch-control-plane">
+      <h2><span class="section-icon" style="background:rgba(78,205,196,.15);color:var(--accent2)">&#9881;</span> Core Control Plane</h2>
+      <p>The <code>core</code> database is the single source of truth for all platform configuration. It contains two schema types: the <code>core</code> schema, which holds the eight control tables, triggers, functions, and management procedures documented below; and one <code>int_{name}_{ver}</code> schema per registered integration, which holds that integration's <code>StagingControl</code>, <code>EntityMappings</code>, and <code>GlobalParameters</code> records. This separation means integration configuration is namespaced and self-contained &mdash; adding a new integration creates a new schema, it doesn't add rows into a shared config table. The control plane drives the deployment engine: when a organisation is mapped to an integration, the platform reads definitions from here to provision the correct structures in the organisation database.</p>
+      <div class="callout callout-tip" style="margin:16px 0">
+        <div class="callout-title">Adding Organisations &amp; Integrations</div>
+        <p>Always use the dedicated <code>Add*</code> stored procedures to register new organisations and integrations. Do not INSERT directly into core tables &mdash; the procedures handle validation, GUID generation, schema creation, and trigger orchestration.</p>
+        <div class="table-wrap" style="margin-top:10px"><table>
+          <thead><tr><th>Procedure</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>AddOrganisation</code></td><td>Registers a new organisation, generates <code>{prefix}_XMS_{GUID}</code> database name, optionally calls <code>CreateOrganisationDatabase</code> immediately</td></tr>
+            <tr><td><code>AddIntegration</code></td><td>Registers a new integration, derives <code>int_{name}</code> schema name, optionally calls <code>CreateIntegrationSchema</code> immediately</td></tr>
+            <tr><td><code>AddAPIEndpoint</code></td><td>Registers API endpoints for an integration (validates integration exists and schema is created)</td></tr>
+            <tr><td><code>MapOrganisationToIntegration</code></td><td>Links a organisation to an integration &mdash; triggers provisioning of the integration schema and DL tables in the organisation database</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <h3>Core Tables (8)</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Table</th><th>Purpose</th><th>Key Facts</th></tr></thead>
+        <tbody>
+          <tr><td><code>Organisations</code></td><td>Organisation registry</td><td>OrganisationID &rarr; DatabaseName; states PENDING&rarr;ACTIVE</td></tr>
+          <tr><td><code>Integrations</code></td><td>Integration definitions</td><td>IntegrationID, schema name, type, JSON API config</td></tr>
+          <tr><td><code>OrganisationIntegrations</code></td><td>Organisation &harr; Integration links</td><td>INSERT trigger provisions schemas &amp; DL tables</td></tr>
+          <tr><td><code>DataVaultEntities</code></td><td>DV entity definitions</td><td>148 records, 84 unique entities, JSON attributes</td></tr>
+          <tr><td><code>GlobalParameters</code></td><td>Config key-value store</td><td>STAGE_DDL category holds DL table DDL</td></tr>
+          <tr><td><code>PresentationControl</code></td><td>Presentation build queries</td><td>22 tiered build steps</td></tr>
+          <tr><td><code>PresentationTables</code></td><td>Presentation DDL definitions</td><td>24 table definitions</td></tr>
+          <tr><td><code>VisualisationQueries</code></td><td>Parameterized SQL templates</td><td>109 queries across 16 card types</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Core Triggers, Functions &amp; Procedures</h3>
+      <p style="color:var(--text2);font-size:.88rem;margin-bottom:8px">These objects live in the <code>core</code> database and manage platform-level operations. For objects deployed <em>into</em> client databases, see <a href="#arch-client-plane">Client Data Plane</a>.</p>
+      <div class="accordion">
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Key Table Schemas <span class="badge badge-pos">Column detail</span></h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+<pre><code>-- Organisations
+OrganisationID int IDENTITY PK | OrganisationCode UNIQUEIDENTIFIER | DatabaseName NVARCHAR(128) {prefix}_XMS_{GUID}
+DatabaseStatus varchar(20) PENDING|CREATING|ACTIVE|FAILED|INACTIVE|MAINTENANCE|ARCHIVED
+
+-- Integrations
+IntegrationID INT IDENTITY | IntegrationType NVARCHAR(50) POS|INVENTORY|SURVEY
+SchemaName NVARCHAR(128) int_ncraloha001 | APIEndpointDetail NVARCHAR(MAX) JSON
+
+-- DataVaultEntities
+ENTITY_NAME NVARCHAR(255) | VERSION INT | RELEASE_STATE Build|Live|Retired
+SPLIT_MAP NVARCHAR(50) '1'=hub '1_1'=binary '1_1_1'=ternary
+ATTRIBUTE_NAMES/TYPES NVARCHAR(MAX) JSON arrays | TIME_SERIES BIT</code></pre>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Triggers (4)</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <div class="table-wrap"><table>
+              <thead><tr><th>Trigger</th><th>Fires On</th><th>Action</th></tr></thead>
+              <tbody>
+                <tr><td><code>trg_CreateOrganisationDatabase</code></td><td>INSERT on Organisations</td><td>Creates SQL Agent job to build new organisation database</td></tr>
+                <tr><td><code>trg_CreateIntegrationSchema</code></td><td>INSERT on Integrations</td><td>Creates integration schema + tables in core</td></tr>
+                <tr><td><code>trg_OrganisationIntegrations_AfterInsert</code></td><td>INSERT on OrganisationIntegrations</td><td>Creates integration schema + DL tables in client DB</td></tr>
+                <tr><td><code>trg_DataVaultEntities_RetireOlderVersions</code></td><td>UPDATE on DataVaultEntities</td><td>Retires older entity versions when a new version is activated</td></tr>
+              </tbody>
+            </table></div>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Functions (7)</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <div class="table-wrap"><table>
+              <thead><tr><th>Function</th><th>Returns</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>SHA256Hash(@input)</code></td><td><code>VARBINARY(32)</code></td><td>SHA-256 hash for business key generation</td></tr>
+                <tr><td><code>GetParameter(@key)</code></td><td><code>NVARCHAR(4000)</code></td><td>Returns parameter value by key from GlobalParameters</td></tr>
+                <tr><td><code>GetParameterWithType(@key)</code></td><td><code>TABLE</code></td><td>Returns value, data type, and category for a parameter</td></tr>
+                <tr><td><code>GetParameterDataType(@key)</code></td><td><code>varchar(20)</code></td><td>Returns the data type of a parameter</td></tr>
+                <tr><td><code>GetTypedParameter(@key)</code></td><td><code>sql_variant</code></td><td>Returns typed/cast parameter value</td></tr>
+                <tr><td><code>GetDatabaseFromOrganisationID(@OrgID)</code></td><td><code>NVARCHAR(4000)</code></td><td>Resolves organisation database name</td></tr>
+                <tr><td><code>GetSchemaFromIntegrationID(@IntID)</code></td><td><code>NVARCHAR(4000)</code></td><td>Resolves integration schema name</td></tr>
+              </tbody>
+            </table></div>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Stored Procedures (20)</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <div class="table-wrap"><table>
+              <thead><tr><th>Category</th><th>Procedure</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td rowspan="4"><strong>Admin</strong></td><td><code>AddOrganisation</code></td><td>Register new organisation, generate database name</td></tr>
+                <tr><td><code>AddIntegration</code></td><td>Register new integration, derive schema name</td></tr>
+                <tr><td><code>AddAPIEndpoint</code></td><td>Register API endpoint for an integration</td></tr>
+                <tr><td><code>MapOrganisationToIntegration</code></td><td>Link organisation to integration (triggers provisioning)</td></tr>
+                <tr><td rowspan="4"><strong>Provisioning</strong></td><td><code>CreateOrganisationDatabase</code></td><td>Creates organisation DB, schemas, DV tables, deploys objects</td></tr>
+                <tr><td><code>CreatePendingDatabases</code></td><td>Batch-processes pending database creation requests</td></tr>
+                <tr><td><code>CreateDatabaseSchemas</code></td><td>Creates schemas in a target database</td></tr>
+                <tr><td><code>CreateIntegrationSchema</code></td><td>Creates integration schema + tables in core</td></tr>
+                <tr><td rowspan="4"><strong>Deployment</strong></td><td><code>sp_DeployObjects</code></td><td>Deploys all objects to client databases</td></tr>
+                <tr><td><code>sp_CreateIntegrationTables</code></td><td>Creates StagingControl, EntityMappings, GlobalParameters</td></tr>
+                <tr><td><code>sp_GenerateDataVaultTables</code></td><td>Generates HUB/SAT/LNK/SAT_LNK/LOAD from entity defs</td></tr>
+                <tr><td><code>DeployPresentationTables</code></td><td>Deploys presentation table DDL to client DB</td></tr>
+                <tr><td rowspan="2"><strong>Mapping</strong></td><td><code>UploadEntityMappings</code></td><td>Translates EntityMappings &rarr; StagingControl Load steps</td></tr>
+                <tr><td><code>ProcessSingleEntityMapping</code></td><td>Processes one entity mapping row</td></tr>
+                <tr><td rowspan="5"><strong>Query</strong></td><td><code>GetOrganisations</code></td><td>Lists organisations with database status</td></tr>
+                <tr><td><code>GetIntegrations</code></td><td>Lists registered integrations</td></tr>
+                <tr><td><code>GetOrganisationIntegrations</code></td><td>Lists org-integration links for an org</td></tr>
+                <tr><td><code>GetIntegrationEndpoints</code></td><td>Lists API endpoints for an integration</td></tr>
+                <tr><td><code>SetParameter</code></td><td>Upserts a GlobalParameters key-value pair</td></tr>
+              </tbody>
+            </table></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="arch-client-plane">
+      <h2><span class="section-icon" style="background:rgba(255,107,157,.15);color:var(--accent3)">&#127960;</span> Client Data Plane</h2>
+      <p>Each organisation database is structured around six fixed schemas that mirror the data pipeline stages, plus one <code>int_{name}_{ver}</code> schema for each integration the organisation has been mapped to. The fixed schemas are created by <code>CreateOrganisationDatabase</code> at provisioning time and are identical in structure across all organisations. The integration schemas are added later, individually, when a organisation is mapped to an integration via <code>MapOrganisationToIntegration</code> &mdash; each one contains the raw landing tables for that integration's API data. The <code>core</code> schema holds all deployed stored procedures: both the ELT pipeline procedures and the visualisation procedures that serve the dashboard.</p>
+      <h3>Schemas</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Schema</th><th>Purpose</th><th>Example Objects</th></tr></thead>
+        <tbody>
+          <tr><td><code>core</code></td><td>Deployed procedures, functions, config tables</td><td><code>sp_DataVaultLoad</code>, <code>SingleKPICard</code>, <code>GlobalParameters</code></td></tr>
+          <tr><td><code>stage</code></td><td>Staging tables populated by integration ETL</td><td><code>NCR_LINE_ITEM_DETAIL</code>, <code>MMAN_PRODUCT</code></td></tr>
+          <tr><td><code>load</code></td><td>Transient load + CDC tables (one per DV entity)</td><td><code>load.LOCATION</code>, <code>load.CDC_LOCATION</code></td></tr>
+          <tr><td><code>datavault</code></td><td>Permanent DV storage: HUB, SAT, LNK, SAT_LNK</td><td><code>HUB_LOCATION</code>, <code>SAT_PRODUCT</code>, <code>LNK_LOCATION_PRODUCT</code></td></tr>
+          <tr><td><code>presentation</code></td><td>Analytics-ready star schema: facts + dimensions</td><td><code>F_LINEITEM_15MIN</code>, <code>D_LOCATION</code>, <code>CALENDAR</code></td></tr>
+          <tr><td><code>reference</code></td><td>Reference / lookup data</td><td>Static reference tables</td></tr>
+          <tr><td><code>int_{name}_{ver}</code></td><td>Integration DL tables (raw API landing)</td><td><code>int_ncraloha001.DL_SALES_STREAM</code></td></tr>
+        </tbody>
+      </table></div>
+      <h3>Deployed Objects (46 via <code>sp_DeployObjects</code>)</h3>
+      <p style="color:var(--text2);font-size:.88rem;margin-bottom:8px">All objects below are defined as SQL text in <code>core.DeploymentObjects</code> and pushed to every active client database. They execute locally within the organisation database.</p>
+      <div class="accordion">
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Tables &amp; Indexes (6)</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <div class="table-wrap"><table>
+              <thead><tr><th>Object</th><th>Type</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>GlobalParameters</code></td><td>TABLE</td><td>Organisation-local configuration key-value store</td></tr>
+                <tr><td><code>GlobalParameters_Indexes</code></td><td>INDEX</td><td>Indexes on GlobalParameters</td></tr>
+                <tr><td><code>ForecastModels</code></td><td>TABLE</td><td>Trained ML model binaries (gradient-boosting .pkl)</td></tr>
+                <tr><td><code>ForecastResults</code></td><td>TABLE</td><td>Per-day predictions per location-category</td></tr>
+                <tr><td><code>ModelPerformanceHistory</code></td><td>TABLE</td><td>Model evaluation metrics for drift detection</td></tr>
+                <tr><td><code>WeatherData</code></td><td>TABLE</td><td>Weather observations per location per day</td></tr>
+              </tbody>
+            </table></div>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Functions (4)</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <div class="table-wrap"><table>
+              <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>GetParameter</code></td><td>Returns parameter value by key</td></tr>
+                <tr><td><code>GetParameterWithType</code></td><td>Returns value + data type + category</td></tr>
+                <tr><td><code>GetParameterDataType</code></td><td>Returns data type of a parameter</td></tr>
+                <tr><td><code>GetTypedParameter</code></td><td>Returns typed/cast parameter value</td></tr>
+              </tbody>
+            </table></div>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Data Pipeline Procedures (10)</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <div class="table-wrap"><table>
+              <thead><tr><th>Procedure</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>sp_DataVaultLoad</code></td><td>Orchestrates full pipeline: dedup &rarr; staging &rarr; load &rarr; CDC &rarr; DV write</td></tr>
+                <tr><td><code>sp_Staging</code></td><td>Executes StagingControl rows in tier order</td></tr>
+                <tr><td><code>sp_ProcessStagingDuplicates</code></td><td>Deduplicates all DL_* tables before staging</td></tr>
+                <tr><td><code>sp_PopulateLoadTable</code></td><td>Fills load.{Entity} from staging</td></tr>
+                <tr><td><code>sp_GenerateCDC</code></td><td>Populates CDC tables with change-type classifications</td></tr>
+                <tr><td><code>sp_ProcessHubSat</code></td><td>SCD Type 2 processing for hub entities</td></tr>
+                <tr><td><code>sp_ProcessLink</code></td><td>Append-only processing for link entities</td></tr>
+                <tr><td><code>sp_InitEntityDeltaParameters</code></td><td>Initialises CDC delta tracking parameters</td></tr>
+                <tr><td><code>sp_ProcessPresentation</code></td><td>Rebuilds presentation layer from DV</td></tr>
+                <tr><td><code>sp_PopulateCalendar</code></td><td>Populates the CALENDAR presentation table</td></tr>
+              </tbody>
+            </table></div>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Visualisation Card Procedures (16)</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <p style="margin-bottom:8px">All share a uniform signature: <code>@StartDate, @EndDate, @LocationList, @DataSet, @Filters</code>. The front end calls any card type uniformly.</p>
+            <div class="entity-grid">
+              <div class="entity-card"><div class="entity-name">FilterList</div><div class="entity-type">Dimension dropdowns</div></div>
+              <div class="entity-card"><div class="entity-name">SingleKPICard</div><div class="entity-type">KPI metrics</div></div>
+              <div class="entity-card"><div class="entity-name">BarChartCard</div><div class="entity-type">Bar charts</div></div>
+              <div class="entity-card"><div class="entity-name">LineChartCard</div><div class="entity-type">Line charts</div></div>
+              <div class="entity-card"><div class="entity-name">PieChartCard</div><div class="entity-type">Pie/donut</div></div>
+              <div class="entity-card"><div class="entity-name">StackedBarChartCard</div><div class="entity-type">Stacked bars</div></div>
+              <div class="entity-card"><div class="entity-name">MultiLineChartCard</div><div class="entity-type">Multi-series lines</div></div>
+              <div class="entity-card"><div class="entity-name">CombinedChartCard</div><div class="entity-type">Mixed chart types</div></div>
+              <div class="entity-card"><div class="entity-name">HeatmapCard</div><div class="entity-type">2D heatmaps</div></div>
+              <div class="entity-card"><div class="entity-name">RadarChartCard</div><div class="entity-type">Multi-axis radar</div></div>
+              <div class="entity-card"><div class="entity-name">StatCard</div><div class="entity-type">Stat + comparison</div></div>
+              <div class="entity-card"><div class="entity-name">CustomDataGrid</div><div class="entity-type">Tabular data</div></div>
+              <div class="entity-card"><div class="entity-name">CustomGroupedDataGrid</div><div class="entity-type">Grouped tables</div></div>
+              <div class="entity-card"><div class="entity-name">CustomPinnedDataGrid</div><div class="entity-type">Pinned tables</div></div>
+              <div class="entity-card"><div class="entity-name">TreeViewCard</div><div class="entity-type">Hierarchical tree</div></div>
+              <div class="entity-card"><div class="entity-name">MarkdownCard</div><div class="entity-type">Rich text display</div></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>Utility Procedures (3)</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <div class="table-wrap"><table>
+              <thead><tr><th>Procedure</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>BuildDynamicWhereClause</code></td><td>Constructs <code>@FilterClause</code> from filter JSON + parameter mappings</td></tr>
+                <tr><td><code>SetParameter</code></td><td>Upserts a GlobalParameters key-value pair</td></tr>
+                <tr><td><code>SampleData</code></td><td>Inserts sample/seed data for new organisations</td></tr>
+              </tbody>
+            </table></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="arch-deployment">
+      <h2><span class="section-icon" style="background:rgba(255,217,61,.15);color:var(--accent4)">&#128640;</span> Deployment Engine</h2>
+      <p>The deployment engine solves a core multi-tenancy challenge: keeping stored procedures and functions consistent across an arbitrary number of organisation databases without manually scripting each one. The solution is to store all deployable object definitions as SQL text in the <code>DeploymentObjects</code> control table, with a <code>{SCHEMA}</code> placeholder substituted at deploy time. When <code>sp_DeployObjects</code> runs, it iterates all active objects in <code>ExecutionOrder</code>, resolves each organisation's database name, substitutes the schema placeholder, and executes the SQL against the target database via <code>USE [db] EXEC('...')</code>. This means deploying an updated procedure to all organisations is a single <code>sp_DeployObjects</code> call &mdash; not 50 individual script runs.</p>
+      <pre><code>CREATE TABLE [core].[DeploymentObjects] (
+    ObjectID         INT IDENTITY(1,1),
+    ObjectName       NVARCHAR(255),     -- e.g. 'sp_DataVaultLoad'
+    ObjectType       NVARCHAR(50),      -- PROCEDURE | FUNCTION
+    SchemaName       NVARCHAR(128),     -- target schema (usually 'core')
+    Category         NVARCHAR(50),      -- grouping category
+    Description      NVARCHAR(500),     -- human-readable description
+    CreationScript   NVARCHAR(MAX),     -- full CREATE/ALTER SQL
+    DropScript       NVARCHAR(MAX),     -- optional DROP SQL
+    ExecutionOrder   INT,               -- 1-48 tables/functions, 49-64 card procs
+    IsActive         BIT,
+    Version          INT
+)</code></pre>
+      <p><code>sp_DeployObjects</code> iterates active objects in <code>ExecutionOrder</code>, resolves each database name, replaces <code>{SCHEMA}</code> placeholder, executes via <code>USE [db] EXEC('...')</code>, and logs success/failure per object per database.</p>
+    </div>
+
+    <div class="doc-section" id="arch-datavault">
+      <h2><span class="section-icon" style="background:rgba(108,138,255,.15);color:var(--accent)">&#127981;</span> Data Vault 2.0 Implementation</h2>
+      <p>Data Vault 2.0 is the storage methodology used for all integrated data in XMS BI. It organises data into three structural types: <strong>HUBs</strong> store business keys (one row per unique entity, hash key only); <strong>SATs</strong> store the attributes of those entities with full SCD Type 2 historisation (every change is retained with <code>LOAD_TS</code>, <code>EFFECTIVETO</code>, and <code>CURRENT_FLAG</code>); and <strong>LNKs</strong> store relationships between entities as append-only records, with optional <strong>SAT_LNKs</strong> holding attributes of the relationship itself. All hash keys are SHA-256 <code>VARBINARY(32)</code> values derived from business keys. The 84 entities in XMS BI span hubs, binary links, ternary and quaternary links, self-referencing links, and build-state tracking links &mdash; all defined in the <code>DataVaultEntities</code> control table and generated automatically by <code>sp_GenerateDataVaultTables</code>.</p>
+      <div class="launch-row">
+        <a class="launch-btn launch-btn-primary" href="data-vault-diagram.html" target="_blank">&#127981; Launch Data Vault Diagram</a>
+      </div>
+      <div class="tabs">
+        <div class="tab-headers">
+          <div class="tab-header active" onclick="switchTab(this,'tab-hub')">HUB</div>
+          <div class="tab-header" onclick="switchTab(this,'tab-sat')">SAT</div>
+          <div class="tab-header" onclick="switchTab(this,'tab-lnk')">LNK</div>
+          <div class="tab-header" onclick="switchTab(this,'tab-satlnk')">SAT_LNK</div>
+        </div>
+        <div class="tab-panel active" id="tab-hub">
+          <p>Business key registry. One row per unique business entity. PK = <code>HUB_ID BINARY(32)</code> (SHA-256 hash).</p>
+          <pre><code>CREATE TABLE [datavault].[HUB_LOCATION] (
+    [HUB_ID] BINARY(32) NOT NULL, [SRC] NVARCHAR(255) NOT NULL,
+    [IS_DELETED] BIT NULL, [LOAD_TS] DATETIME2(7),
+    CONSTRAINT [PK_HUB_LOCATION] PRIMARY KEY CLUSTERED ([HUB_ID]))</code></pre>
+        </div>
+        <div class="tab-panel" id="tab-sat">
+          <p>Descriptive attributes with SCD Type 2 history. PK = <code>(HUB_ID, LOAD_TS)</code>. <code>EFFECTIVETO NULL</code> = current record.</p>
+          <pre><code>CREATE TABLE [datavault].[SAT_LOCATION] (
+    [HUB_ID] BINARY(32) NOT NULL, [LOAD_TS] DATETIME2(7),
+    [EFFECTIVEFROM] DATETIME2(7), [EFFECTIVETO] DATETIME2(7) NULL,
+    [CURRENT_FLAG] BIT NOT NULL, [IS_DELETED] BIT NULL, [SRC] NVARCHAR(255) NOT NULL,
+    [LOCATION_ID] NVARCHAR(255), [LOCATION_NAME] NVARCHAR(255), ...
+    PRIMARY KEY CLUSTERED ([HUB_ID], [LOAD_TS]))</code></pre>
+        </div>
+        <div class="tab-panel" id="tab-lnk">
+          <p>Relationship registry, append-only. <code>LNK_ID</code> = hash of all hub IDs. Self-refs use PARENT_HUB_ID/CHILD_HUB_ID. Ternary links have three hub ID columns.</p>
+          <pre><code>CREATE TABLE [datavault].[LNK_LOCATION_PRODUCT] (
+    [LNK_ID] BINARY(32) NOT NULL, [SRC] NVARCHAR(255) NOT NULL, [LOAD_TS] DATETIME2(7),
+    [LOCATION_HUB_ID] BINARY(32) NOT NULL, [PRODUCT_HUB_ID] BINARY(32) NOT NULL,
+    [LOCATION_AGG] BIT NULL, [PRODUCT_AGG] BIT NULL,
+    PRIMARY KEY CLUSTERED ([LNK_ID]))</code></pre>
+        </div>
+        <div class="tab-panel" id="tab-satlnk">
+          <p>Link attributes. Created only for links with non-empty <code>ATTRIBUTE_NAMES</code>. Five links have SAT_LNK: INVITEM_INVITEM, INVITEM_OCCASION_PRODUCT, INVITEM_LOCATION_OCCASION_PRODUCT, LINEITEM_LINEITEM, LOCATION_OCCASION_PRODUCT.</p>
+          <pre><code>CREATE TABLE [datavault].[SAT_LNK_LOCATION_OCCASION_PRODUCT] (
+    [LNK_ID] BINARY(32) NOT NULL, [SRC] NVARCHAR(255) NOT NULL, [LOAD_TS] DATETIME2(7),
+    [NET_PRICE] DECIMAL(38,10) NULL, [NET_COST] DECIMAL(38,10) NULL,
+    PRIMARY KEY CLUSTERED ([LNK_ID], [LOAD_TS]))</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="arch-org-provision">
+      <h2><span class="section-icon" style="background:rgba(255,107,157,.15);color:var(--accent3)">&#128101;</span> Organisation Provisioning</h2>
+      <p>Provisioning a new organisation is a three-stage process: create the organisation, register the integration, then map the two together. Each stage is distinct because organisations and integrations exist independently &mdash; an integration can be shared across many organisations, and a organisation can be mapped to multiple integrations. The provisioning flow is trigger-driven: inserting into the core control tables fires <code>AFTER INSERT</code> triggers and SQL Agent jobs that handle database creation, schema generation, Data Vault table building, and object deployment automatically. The steps below show the correct sequence using the <code>Add*</code> stored procedures.</p>
+      <div class="callout callout-info" style="margin-bottom:16px">
+        <div class="callout-title">Use the Add* procedures</div>
+        <p>Never INSERT directly into <code>Organisations</code>, <code>Integrations</code>, or <code>OrganisationIntegrations</code>. Always use <code>AddOrganisation</code>, <code>AddIntegration</code>, and <code>MapOrganisationToIntegration</code>.</p>
+      </div>
+      <h3>1. Add a new organisation</h3>
+      <pre><code>EXEC core.AddOrganisation
+    @OrganisationName = 'Acme Coffee',
+    @OrganisationPrefix = 'ACME',
+    @CreateDatabaseImmediately = 1;</code></pre>
+      <ol style="margin:10px 0 10px 20px;color:var(--text2);font-size:.9rem;line-height:2">
+        <li><code>AddOrganisation</code> inserts into <code>Organisations</code> &rarr; AFTER INSERT trigger fires SQL Agent job</li>
+        <li><code>CreateOrganisationDatabase</code> creates <code>ACME_XMS_{GUID}</code>, state &rarr; <code>CREATING</code></li>
+        <li>Creates 6 schemas: core, datavault, load, stage, presentation, reference</li>
+        <li><code>sp_GenerateDataVaultTables</code> builds all HUB/SAT/LNK/SAT_LNK/load tables</li>
+        <li><code>sp_DeployObjects</code> pushes all 46 procedures/functions/tables</li>
+        <li><code>DeployPresentationTables</code> creates presentation layer</li>
+        <li>State &rarr; <code>ACTIVE</code></li>
+      </ol>
+      <h3>2. Register an integration</h3>
+      <pre><code>EXEC core.AddIntegration
+    @IntegrationName = 'NCRAloha001',
+    @IntegrationDisplayName = 'NCR Aloha Version 1',
+    @CreateSchemaImmediately = 1;</code></pre>
+      <p style="color:var(--text2);font-size:.9rem">Creates <code>int_ncraloha001</code> schema in <code>core</code> with StagingControl, EntityMappings, and GlobalParameters tables.</p>
+      <h3>3. Link organisation to integration</h3>
+      <pre><code>EXEC core.MapOrganisationToIntegration
+    @OrganisationID = 1,
+    @IntegrationID = 1,
+    @APIKey = '...',
+    @BaseURL = 'https://api.ncr.com/rt';</code></pre>
+      <p style="color:var(--text2);font-size:.9rem">AFTER INSERT trigger on <code>OrganisationIntegrations</code> creates the <code>int_ncraloha001</code> schema in the organisation database and executes the <code>STAGE_DDL</code> entries from <code>GlobalParameters</code> to create the integration's <code>stage.*</code> tables.</p>
+    </div>
+
+    <div class="doc-section" id="pipe-integration">
+      <h2><span class="section-icon" style="background:rgba(255,107,157,.15);color:var(--accent3)">&#128268;</span> Integration Framework</h2>
+      <p>Once registered, an integration's behaviour is entirely defined by three configuration tables in its <code>int_{name}_{ver}</code> schema in the <code>core</code> database. <code>StagingControl</code> defines every transformation step from raw landing data to the staging layer, including the SQL to execute and the tier order to run it in. <code>EntityMappings</code> tells the Data Vault loader which staging columns map to which entity attributes, which columns are business keys requiring SHA-256 hashing, and which columns trigger Type 2 historisation when changed. <code>GlobalParameters</code> holds the DDL for each DL landing table (used at provisioning time) plus any integration-specific runtime config values. Together these three tables are the complete specification of an integration &mdash; no transformation logic lives in application code.</p>
+      <div class="accordion">
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>StagingControl</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+<pre><code>id UNIQUEIDENTIFIER | step_name VARCHAR(255) | staging_table VARCHAR(255)
+staging_columns VARCHAR(MAX) -- JSON array | query_sql NVARCHAR(MAX)
+tier INTEGER | step_type VARCHAR(255) 'Staging'|'Load' | exclude BIT DEFAULT 0</code></pre>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>EntityMappings</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <p>Hash values: 0 = pass through, 1 = SHA-256 salted (business key), 2 = SHA-256 unsalted.</p>
+<pre><code>entity_name VARCHAR(255) | source_table VARCHAR(255)
+source_columns NVARCHAR(MAX) -- JSON [{"name":"COL","hash":0|1|2}]
+entity_columns NVARCHAR(MAX) | type2_columns NVARCHAR(MAX)</code></pre>
+          </div></div>
+        </div>
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>GlobalParameters</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <p><code>STAGE_DDL</code> category holds CREATE TABLE DDL for each DL table, executed at integration activation.</p>
+<pre><code>ParameterKey NVARCHAR(100) | ParameterValue NVARCHAR(4000)
+DataType VARCHAR(20) STRING|INT|DECIMAL|BOOLEAN|DATE|DATETIME|JSON
+Category NVARCHAR(50) e.g. 'STAGE_DDL'</code></pre>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="pipe-staging">
+      <h2><span class="section-icon" style="background:rgba(255,217,61,.15);color:var(--accent4)">&#9874;</span> Staging Process</h2>
+      <p>The staging process transforms raw landing data into typed, cleaned records ready for Data Vault loading. All DL table columns are <code>NVARCHAR(MAX)</code>; staging applies type casts, deduplication, business logic, and joins to produce the <code>stage.*</code> tables that the load procedures consume. Staging tables are fully rebuilt on each run using a <code>DROP / SELECT INTO</code> pattern &mdash; there is no incremental merge. Steps are defined in <code>StagingControl</code> and executed in tier order by <code>sp_Staging</code>: tiers allow later steps to join against the output of earlier ones. Before staging begins, <code>sp_ProcessStagingDuplicates</code> removes duplicate rows from all DL tables using <code>ROW_NUMBER()</code> partitioned by business columns.</p>
+      <pre><code>IF OBJECT_ID('stage.NCR_CHANNEL_LINK', 'U') IS NOT NULL
+    DROP TABLE [stage].[NCR_CHANNEL_LINK];
+SELECT * INTO [stage].[NCR_CHANNEL_LINK] FROM (
+    SELECT DISTINCT CONCAT_WS('-', [storeId], [dob], [id]) AS HEADER_SRC_KEY,
+        CASE WHEN [takeOutOrderId] IS NULL THEN 'Pos' ELSE [revenueCenter_Label] END AS CHANNEL
+    FROM [int_ncraloha001].[DL_SALES_STREAM]) AS source_query;</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Integration</th><th>Steps</th><th>Tiers</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>NCRAloha</td><td>27</td><td>3</td><td>Tier 1: base transforms + aggregations; Tier 2: link staging (14 steps); Tier 3: self-link (1 step)</td></tr>
+          <tr><td>MarketMan</td><td>17</td><td>2</td><td>Inventory items, purchase orders, reports</td></tr>
+          <tr><td>SurveyHero</td><td>3</td><td>2</td><td>Tier 1: element mapping; Tier 2: main + questions</td></tr>
+          <tr><td>Growyze</td><td>Embedded</td><td>&mdash;</td><td>Staging SQL bundled in INIT</td></tr>
+          <tr><td>TROAP</td><td>&mdash;</td><td>&mdash;</td><td>No staging pipeline; uses direct table-copy from source database</td></tr>
+        </tbody>
+      </table></div>
+      <p><code>sp_ProcessStagingDuplicates</code> deduplicates all DL tables before staging using <code>ROW_NUMBER()</code> partitioned by business columns (excluding <code>LOADTS_UTC</code> and <code>RequestID</code>).</p>
+    </div>
+
+    <div class="doc-section" id="pipe-dv-loading">
+      <h2><span class="section-icon" style="background:rgba(108,138,255,.15);color:var(--accent)">&#128230;</span> Data Vault Loading</h2>
+      <p>Data Vault loading is orchestrated by <code>sp_DataVaultLoad</code>, which iterates every integration schema that has <code>StagingControl</code> records and runs the full pipeline for each one. For every entity defined in <code>EntityMappings</code>, the load sequence is: populate the intermediate <code>load.{Entity}</code> table from staging, update delta tracking parameters, classify changes via CDC, then write to the Data Vault using either <code>sp_ProcessHubSat</code> (for hub entities) or <code>sp_ProcessLink</code> (for link entities). The <code>load.*</code> tables are the bridge between staging and the Data Vault &mdash; they hold the current batch of records with computed hash keys, ready for change comparison. The SQL to populate each load table is dynamically generated from <code>EntityMappings</code> at runtime, so no hand-authored load queries exist.</p>
+      <pre><code>sp_DataVaultLoad
+  For each int_% schema with StagingControl:
+    sp_ProcessStagingDuplicates (DL_* dedup)
+    sp_Staging (produce stage.* tables)
+    For each Load step:
+      sp_PopulateLoadTable (fill load.ENTITY)
+      sp_UpdateEntityDeltaParameters
+      sp_GenerateCDC (classify changes)
+      sp_ProcessHubSat (hub entity) | sp_ProcessLink (link entity)</code></pre>
+      <pre><code>-- UploadEntityMappings generates:
+INSERT INTO [load].LOCATION (HUB_ID, LOCATION_ID, ...)
+SELECT HUB_ID, LOCATION_ID, ... FROM (
+    SELECT ..., ROW_NUMBER() OVER (PARTITION BY HASHBYTES(...) ORDER BY (SELECT NULL)) AS rn
+    FROM stage.NCR_LOCATION) sub WHERE rn = 1</code></pre>
+    </div>
+
+    <div class="doc-section" id="pipe-cdc">
+      <h2><span class="section-icon" style="background:rgba(78,205,196,.15);color:var(--accent2)">&#128269;</span> CDC Detection</h2>
+      <p>XMS BI uses a CHECKSUM-based CDC mechanism rather than database transaction log capture. For each entity, <code>sp_GenerateCDC</code> compares the current batch of records in <code>load.{Entity}</code> against the active rows in <code>datavault.SAT_{Entity}</code> (where <code>CURRENT_FLAG=1</code>), computing two independent checksums per row. <code>CHECK_TYPE1</code> covers all tracked columns; <code>CHECK_TYPE2</code> covers only the columns designated for Type 2 historisation. The combination of these two checksums determines the change classification, which is written to <code>load.CDC_{Entity}</code> for consumption by the hub/satellite and link processing procedures.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Code</th><th>Meaning</th><th>Condition</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag tag-green" style="font-weight:700">N</span></td><td>New record</td><td>No matching HUB_ID in SAT</td></tr>
+          <tr><td><span class="tag tag-blue" style="font-weight:700">T1</span></td><td>Type 1 change</td><td>CHECK_TYPE1 differs, CHECK_TYPE2 same &mdash; overwrites, no history</td></tr>
+          <tr><td><span class="tag tag-pink" style="font-weight:700">T2</span></td><td>Type 2 change</td><td>CHECK_TYPE2 differs &mdash; closes current row, inserts new history row</td></tr>
+          <tr><td><span class="tag tag-yellow" style="font-weight:700">NC</span></td><td>No change</td><td>Both checksums match &mdash; updates soft-delete flags only</td></tr>
+        </tbody>
+      </table></div>
+      <pre><code>INSERT INTO load.CDC_{ENTITY}
+SELECT ISNULL(LH.HUB_ID, RH.HUB_ID),
+    CASE WHEN RH.HUB_ID IS NULL THEN 'N'
+         WHEN LH.CHECK_TYPE1 != RH.CHECK_TYPE1 THEN
+             CASE WHEN LH.CHECK_TYPE2 != RH.CHECK_TYPE2 THEN 'T2' ELSE 'T1' END
+         ELSE 'NC' END AS CHANGE_TYPE
+FROM (SELECT HUB_ID, CHECKSUM(...) CHECK_TYPE1, CHECKSUM(...) CHECK_TYPE2
+      FROM load.{ENTITY}) LH
+LEFT JOIN (SELECT HUB_ID, CHECKSUM(...) CHECK_TYPE1, CHECKSUM(...) CHECK_TYPE2
+           FROM datavault.SAT_{ENTITY} WHERE CURRENT_FLAG=1) RH ON RH.HUB_ID=LH.HUB_ID</code></pre>
+    </div>
+
+    <div class="doc-section" id="pipe-hubsat">
+      <h2><span class="section-icon" style="background:rgba(255,217,61,.15);color:var(--accent4)">&#128296;</span> Hub &amp; Satellite Processing</h2>
+      <p><code>sp_ProcessHubSat</code> handles all four CDC change types for hub entities in a single atomic transaction. The sequence is designed around the requirement that Type 1 changes overwrite without creating history, while Type 2 changes close the current row and insert a new one. For new records (<code>N</code>), any orphaned HUB entries are cleaned up before the fresh insert. For Type 1 changes (<code>T1</code>), the original <code>EFFECTIVEFROM</code> date is preserved before the stale SAT row is deleted and re-inserted with updated values. For Type 2 changes (<code>T2</code>), the current row is closed by setting <code>EFFECTIVETO</code> and <code>CURRENT_FLAG=0</code>, and a new row is appended. For no-change records (<code>NC</code>), soft-delete flags are reset to reconcile any records that reappeared in the source after being absent.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Step</th><th>Action</th><th>CDC</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>UPDATE EFFECTIVEFROM dates for T1 (preserve originals)</td><td><span class="tag tag-blue">T1</span></td></tr>
+          <tr><td>2</td><td>DELETE from SAT for T1 and N (remove stale before re-insert)</td><td><span class="tag tag-blue">T1</span><span class="tag tag-green">N</span></td></tr>
+          <tr><td>3</td><td>DELETE from HUB for N (remove orphaned entries)</td><td><span class="tag tag-green">N</span></td></tr>
+          <tr><td>4</td><td>Close T2 records: SET EFFECTIVETO, CURRENT_FLAG=0</td><td><span class="tag tag-pink">T2</span></td></tr>
+          <tr><td>5</td><td>INSERT N, T1, T2 records into SAT</td><td><span class="tag tag-green">N</span><span class="tag tag-blue">T1</span><span class="tag tag-pink">T2</span></td></tr>
+          <tr><td>6</td><td>INSERT new N records into HUB</td><td><span class="tag tag-green">N</span></td></tr>
+          <tr><td>9</td><td>Reset IS_DELETED=0 in SAT for NC</td><td><span class="tag tag-yellow">NC</span></td></tr>
+          <tr><td>10</td><td>Reset IS_DELETED=0 in HUB for NC</td><td><span class="tag tag-yellow">NC</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="doc-section" id="pipe-link">
+      <h2><span class="section-icon" style="background:rgba(108,138,255,.15);color:var(--accent)">&#128279;</span> Link Processing</h2>
+      <p>Link processing is fundamentally simpler than hub/satellite processing because relationships in Data Vault 2.0 are immutable &mdash; once a link between two entities is recorded, it is never updated or closed. <code>sp_ProcessLink</code> is therefore append-only: it removes any records from the load batch whose <code>LNK_ID</code> already exists in the LNK table, then inserts only the genuinely new relationship records. Where a <code>SAT_LNK</code> exists for a link (holding attributes of the relationship itself), those attribute records are inserted in a separate step after the link rows are written.</p>
+      <ol style="margin:10px 0 10px 20px;color:var(--text2);font-size:.9rem;line-height:2">
+        <li>DELETE from load where LNK_ID already exists in LNK</li>
+        <li>INSERT remaining new records (hub ID columns + LOAD_TS + SRC)</li>
+        <li>If SAT_LNK exists, INSERT attribute records separately</li>
+      </ol>
+    </div>
+
+    <div class="doc-section" id="integrations">
+      <h2><span class="section-icon" style="background:rgba(108,138,255,.15);color:var(--accent)">&#128268;</span> Integrations</h2>
+      <div class="launch-row">
+        <a class="launch-btn launch-btn-secondary" href="integration-mappings.html" target="_blank">&#128268; Integration Mappings</a>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Integration</th><th>Type</th><th>Schema</th><th>DL Tables</th><th>Staging Steps</th><th>Entity Mappings</th></tr></thead>
+        <tbody>
+          <tr><td><strong>NCRAloha</strong></td><td><span class="tag tag-blue">POS</span></td><td><code>int_ncraloha001</code></td><td>21</td><td>27 (3 tiers)</td><td>34 (15 hub, 19 link)</td></tr>
+          <tr><td><strong>MarketMan</strong></td><td><span class="tag tag-green">INVENTORY</span></td><td><code>int_marketman001</code></td><td>34</td><td>17</td><td>22 (9 hub, 13 link)</td></tr>
+          <tr><td><strong>Growyze</strong></td><td><span class="tag tag-green">INVENTORY</span></td><td><code>int_growyze001</code></td><td>57</td><td>Embedded in INIT</td><td>Embedded in INIT</td></tr>
+          <tr><td><strong>SurveyHero</strong></td><td><span class="tag tag-pink">SURVEY</span></td><td><code>int_surveyhero001</code></td><td>22</td><td>3 (2 tiers)</td><td>4</td></tr>
+          <tr><td><strong>TROAP</strong></td><td><span class="tag tag-blue">POS</span></td><td><code>int_troap001</code></td><td>41</td><td>&mdash;</td><td>&mdash;</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+
+    <div class="doc-section" id="pres-deploy">
+      <h2><span class="section-icon" style="background:rgba(78,205,196,.15);color:var(--accent2)">&#128736;</span> Presentation Deployment</h2>
+      <p><code>DeployPresentationTables</code> builds or rebuilds the presentation layer in a target organisation database. It reads all <code>Live</code> table definitions from the <code>PresentationTables</code> control table, creates the <code>presentation</code> schema if it doesn't exist, then drops and recreates each presentation table by executing the stored DDL. It is safe to re-run because the presentation layer rebuilds entirely from Data Vault data via <code>sp_ProcessPresentation</code> — but be aware it does drop existing presentation tables on each run. It runs automatically during organisation provisioning and can also be called manually to redeploy after a schema change. The <code>@DryRun</code> flag lets you preview which tables would be affected without executing anything.</p>
+      <pre><code>PROCEDURE [core].[DeployPresentationTables]
+    @DatabaseName NVARCHAR(128), @DryRun BIT=0, @ContinueOnError BIT=1, @LogResults BIT=1</code></pre>
+      <p>Cursors over <code>PresentationTables</code> where status='Live' and DDL not null. Creates schema if needed, drops existing table, executes DDL, logs results per table.</p>
+    </div>
+
+    <div class="doc-section" id="pres-tables">
+      <h2><span class="section-icon" style="background:rgba(255,107,157,.15);color:var(--accent3)">&#128202;</span> Presentation Tables</h2>
+      <p>The presentation layer is the query-ready surface that dashboard queries read from directly. It flattens the normalised Data Vault hub-satellite-link model into dimensions, fact tables, and supporting tables. The layer is rebuilt by <code>sp_ProcessPresentation</code>, which executes the SQL steps defined in <code>PresentationControl</code> in tier order. Dimension tables use a 3-tier hierarchy (BOTTOM / MIDDLE_1 / TOP) constructed via recursive CTEs from SAT data, with names resolved through <code>COALESCE(MICROSERVICE_NAME, native_NAME)</code> to support entities that may be sourced from multiple integrations. A sentinel value of <code>CONVERT(BINARY(32), -999)</code> is used throughout to enable null-safe joins between dimensions and facts on <code>BOTTOM_HUB_ID</code>. Fact tables use a delete-append load pattern. Each fact table is driven by a specific Data Vault time-series entity; the query must declare <code>@StartDate</code> and <code>@EndDate</code> variables sourced from that entity's start and end date parameters in <code>core.GlobalParameters</code>, join to the <code>CALENDAR</code> table, and filter calendar rows on those date variables.</p>
+      <div class="callout callout-info"><div class="callout-title">Dimension Build Pattern</div><p>3-tier hierarchy (BOTTOM / MIDDLE_1 / TOP) from SAT tables via recursive CTEs. Names resolved via <code>COALESCE(MICROSERVICE_NAME, native_NAME)</code>. All dimensions join to facts on <code>BOTTOM_HUB_ID</code>.</p></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Category</th><th>Tables</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Dimensions</strong> (16)</td><td><code>D_CHANNEL</code>, <code>D_DEAL</code>, <code>D_DISCOUNT</code>, <code>D_DISTRIBUTOR</code>, <code>D_INVITEM</code>, <code>D_LOCATION</code>, <code>D_MOD</code>, <code>D_OCCASION</code>, <code>D_PRODUCT</code>, <code>D_REVCENTER</code>, <code>D_SERVICECHARGE</code>, <code>D_SUPPLIER</code>, <code>D_TAX</code>, <code>D_TENDER</code>, <code>D_COOCCURRENCE</code>, <code>DimCustomer</code></td></tr>
+          <tr><td><strong>Facts</strong> (5)</td><td><code>F_LINEITEM_15MIN</code>, <code>F_PRODUCT_MARGIN_DAY</code>, <code>F_INV_COUNTS_DAY</code>, <code>F_INV_USAGE_DAY</code>, <code>F_INV_SALES_DAY</code></td></tr>
+          <tr><td><strong>Supporting</strong> (3)</td><td><code>CALENDAR</code>, <code>FORECAST_ACTUALS_BASE</code>, <code>E_COOCCUR_BASE</code></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="doc-section" id="vis-queries">
+      <h2><span class="section-icon" style="background:rgba(108,138,255,.15);color:var(--accent)">&#128200;</span> Visualisation Queries &amp; Cards</h2>
+      <p><code>VisualisationQueries</code> holds all parameterized SQL templates that power the dashboard. Each record defines a query for a specific card type; the card type determines which visualisation stored procedure executes it. Queries use a <code>WHERE 1=1 @FilterClause</code> placeholder &mdash; the executing procedure builds the filter clause dynamically from the user's filter selections and injects it at runtime. Every query returns two result sets: the data rows consumed by the chart or grid, and a metadata result set containing the card title, description, trend value, and supplementary metadata. Filter queries (<code>FilterList</code> card type) are a special category &mdash; they return dimension values used to populate the filter dropdowns in the dashboard UI rather than rendering a chart.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Category</th><th>Count</th><th>Examples</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag tag-blue">Sales / POS</span></td><td>~22</td><td>Revenue, transaction counts, average check, daypart analysis</td></tr>
+          <tr><td><span class="tag tag-green">Products</span></td><td>~7</td><td>Product mix, margin analysis, co-occurrence</td></tr>
+          <tr><td><span class="tag tag-green">Inventory</span></td><td>~14</td><td>Stock counts, usage, waste, purchase orders</td></tr>
+          <tr><td><span class="tag tag-yellow">Forecasting</span></td><td>~2</td><td>Forecast vs actuals</td></tr>
+          <tr><td><span class="tag tag-pink">Survey</span></td><td>~38</td><td>NPS, satisfaction scores, response analysis</td></tr>
+          <tr><td><span class="tag tag-blue">Filters</span></td><td>~21</td><td>FilterList dropdowns for all dimensions</td></tr>
+        </tbody>
+      </table></div>
+      <div class="entity-grid">
+        <div class="entity-card"><div class="entity-name">FilterList</div><div class="entity-type">21 queries &bull; dimension dropdowns</div></div>
+        <div class="entity-card"><div class="entity-name">SingleKPICard</div><div class="entity-type">KPI metrics</div></div>
+        <div class="entity-card"><div class="entity-name">PieChartCard</div><div class="entity-type">Distribution charts</div></div>
+        <div class="entity-card"><div class="entity-name">StackedBarChartCard</div><div class="entity-type">Stacked comparisons</div></div>
+        <div class="entity-card"><div class="entity-name">BarChartCard</div><div class="entity-type">Bar comparisons</div></div>
+        <div class="entity-card"><div class="entity-name">RadarChartCard</div><div class="entity-type">Multi-axis radar</div></div>
+        <div class="entity-card"><div class="entity-name">CombinedChartCard</div><div class="entity-type">Mixed chart types</div></div>
+        <div class="entity-card"><div class="entity-name">MultiLineChartCard</div><div class="entity-type">Time-series lines</div></div>
+        <div class="entity-card"><div class="entity-name">StatCard</div><div class="entity-type">Single statistics</div></div>
+        <div class="entity-card"><div class="entity-name">HeatmapCard</div><div class="entity-type">2D heatmaps</div></div>
+        <div class="entity-card"><div class="entity-name">CustomDataGrid</div><div class="entity-type">Tabular data</div></div>
+        <div class="entity-card"><div class="entity-name">CustomGroupedDataGrid</div><div class="entity-type">Grouped tables</div></div>
+        <div class="entity-card"><div class="entity-name">CustomPinnedDataGrid</div><div class="entity-type">Pinned row tables</div></div>
+        <div class="entity-card"><div class="entity-name">LineChartCard</div><div class="entity-type">Single line charts</div></div>
+      </div>
+      <div class="accordion">
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h4>VisualisationQueries schema &amp; execution pattern</h4><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <div class="table-wrap"><table>
+              <thead><tr><th>Field</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>DataSetName</code></td><td>Dataset identifier — used to look up and execute a query; links to suggestion engine</td></tr>
+                <tr><td><code>VisualizationType</code></td><td>Determines which card stored procedure executes it</td></tr>
+                <tr><td><code>QueryTemplate</code></td><td>SQL with <code>WHERE 1=1 @FilterClause</code> placeholder</td></tr>
+                <tr><td><code>OutputDefinitions / FilterDefinitions / ParameterMappings</code></td><td>JSON definitions for outputs, filters, and param bindings</td></tr>
+                <tr><td><code>ExecutionQuery</code></td><td>Final SQL calling the card stored procedure</td></tr>
+              </tbody>
+            </table></div>
+            <pre><code>SELECT ... FROM presentation.F_LINEITEM_15MIN f
+JOIN presentation.D_LOCATION d ON f.LOCATION_HUB_ID = d.BOTTOM_HUB_ID
+WHERE 1=1 @FilterClause GROUP BY ...</code></pre>
+            <div class="callout callout-tip"><div class="callout-title">Dual-result pattern</div><p><strong>Result Set 1</strong> = data rows; <strong>Result Set 2</strong> = header metadata (title, description, trend value, and supplementary metadata). The front end consumes both to render the card.</p></div>
+          </div></div>
+        </div>
+      </div>
+      <p style="margin-top:16px">16 stored procedures deployed to each client database (one per card type). Each accepts <code>@DataSet NVARCHAR(100)</code> and filter parameters, builds <code>@FilterClause</code>, injects it into the QueryTemplate, and returns two result sets.</p>
+    </div>
+
+    <div class="doc-section" id="vis-suggestions">
+      <h2><span class="section-icon" style="background:rgba(255,107,157,.15);color:var(--accent3)">&#129302;</span> AI Suggestion Engine</h2>
+      <p>Four tables generate natural-language descriptions and action suggestions, linked to <code>VisualisationQueries</code> via <code>Dataset = DataSetName</code>.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Table</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>ActionInferenceRules</code></td><td>Rules for action suggestions based on metric thresholds</td></tr>
+          <tr><td><code>DescriptionRules</code></td><td>Rules for natural-language trend descriptions</td></tr>
+          <tr><td><code>DescriptionTemplates</code></td><td>Template strings with placeholders for dynamic content</td></tr>
+          <tr><td><code>MetricDefinitions</code></td><td>Metric metadata linking to VisualisationQueries via DataSetName</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="doc-section" id="ref-conventions" style="margin-top:48px;border-top:2px solid var(--border);padding-top:32px">
+      <div class="accordion">
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h2 style="margin:0;font-size:1.1rem"><span class="section-icon" style="background:rgba(255,217,61,.15);color:var(--accent4)">&#9881;</span> Key Conventions</h2><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <ul class="convention-list">
+              <li><strong>Hash keys</strong> &mdash; <code>VARBINARY(32)</code> SHA-256 via <code>core.SHA256Hash()</code>. Hash value 1 = salted with integration schema (business key); hash value 2 = unsalted; hash value 0 = pass through.</li>
+              <li><strong>Dimension hierarchies</strong> &mdash; 3-tier BOTTOM / MIDDLE_1 / TOP with BOTTOM_HUB_ID joins; <code>COALESCE(MICROSERVICE_NAME, native_NAME)</code> name resolution</li>
+              <li><strong>Sentinel values</strong> &mdash; <code>CONVERT(BINARY(32), -999)</code> for null-safe dimension joins</li>
+              <li><strong>Entity type detection</strong> &mdash; no underscore = Hub; underscore = Link (name parts identify connected hubs)</li>
+              <li><strong>Entity lifecycle</strong> &mdash; <span class="tag tag-yellow">Build</span> &rarr; <span class="tag tag-green">Live</span> &rarr; <span class="tag tag-pink">Retired</span> &mdash; only Live entities included in table generation</li>
+              <li><strong>Database states</strong> &mdash; PENDING &rarr; CREATING &rarr; ACTIVE &rarr; FAILED &rarr; INACTIVE &rarr; MAINTENANCE &rarr; ARCHIVED</li>
+              <li><strong>Dynamic SQL</strong> &mdash; metasql pattern (<code>USE [db] EXEC('...')</code>) and three-part <code>sp_executesql</code></li>
+              <li><strong>CDC codes</strong> &mdash; N = new, T1 = Type 1 change (overwrite, no history), T2 = Type 2 change (close + insert new row), NC = no change (CHECKSUM-based detection)</li>
+              <li><strong>DL table columns</strong> &mdash; All <code>NVARCHAR(MAX)</code> + <code>LOADTS_UTC</code> + <code>INT_FETCH_DATE</code> system columns</li>
+              <li><strong>FilterClause injection</strong> &mdash; <code>WHERE 1=1 @FilterClause</code> pattern; filters defined in FilterDefinitions JSON</li>
+              <li><strong>Dual-result pattern</strong> &mdash; Result set 1 = data rows; Result set 2 = header metadata (title, description, trend value, and supplementary metadata)</li>
+            </ul>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="ref-file-map">
+      <div class="accordion">
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)"><h2 style="margin:0;font-size:1.1rem"><span class="section-icon" style="background:rgba(255,107,157,.15);color:var(--accent3)">&#128196;</span> Release File Map</h2><svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="accordion-body"><div class="accordion-content">
+            <h3>Core Platform <span class="tag tag-blue">deploy in numbered order</span></h3>
+            <div class="table-wrap"><table>
+              <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>1__DBInit.sql</code></td><td>44</td><td>Creates core database and schema</td></tr>
+                <tr><td><code>2_CoreTableCreateScripts.sql</code></td><td>905</td><td>8 core tables + 4 triggers</td></tr>
+                <tr><td><code>3_CoreStoredProceduresAndFunctions.sql</code></td><td>1,519</td><td>7 functions + 20 stored procedures</td></tr>
+                <tr><td><code>4_DeploymentTools.sql</code></td><td>1,666</td><td>DeploymentObjects table + sp_DeployObjects engine</td></tr>
+                <tr><td><code>5_CreateIntegrationTables.sql</code></td><td>424</td><td>sp_CreateIntegrationTables</td></tr>
+                <tr><td><code>6_GenerateDataVaultTables.sql</code></td><td>665</td><td>sp_GenerateDataVaultTables (HUB/SAT/LNK/SAT_LNK/LOAD)</td></tr>
+                <tr><td><code>6_DeployPresentationTables.sql</code></td><td>255</td><td>DeployPresentationTables procedure</td></tr>
+                <tr><td><code>7_IntegrationTrigger.sql</code></td><td>165</td><td>trg_OrganisationIntegrations_AfterInsert</td></tr>
+                <tr><td><code>7_Dynamic Suggestion Tables.sql</code></td><td>234</td><td>4 AI suggestion engine tables</td></tr>
+              </tbody>
+            </table></div>
+            <h3>Data Records <span class="tag tag-green">INSERT scripts</span></h3>
+            <div class="table-wrap"><table>
+              <thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td><code>8_DataVaultEntities.sql</code></td><td>3,314</td><td>148 DV entity definitions (84 unique entities)</td></tr>
+                <tr><td><code>8_Deployment_Objects_Records.sql</code></td><td>3,797</td><td>46 deployment objects</td></tr>
+                <tr><td><code>8_PresentationControl.sql</code></td><td>5,206</td><td>22 presentation build steps with full SQL</td></tr>
+                <tr><td><code>8_PresentationTables.sql</code></td><td>1,625</td><td>24 presentation table DDLs</td></tr>
+                <tr><td><code>8_VisualisationQueries.sql</code></td><td>21,520</td><td>109 visualisation query definitions</td></tr>
+              </tbody>
+            </table></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:60px;padding-top:24px;border-top:1px solid var(--border);text-align:center;color:var(--text3);font-size:.8rem">
+      <p>XMS BI Platform Documentation &bull; Generated 2026-03-01 &bull; 59K+ lines of SQL across 37 active files</p>
+    </div>
+  </div>
+</div>
+<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0})" aria-label="Back to top">&uarr;</button>
+<script>
+function toggleTheme(){
+  const html=document.documentElement,isDark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',isDark?'light':'dark');
+  document.getElementById('themeIcon').innerHTML=isDark?'&#9728;':'&#9790;';
+  document.getElementById('themeLabel').textContent=isDark?'Dark':'Light';
+  localStorage.setItem('theme',isDark?'light':'dark');
+}
+(function(){const t=localStorage.getItem('theme');if(t){document.documentElement.setAttribute('data-theme',t);if(t==='light'){document.getElementById('themeIcon').innerHTML='&#9728;';document.getElementById('themeLabel').textContent='Dark';}}})();
+function toggleSection(el){el.classList.toggle('collapsed');el.nextElementSibling.classList.toggle('collapsed');}
+function toggleAccordion(h){const i=h.parentElement,b=h.nextElementSibling;if(i.classList.contains('open')){i.classList.remove('open');b.style.maxHeight='0';}else{i.classList.add('open');b.style.maxHeight=b.scrollHeight+'px';}}
+function switchTab(h,pid){const tabs=h.parentElement,c=tabs.parentElement;tabs.querySelectorAll('.tab-header').forEach(x=>x.classList.remove('active'));c.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));h.classList.add('active');document.getElementById(pid).classList.add('active');}
+window.addEventListener('scroll',()=>{document.getElementById('backToTop').classList.toggle('visible',window.scrollY>400);});
+const sections=document.querySelectorAll('.doc-section,.hero'),navItems=document.querySelectorAll('.nav-item'),bc=document.getElementById('breadcrumbText');
+new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){const id=e.target.id;navItems.forEach(n=>{n.classList.toggle('active',n.getAttribute('href')==='#'+id);if(n.getAttribute('href')==='#'+id)bc.textContent=n.textContent;});}});},{rootMargin:'-80px 0px -70% 0px'}).observe=function(s){sections.forEach(x=>IntersectionObserver.prototype.observe.call(this,x));};
+const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){const id=e.target.id;navItems.forEach(n=>{n.classList.toggle('active',n.getAttribute('href')==='#'+id);if(n.getAttribute('href')==='#'+id)bc.textContent=n.textContent;})}});},{rootMargin:'-80px 0px -70% 0px'});
+sections.forEach(s=>obs.observe(s));
+const si=document.getElementById('searchInput'),sr=document.getElementById('searchResults'),as=document.querySelectorAll('.doc-section');
+si.addEventListener('input',function(){const q=this.value.trim().toLowerCase();if(q.length<2){sr.style.display='none';as.forEach(s=>s.style.display='');document.querySelectorAll('.nav-items').forEach(n=>n.classList.remove('collapsed'));return;}let c=0;as.forEach(s=>{const m=s.textContent.toLowerCase().includes(q);s.style.display=m?'':'none';if(m)c++;});sr.style.display='block';sr.textContent=c+' section'+(c!==1?'s':'')+' matching "'+this.value.trim()+'"';});
+navItems.forEach(n=>{n.addEventListener('click',function(){
+  if(window.innerWidth<=768)document.getElementById('sidebar').classList.remove('open');
+  var href=n.getAttribute('href');if(!href)return;var target=document.querySelector(href);if(!target)return;
+  if(target.classList.contains('section-collapsed')){target.classList.remove('section-collapsed');var w=target.querySelector('.section-content');if(w){w.style.maxHeight=w.scrollHeight+'px';setTimeout(function(){w.style.maxHeight='none';},400);}}
+  if(!target.querySelector('.section-content')){var ai=target.querySelector('.accordion-item');if(ai&&!ai.classList.contains('open')){ai.classList.add('open');var ab=ai.querySelector('.accordion-body');if(ab)ab.style.maxHeight=ab.scrollHeight+'px';}}
+});});
+document.querySelectorAll('.nav-items').forEach(el=>{el.style.maxHeight=el.scrollHeight+'px';});
+// Make all doc-sections collapsible
+document.querySelectorAll('.doc-section').forEach(function(section){
+  var h2=Array.from(section.children).find(function(el){return el.tagName==='H2';});
+  if(!h2) return;
+  var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.classList.add('collapse-chevron');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','2');
+  var poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');poly.setAttribute('points','6 9 12 15 18 9');svg.appendChild(poly);h2.appendChild(svg);
+  var wrap=document.createElement('div');wrap.className='section-content';wrap.style.maxHeight='none';
+  var sib=h2.nextElementSibling;while(sib){var nxt=sib.nextElementSibling;wrap.appendChild(sib);sib=nxt;}
+  section.appendChild(wrap);
+  h2.addEventListener('click',function(){
+    if(section.classList.contains('section-collapsed')){section.classList.remove('section-collapsed');wrap.style.maxHeight=wrap.scrollHeight+'px';setTimeout(function(){wrap.style.maxHeight='none';},400);}
+    else{wrap.style.maxHeight=wrap.scrollHeight+'px';wrap.offsetHeight;section.classList.add('section-collapsed');wrap.style.maxHeight='0';}
+  });
+});
+</script>
+</body>
+</html>

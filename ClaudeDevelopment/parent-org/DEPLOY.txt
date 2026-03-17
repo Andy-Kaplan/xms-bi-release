@@ -1,0 +1,117 @@
+Parent Organisation Reporting — Deployment Instructions
+=======================================================
+
+Prerequisites
+-------------
+- All scripts target the core database unless noted otherwise.
+- Scripts are idempotent (safe to re-run).
+- After deploying, run sp_DeployObjects and sp_DeployPresentationTables
+  on each org database to push the patched SPs and new tables.
+
+Deploy Order
+------------
+Run these scripts in sequence against the core database:
+
+  01_core_schema_changes.sql
+      Adds QuorumPercentage column to Organisations table.
+      Creates ParentBuildStatus table + index.
+
+  02_sp_SignalChildCompletion.sql
+      Creates core.sp_SignalChildCompletion stored procedure.
+      (Quorum gate: child signals completion, checks threshold,
+       triggers parent build when met.)
+
+  03_sp_BuildParentPresentationSQL.sql
+      Creates core.sp_BuildParentPresentationSQL stored procedure.
+      (Dynamic UNION ALL builder across child databases.)
+
+  04_sp_DataVaultLoad_patch.sql
+      Patches sp_DataVaultLoad in DeploymentObjects to call
+      sp_SignalChildCompletion after the presentation build.
+      Requires 01 + 02 to be deployed first.
+
+  05_sp_ExecuteQuery_patch.sql
+      Patches sp_ExecuteQuery in DeploymentObjects to handle
+      multi-statement query_sql via ColumnMappingsJson fallback.
+      Required before any tier 100+ PresentationControl step runs.
+
+  06_presentation_tables.sql
+      Inserts 7 PresentationTables MERGE records:
+        - PD_ORGANISATION (dimension)
+        - PD_LOCATION (dimension)
+        - PF_REVENUE_DAY (fact)
+        - PF_PROFIT_DAY (fact)
+        - PF_FOODCOST_DAY (fact)
+        - PF_INVENTORY_EFFICIENCY_DAY (fact)
+        - PF_GROWTH_PERIOD (fact)
+
+  07_presentation_control.sql
+      Inserts 7 PresentationControl MERGE records:
+        - Tier 100: PD_ORGANISATION, PD_LOCATION
+        - Tier 101: PF_REVENUE_DAY, PF_PROFIT_DAY,
+                    PF_FOODCOST_DAY, PF_INVENTORY_EFFICIENCY_DAY
+        - Tier 102: PF_GROWTH_PERIOD
+
+  08_visualisation_queries.sql
+      Inserts 4 VisualisationQueries MERGE records:
+        - ParentNetSales (SingleKPICard)
+        - ParentOrgRevenue (StackedBarChartCard)
+        - ParentOrgRevenueTrend (MultiLineChartCard)
+        - ParentLocationRankings (CustomGroupedDataGrid)
+
+Run this script against the core database (Group Overview dashboard):
+
+  10_dashboard_vis_queries.sql
+      Inserts 9 VisualisationQueries MERGE records:
+        - ParentOrderCount (SingleKPICard)
+        - ParentAvgOrderValue (SingleKPICard)
+        - ParentProfitByOrg (StackedBarChartCard)
+        - ParentDiscountImpact (BarChartCard)
+        - ParentEfficiencyByOrg (StackedBarChartCard)
+        - ParentGrowthSummary (CustomDataGrid)
+        - ParentOrgSummaryTable (CustomDataGrid)
+        - ParentOrganisations (FilterList)
+        - ParentLocations (FilterList)
+
+Run this script against the microservice report database:
+
+  11_report_db_config.sql
+      Report DB configuration for Group Overview dashboard:
+        - 4 VisualisationConfig entries (card types 1, 3, 4, 8)
+        - 11 VisualisationDataSetMap entries (card datasets)
+        - 1 DashboardGrid (12-column responsive)
+        - 1 OrganisationDashboardConfig (Group Overview)
+        - 11 DashboardGridItem entries (card layout)
+        - 2 DashboardGridFilter entries (Organisations, Locations)
+        - Soft-deletes 2 stale DataSetMap entries (InvTheoMargin,
+          InvCountVariance)
+
+Post-Deploy Steps
+-----------------
+1. Run sp_DeployObjects on each org database to push the patched
+   sp_DataVaultLoad and sp_ExecuteQuery.
+
+2. Run sp_DeployPresentationTables on each parent org database to
+   create the 7 new presentation tables.
+
+3. Set up parent-child relationships:
+   - Set ParentOrganisationCode on child org rows in Organisations
+   - Optionally adjust QuorumPercentage on the parent row
+     (default 100.00 = all children must complete)
+
+4. The parent presentation build triggers automatically when the
+   quorum is met after child pipelines complete. To test manually:
+     EXEC [{ParentDB}].[core].[sp_ProcessPresentation] @TierFilter = 100
+
+Numbered File Sync
+------------------
+After verifying the deployment, merge these changes into the numbered
+release files for future clean deployments:
+
+  2_CoreTableCreateScripts.sql    — QuorumPercentage + ParentBuildStatus
+  3_CoreStoredProceduresAndFunctions.sql — sp_SignalChildCompletion,
+                                           sp_BuildParentPresentationSQL
+  8_Deployment_Objects_Records.sql — sp_DataVaultLoad + sp_ExecuteQuery patches
+  8_PresentationTables.sql         — 7 new MERGE records
+  8_PresentationControl.sql        — 7 new MERGE records
+  8_VisualisationQueries.sql       — 4 new MERGE records

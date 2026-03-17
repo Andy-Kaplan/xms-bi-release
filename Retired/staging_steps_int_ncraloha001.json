@@ -1,0 +1,474 @@
+{
+  "export_metadata": {
+    "app_name": "Staging and Transformation",
+    "app_version": "1.0.0",
+    "export_date": "2025-09-30T21:30:41.816268",
+    "schema": "int_ncraloha001",
+    "total_steps": 22,
+    "active_steps": 22,
+    "excluded_steps": 0,
+    "tiers": 3
+  },
+  "staging_steps": [
+    {
+      "step_name": "Channel and Cust Order Link",
+      "staging_table": "NCR_CHANNEL_LINK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_CHANNEL_LINK', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_CHANNEL_LINK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_CHANNEL_LINK]\nFROM (\nSELECT DISTINCT\n\tCONCAT_WS('-',[storeId],[dob],[id]) AS HEADER_SRC_KEY\n\t,CASE WHEN [takeOutOrderId] IS NULL THEN 'Pos'\n\tELSE [revenueCenter_Label]\n\tEND AS CHANNEL\n\t, 'Channel' AS LEVE_NAME\n\t,1 AS BOTTOM_LEVEL\n  FROM [int_ncraloha001].[DL_SALES_STREAM]\n) AS source_query;",
+      "tier": 1,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "HEADER_SRC_KEY",
+        "CHANNEL",
+        "LEVE_NAME",
+        "BOTTOM_LEVEL"
+      ]
+    },
+    {
+      "step_name": "Employee Timecard",
+      "staging_table": "NCR_EMP_TIME",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_EMP_TIME', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_EMP_TIME];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_EMP_TIME]\nFROM (\nSELECT \n    CONCAT_WS('-',L.[storeId],L.[dob],L.[id], L.[employee_id]) AS TIMECARD_SRC_KEY\n    ,TRY_CAST(L.[startDate] AS DATETIME2) AS TIMECARD_START_TIMESTAMP\n    ,TRY_CAST(L.[endDate] AS DATETIME2) AS TIMECARD_END_TIMESTAMP\n    ,TRY_CAST(L.[dob] AS DATE) AS TIMECARD_DATE\n    ,CASE \n        WHEN CHARINDEX(' ', [employee_name]) = 0 THEN [employee_name]  -- Handle single names\n        ELSE LEFT([employee_name], CHARINDEX(' ', [employee_name]) - 1)\n    END AS FirstName\n    \n    -- Middle Names: Everything between first and last space\n    ,CASE \n        WHEN LEN([employee_name]) - LEN(REPLACE([employee_name], ' ', '')) <= 1 THEN ''  -- No middle names\n        ELSE LTRIM(RTRIM(SUBSTRING([employee_name], \n            CHARINDEX(' ', [employee_name]) + 1, \n            LEN([employee_name]) - CHARINDEX(' ', [employee_name]) - CHARINDEX(' ', REVERSE([employee_name])))))\n    END AS MiddleNames\n    \n    -- Last Name: Everything after the last space\n    ,CASE \n        WHEN CHARINDEX(' ', [employee_name]) = 0 THEN ''  -- Handle single names\n        ELSE RIGHT([employee_name], CHARINDEX(' ', REVERSE([employee_name])) - 1)\n    END AS Surname\n    ,[storeId] AS LOACTION_SRC_KEY\n    ,[manager]\n    ,[reportable]\n    ,[state]\n    ,CONCAT_WS('-',L.[storeId], L.[employee_id]) EMP_SRC_KEY\n    ,[employee_name]\n    ,[job_id] JOB_SRC_KEY\n    ,[job_label]\nFROM\n    [int_ncraloha001].[DL_LABOR] L\nWHERE L.[reportable] = 1\n) AS source_query;",
+      "tier": 1,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "TIMECARD_SRC_KEY",
+        "TIMECARD_START_TIMESTAMP",
+        "TIMECARD_END_TIMESTAMP",
+        "TIMECARD_DATE",
+        "FirstName",
+        "MiddleNames",
+        "Surname",
+        "LOACTION_SRC_KEY",
+        "manager",
+        "reportable",
+        "state",
+        "EMP_SRC_KEY",
+        "employee_name",
+        "JOB_SRC_KEY",
+        "job_label"
+      ]
+    },
+    {
+      "step_name": "Line Item Detail",
+      "staging_table": "NCR_LINE_ITEM_DETAIL",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_LINE_ITEM_DETAIL', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_LINE_ITEM_DETAIL];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_LINE_ITEM_DETAIL]\nFROM (\nSELECT\n\tSUB.*\n\t,MAX(SUB.EMPLOYEE_SRC_SUB) OVER(PARTITION BY SUB.HEADER_ID) AS EMPLOYEE_SRC_KEY\n\t,CONCAT_WS('-',SUB_SRC_KEY, LINEITEM_TYPE) AS SRC_KEY\n\t,HDR.GRAND_TOTAL_SRC\n\t,SUM(CASE WHEN SUB.LINEITEM_TYPE IN ('COMP','DISCOUNT') THEN ISNULL(SUB.GROSS_VALUE,0) ELSE 0 END) OVER(PARTITION BY SUB.HEADER_ID) AS DISCOUNT_GROSS\n\t,HDR.NET_SALES_SRC\n\t,SUM(ISNULL(SUB.NET_VALUE,0)) OVER(PARTITION BY SUB.HEADER_ID) AS NET_SALES\n\t,SUM(ISNULL(SUB.TAX_VALUE,0)) OVER(PARTITION BY SUB.HEADER_ID) AS TAX_TOTAL\n\t,HDR.GROSS_SALES_SRC\n\t,HDR.PAYMENT\n\t,CASE WHEN HDR.PAYMENT >= HDR.GROSS_SALES_SRC THEN 'PAID' ELSE\n\t\tCASE WHEN HDR.PAYMENT IS NOT NULL THEN 'PARTIAL' ELSE NULL END END AS PAYMENT_STATUS\n\t,HDR.ORDER_STATUS\n\t,SUM(CASE WHEN SUB.LINEITEM_TYPE != 'TENDER' THEN ISNULL(SUB.GROSS_VALUE,0) ELSE 0 END) OVER(PARTITION BY SUB.HEADER_ID) AS GROSS_SALES\n\t,SUM(CASE WHEN SUB.LINEITEM_TYPE != 'TAX' THEN ISNULL(SUB.TAX_VALUE,0) ELSE 0 END) OVER(PARTITION BY SUB.HEADER_ID) AS SVC_CHARGE__TOTAL\n\t,SUM(ISNULL(SUB.QUANTITY,0)) OVER(PARTITION BY SUB.HEADER_ID) AS ITEM_COUNT\n\t,HDR.GUEST_COUNT\n\t,HDR.ORDER_COUNT\n\t,HDR.OPEN_TIME\n\t,HDR.CLOSE_TIME\n\t,HDR.ORDER_INFO\n\t,HDR.EXTERNAL_REFERENCE\n\t,HDR.REVENUE_CENTER_SRC_KEY\n\t,MAX(SUB.OCCASSION_SRC_SUB)  OVER(PARTITION BY SUB.HEADER_ID) AS OCCASSION_SRC_KEY\nFROM\n(\nSELECT\n\tCONCAT_WS('-', SI.[storeId] ,SI.[dob] ,SI.[checks_id], SI.[id]) AS SUB_SRC_KEY\n\t,CONCAT_WS('-', SI.[storeId] ,SI.[dob] ,SI.[checks_id]) AS HEADER_ID\n\t,SI.[storeId] AS LOCATION_ID\n\t,CASE WHEN SI.[modifierInfo_type] IS NOT NULL\n\t\tTHEN 'MOD'\n\t\tELSE 'PROD'\n\tEND AS LINEITEM_TYPE\n\t,TRY_CAST(SI.[amount] AS FLOAT) AS GROSS_VALUE\n\t,NULL AS TAX_VALUE\n\t,TRY_CAST(SI.[Netamount] AS FLOAT) AS NET_VALUE\n\t,TRY_CAST(SI.[quantity] AS FLOAT) AS QUANTITY\n\t,TRY_CAST(SI.[quantity] AS FLOAT) AS QUANTITY_INV\n    ,TRY_CAST(SI.[createdOn] AS DATETIME2) AS LINEITEM_TIMESTAMP\n    ,TRY_CAST(SI.[dob] AS DATETIME2) AS ITEM_DATE\n    ,TRY_CAST(SI.[dob] AS DATETIME2) AS ORDER_DATE\n    ,NULL AS VOID_FLAG\n    ,SI.[id] AS LINE_ID\n    ,ROW_NUMBER() OVER(PARTITION BY SI.[storeId] ,SI.[dob] ,SI.[checks_id] ORDER BY SI.[Id]) AS LINE_ORDER\n    ,TRY_CAST(SI.[dob] AS DATETIME2) AS TRADING_DATE\n\t,CONCAT_WS('-', SI.[storeId] ,SI.[responsibleEmployeeId]) AS EMPLOYEE_SRC_SUB\n\t,SI.[typeId] AS ITEM_SRC_KEY\n\t,SI.[orderMode_id] AS OCCASSION_SRC_SUB\n\t,SI.[parentItemId] AS PARENT_ITEM_SRC_KEY\n\nFROM\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS] SI\n\nUNION ALL\n\nSELECT\n    CONCAT_WS('-', [storeId] ,[dob] ,[checks_id], [id]) AS SUB_SRC_KEY\n    ,CONCAT_WS('-', [storeId] ,[dob] ,[checks_id]) AS HEADER_ID\n\t  ,[storeId] AS LOCATION_ID\n    ,CASE WHEN LOWER([type])  LIKE '%tax%'\n\t\tTHEN 'TAX'\n\t\tELSE 'SVC'\n\t END AS LINEITEM_TYPE\n    ,NULL AS GROSS_VALUE\n    ,TRY_CAST([amount] AS FLOAT) AS TAX_VALUE\n    ,NULL AS NET_VALUE\n    ,NULL AS QUANTITY\n    ,NULL AS QUANTITY_INV\n    ,TRY_CAST([createdOn] AS DATETIME2) AS LINEITEM_TIMESTAMP\n    ,TRY_CAST([dob] AS DATETIME2) AS ITEM_DATE\n    ,TRY_CAST([dob] AS DATETIME2) AS ORDER_DATE\n    ,NULL AS VOID_FLAG\n    ,[id] AS LINE_ID\n    ,NULL AS LINE_ORDER\n    ,TRY_CAST([dob] AS DATETIME2) AS TRADING_DATE\n\t,NULL AS EMPLOYEE_SRC_SUB\n\t,[typeId] AS ITEM_SRC_KEY\n\t,NULL AS OCCASSION_SRC_SUB\n\t,NULL AS PARENT_ITEM_SRC_KEY\n\nFROM\n    [int_ncraloha001].[DL_SALES_STREAM_SURCHARGES]\n\nUNION ALL\n\nSELECT\n    CONCAT_WS('-', [storeId] ,[dob] ,[checks_id], [id]) AS SUB_SRC_KEY\n    ,CONCAT_WS('-', [storeId] ,[dob] ,[checks_id]) AS HEADER_ID\n\t  ,[storeId] AS LOCATION_ID\n    ,CASE WHEN LOWER([type])  LIKE '%combo%'\n\t\tTHEN 'DEAL'\n\t\tELSE 'DEAL'\n\t END AS LINEITEM_TYPE\n    ,TRY_CAST([amount] AS FLOAT) AS GROSS_VALUE\n    ,NULL AS TAX_VALUE\n    ,NULL  AS NET_VALUE\n    ,NULL AS QUANTITY\n    ,NULL AS QUANTITY_INV\n    ,TRY_CAST([createdOn] AS DATETIME2) AS LINEITEM_TIMESTAMP\n    ,TRY_CAST([dob] AS DATETIME2) AS ITEM_DATE\n    ,TRY_CAST([dob] AS DATETIME2) AS ORDER_DATE\n    ,NULL AS VOID_FLAG\n    ,[id] AS LINE_ID\n    ,NULL AS LINE_ORDER\n    ,TRY_CAST([dob] AS DATETIME2) AS TRADING_DATE\n\t,CONCAT_WS('-', [storeId] ,[responsibleEmployees_employee_id]) AS EMPLOYEE_SRC_SUB\n\t,[typeId] AS ITEM_SRC_KEY\n\t,NULL AS OCCASSION_SRC_SUB\n\t,NULL AS PARENT_ITEM_SRC_KEY\n\nFROM\n    [int_ncraloha001].[DL_SALES_STREAM_PROMOS]\n\nUNION ALL\n\n\nSELECT\n    CONCAT_WS('-', [storeId] ,[dob] ,[checks_id], [id]) AS SUB_SRC_KEY\n    ,CONCAT_WS('-', [storeId] ,[dob] ,[checks_id]) AS HEADER_ID\n\t  ,[storeId] AS LOCATION_ID\n    ,CASE WHEN LOWER([type])  LIKE '%default%'\n\t\tTHEN 'DISCOUNT'\n\t\tELSE 'DISCOUNT'\n\t END AS LINEITEM_TYPE\n    ,TRY_CAST([amount] AS FLOAT) * -1 AS GROSS_VALUE\n    ,NULL AS TAX_VALUE\n    ,NULL AS NET_VALUE\n    ,1 AS QUANTITY\n    ,NULL AS QUANTITY_INV\n    ,TRY_CAST([createdOn] AS DATETIME2) AS LINEITEM_TIMESTAMP\n    ,TRY_CAST([dob] AS DATETIME2) AS ITEM_DATE\n    ,TRY_CAST([dob] AS DATETIME2) AS ORDER_DATE\n    ,NULL AS VOID_FLAG\n    ,[id] AS LINE_ID\n    ,NULL AS LINE_ORDER\n    ,TRY_CAST([dob] AS DATETIME2) AS TRADING_DATE\n\t,CONCAT_WS('-', [storeId] ,[responsibleEmployees_employee_id]) AS EMPLOYEE_SRC_SUB\n\t,[typeId] AS ITEM_SRC_KEY\n\t,NULL AS OCCASSION_SRC_SUB\n\t,NULL AS PARENT_ITEM_SRC_KEY\n\nFROM\n    [int_ncraloha001].[DL_SALES_STREAM_COMPS]\n\nUNION ALL\n\nSELECT\n    CONCAT_WS('-', [storeId] ,[dob] ,[checks_id], [id]) AS SUB_SRC_KEY\n    ,CONCAT_WS('-', [storeId] ,[dob] ,[checks_id]) AS HEADER_ID\n\t  ,[storeId] AS LOCATION_ID\n    ,CASE WHEN LOWER([type])  LIKE '%custom%'\n\t\tTHEN 'TENDER'\n\t\tELSE 'TENDER'\n\t END AS LINEITEM_TYPE\n    ,TRY_CAST([amount] AS FLOAT) AS GROSS_VALUE\n    ,NULL AS TAX_VALUE\n    ,NULL AS NET_VALUE\n    ,1 AS QUANTITY\n    ,NULL AS QUANTITY_INV\n    ,TRY_CAST([createdOn] AS DATETIME2) AS LINEITEM_TIMESTAMP\n    ,TRY_CAST([dob] AS DATETIME2) AS ITEM_DATE\n    ,TRY_CAST([dob] AS DATETIME2) AS ORDER_DATE\n    ,NULL AS VOID_FLAG\n    ,[id] AS LINE_ID\n    ,NULL AS LINE_ORDER\n    ,TRY_CAST([dob] AS DATETIME2) AS TRADING_DATE\n\t,CONCAT_WS('-', [storeId] ,[responsibleEmployees_employee_id]) AS EMPLOYEE_SRC_SUB\n\t,[typeId] AS ITEM_SRC_KEY\n\t,NULL AS OCCASSION_SRC_SUB\n\t,NULL AS PARENT_ITEM_SRC_KEY\n\nFROM\n    [int_ncraloha001].[DL_SALES_STREAM_PAYMENTS]\n\n\n) SUB\n\nINNER JOIN\n(\nSELECT\n\tCONCAT_WS('-', DS.[storeId] ,DS.[dob] ,DS.[id]) AS HEADER_ID\n\t,TRY_CAST(DS.[grandAmount] AS FLOAT) AS GRAND_TOTAL_SRC\n\t,TRY_CAST(DS.[total] AS FLOAT) AS GROSS_SALES_SRC\n\t,TRY_CAST(DS.[netAmount] AS FLOAT) AS NET_SALES_SRC\n\t,TRY_CAST(DS.[guestCounting_guests] AS FLOAT) AS GUEST_COUNT\n\t,1 AS ORDER_COUNT\n    ,TRY_CAST(DS.[dob] AS DATETIME2) AS ORDER_DATE\n\t,TRY_CAST(CD.OPEN_TIME AS DATETIME2) AS OPEN_TIME\n\t,TRY_CAST(CD.CLOSE_TIME AS DATETIME2) AS CLOSE_TIME\n\t,PM.PAYMENT\n\t,DS.[groupInfo_label] AS ORDER_INFO\n\t,DS.[takeOutOrderId] AS EXTERNAL_REFERENCE\n    ,TRY_CAST(DS.[dob] AS DATETIME2) AS TRADING_DATE\n\t,DS.[revenueCenter_id] AS REVENUE_CENTER_SRC_KEY\n\t,'CLOSED' AS ORDER_STATUS\nFROM\n\t[int_ncraloha001].[DL_SALES_STREAM] DS\nINNER JOIN\n\t[int_ncraloha001].[DL_SALES_CHECK] VC \nON DS.[id] = VC.[id]\nAND DS.[storeId] = VC.[storeId]\nAND DS.[dob] = VC.[dob]\nAND [isEmpty] != '1'\nAND [isTraining] != '1'\nAND [isClosed] = '1'\n\nINNER JOIN\n(\nSELECT\n\t[storeId]\n\t,[dob]\n\t,[checks_id]\n\t,MAX(TRY_CAST([time] AS DATETIME2)) AS CLOSE_TIME\n\t,MIN(TRY_CAST([time] AS DATETIME2)) AS OPEN_TIME\nFROM\n\t[int_ncraloha001].[DL_SALES_STREAM_EVENTS]\nGROUP BY\n\t[storeId]\n\t,[dob]\n\t,[checks_id]\n\t) CD\nON DS.[id] = CD.[checks_id]\nAND DS.[storeId] = CD.[storeId]\nAND DS.[dob] = CD.[dob]\n\nINNER JOIN\n(\nSELECT\n\t[storeId]\n\t,[dob]\n\t,[checks_id]\n\t,SUM(TRY_CAST(AMOUNT AS FLOAT)) AS PAYMENT\nFROM\n\t[int_ncraloha001].[DL_SALES_STREAM_PAYMENTS]\nGROUP BY\n\t[storeId]\n\t,[dob]\n\t,[checks_id]\n\t) PM\nON DS.[id] = PM.[checks_id]\nAND DS.[storeId] = PM.[storeId]\nAND DS.[dob] = PM.[dob]\n) HDR\nON SUB.HEADER_ID = HDR.HEADER_ID\n) AS source_query;",
+      "tier": 1,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "SUB_SRC_KEY",
+        "HEADER_ID",
+        "LOCATION_ID",
+        "LINEITEM_TYPE",
+        "GROSS_VALUE",
+        "TAX_VALUE",
+        "NET_VALUE",
+        "QUANTITY",
+        "QUANTITY_INV",
+        "LINEITEM_TIMESTAMP",
+        "ITEM_DATE",
+        "ORDER_DATE",
+        "VOID_FLAG",
+        "LINE_ID",
+        "LINE_ORDER",
+        "TRADING_DATE",
+        "EMPLOYEE_SRC_SUB",
+        "ITEM_SRC_KEY",
+        "OCCASSION_SRC_SUB",
+        "PARENT_ITEM_SRC_KEY",
+        "EMPLOYEE_SRC_KEY",
+        "SRC_KEY",
+        "GRAND_TOTAL_SRC",
+        "DISCOUNT_GROSS",
+        "NET_SALES_SRC",
+        "NET_SALES",
+        "TAX_TOTAL",
+        "GROSS_SALES_SRC",
+        "PAYMENT",
+        "PAYMENT_STATUS",
+        "ORDER_STATUS",
+        "GROSS_SALES",
+        "SVC_CHARGE__TOTAL",
+        "ITEM_COUNT",
+        "GUEST_COUNT",
+        "ORDER_COUNT",
+        "OPEN_TIME",
+        "CLOSE_TIME",
+        "ORDER_INFO",
+        "EXTERNAL_REFERENCE",
+        "REVENUE_CENTER_SRC_KEY",
+        "OCCASSION_SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Location",
+      "staging_table": "NCR_LOCATION",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_LOCATION', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_LOCATION];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_LOCATION]\nFROM (\nSELECT [storeId]\n      ,[insightId]\n      ,[name]\n      ,[link]\n      ,[LOADTS_UTC]\n\t,1 AS BOTTOM_LEVEL\n\t,'Location' AS LEVEL_NAME\n  FROM [int_ncraloha001].[DL_STORE]\n) AS source_query;",
+      "tier": 1,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "storeId",
+        "insightId",
+        "name",
+        "link",
+        "LOADTS_UTC",
+        "BOTTOM_LEVEL",
+        "LEVEL_NAME"
+      ]
+    },
+    {
+      "step_name": "Modifications",
+      "staging_table": "NCR_MODS",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_MODS', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_MODS];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_MODS]\nFROM (\nSELECT DISTINCT\n\tC.id AS PARENT_ITEM_SRC_KEY\n\t,SI.[typeId] AS ITEM_SRC_KEY\n        ,'Modification' AS LEVEL_NAME\n\t,SI.label\n\t,1 AS BOTTOM_LEVEL\nFROM\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS] SI\nINNER JOIN\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS_CATEGORIES] C\nON SI.storeId = C.storeId\nAND SI.dob = C.dob\nAND SI.checks_id = C.checks_id\nAND SI.id = C.items_id\nAND C.[type] = 'sales'\n\nWHERE SI.[modifierInfo_type] IS NOT NULL\n\nUNION ALL\n\nSELECT DISTINCT\n\tNULL AS PARENT_ITEM_SRC_KEY\n\t,C.id AS ITEM_SRC_KEY\n        ,'Modification Category' AS LEVEL_NAME\n\t,C.name\n\t,0 AS BOTTOM_LEVEL\nFROM\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS] SI\nINNER JOIN\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS_CATEGORIES] C\nON SI.storeId = C.storeId\nAND SI.dob = C.dob\nAND SI.checks_id = C.checks_id\nAND SI.id = C.items_id\nAND C.[type] = 'sales'\n\n\nWHERE SI.[modifierInfo_type] IS NOT NULL\n) AS source_query;",
+      "tier": 1,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "PARENT_ITEM_SRC_KEY",
+        "ITEM_SRC_KEY",
+        "LEVEL_NAME",
+        "label",
+        "BOTTOM_LEVEL"
+      ]
+    },
+    {
+      "step_name": "Occasion",
+      "staging_table": "NCR_OCCASSION",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_OCCASSION', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_OCCASSION];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_OCCASSION]\nFROM (\nSELECT DISTINCT\n\t[orderMode_id]\n\t,[orderMode_label]\n\t,'Occassion' AS LEVEL_NAME\n\t,1 AS BOTTOM_LEVEL\n  \nFROM [int_ncraloha001].[DL_SALES_STREAM_ITEMS]\nWHERE [orderMode_id] IS NOT NULL\n) AS source_query;",
+      "tier": 1,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "orderMode_id",
+        "orderMode_label",
+        "LEVEL_NAME",
+        "BOTTOM_LEVEL"
+      ]
+    },
+    {
+      "step_name": "Product",
+      "staging_table": "NCR_PROD",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_PROD', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_PROD];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_PROD]\nFROM (\nSELECT DISTINCT\n\tC.id AS PARENT_ITEM_SRC_KEY\n\t,SI.[typeId] AS ITEM_SRC_KEY\n        ,'Product' AS LEVEL_NAME\n\t,SI.label\n\t,1 AS BOTTOM_LEVEL\nFROM\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS] SI\nINNER JOIN\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS_CATEGORIES] C\nON SI.storeId = C.storeId\nAND SI.dob = C.dob\nAND SI.checks_id = C.checks_id\nAND SI.id = C.items_id\nAND C.[type] = 'sales'\n\nWHERE SI.[modifierInfo_type] IS NULL\n\nUNION ALL\n\nSELECT DISTINCT\n\tNULL AS PARENT_ITEM_SRC_KEY\n\t,C.id AS ITEM_SRC_KEY\n        ,'Product Category' AS LEVEL_NAME\n\t,C.name\n\t,0 AS BOTTOM_LEVEL\nFROM\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS] SI\nINNER JOIN\n\t[int_ncraloha001].[DL_SALES_STREAM_ITEMS_CATEGORIES] C\nON SI.storeId = C.storeId\nAND SI.dob = C.dob\nAND SI.checks_id = C.checks_id\nAND SI.id = C.items_id\nAND C.[type] = 'sales'\n\nWHERE SI.[modifierInfo_type] IS NULL\n) AS source_query;",
+      "tier": 1,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "PARENT_ITEM_SRC_KEY",
+        "ITEM_SRC_KEY",
+        "LEVEL_NAME",
+        "label",
+        "BOTTOM_LEVEL"
+      ]
+    },
+    {
+      "step_name": "Revenue Center",
+      "staging_table": "NCR_REVC",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_REVC', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_REVC];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_REVC]\nFROM (\nSELECT DISTINCT\n      [revenueCenter_id]\n      ,[revenueCenter_label]\n      ,'Revenue Center' AS Level_NAME\n      ,1 as BOTTOM_LEVEL\n  FROM [int_ncraloha001].[DL_SALES_STREAM]\n  WHERE [revenueCenter_id] IS NOT NULL\n) AS source_query;",
+      "tier": 1,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "revenueCenter_id",
+        "revenueCenter_label",
+        "Level_NAME",
+        "BOTTOM_LEVEL"
+      ]
+    },
+    {
+      "step_name": "Comp to Line Item",
+      "staging_table": "COMP_LI_LNK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.COMP_LI_LNK', 'U') IS NOT NULL\n    DROP TABLE [stage].[COMP_LI_LNK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[COMP_LI_LNK]\nFROM (\nSELECT\n    [ITEM_SRC_KEY]\n    ,[SRC_KEY]\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\nWHERE LINEITEM_TYPE = 'COMP'\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "ITEM_SRC_KEY",
+        "SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Deal to Line Item",
+      "staging_table": "DEAL_LI_LNK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.DEAL_LI_LNK', 'U') IS NOT NULL\n    DROP TABLE [stage].[DEAL_LI_LNK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[DEAL_LI_LNK]\nFROM (\nSELECT\n    [ITEM_SRC_KEY]\n    ,[SRC_KEY]\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\nWHERE LINEITEM_TYPE IN ('DEAL','PROMO')\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "ITEM_SRC_KEY",
+        "SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Deals & Line Item to Line Item",
+      "staging_table": "NCR_DEAL",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_DEAL', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_DEAL];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_DEAL]\nFROM (\nSELECT\n\tLI.SRC_KEY AS CHILD_SRC_KEY\n\t,1 AS BOTTOM_LEVEL\n\t,'Deals' AS Level_Name\n\t,SUB.*\nFROM\n(\n\tSELECT \n\t\tCONCAT_WS('-', C.[storeId] ,C.[dob] ,C.[checks_id], C.[id], 'DEAL') AS LI_PARENT_SRC_KEY\n\t\t,CONCAT_WS('-', C.[storeId] ,C.[dob] ,C.[checks_id]) AS HEADER_ID\n\t\t ,C.[typeId] AS DEAL_SRC_KEY\n\t\t ,C.[label] AS DEAL_NAME\n\t\t ,CL.[id] AS CHILD_ID\n\t\t ,CL.[amount]\n\tFROM\n\t\t[int_ncraloha001].[DL_SALES_STREAM_PROMOS] C\n\n\tINNER JOIN\n\t\t[int_ncraloha001].[DL_SALES_STREAM_PROMOS_LINKEDITEMS] CL\n\tON CL.[storeId] = C.[storeId]\n\tAND CL.[dob] = C.[dob]\n\tAND CL.[checks_id] = C.[checks_id]\n\tAND CL.[promos_id] = C.[id]\n) SUB\n\nINNER JOIN\n\t[stage].NCR_LINE_ITEM_DETAIL LI\nON LI.HEADER_ID = SUB.HEADER_ID\nAND LI.LINE_ID = SUB.CHILD_ID\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "CHILD_SRC_KEY",
+        "BOTTOM_LEVEL",
+        "Level_Name",
+        "LI_PARENT_SRC_KEY",
+        "HEADER_ID",
+        "DEAL_SRC_KEY",
+        "DEAL_NAME",
+        "CHILD_ID",
+        "amount"
+      ]
+    },
+    {
+      "step_name": "Discount & Line Item to Line Item",
+      "staging_table": "NCR_DISC",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_DISC', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_DISC];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_DISC]\nFROM (\nSELECT\n\tLI.SRC_KEY AS CHILD_SRC_KEY\n\t,1 AS BOTTOM_LEVEL\n\t,'Discounts' AS Level_Name\n\t,SUB.*\nFROM\n(\n\tSELECT\n\t\tCONCAT_WS('-', C.[storeId] ,C.[dob] ,C.[checks_id], C.[id], 'DISCOUNT') AS LI_PARENT_SRC_KEY\n\t\t,CONCAT_WS('-', C.[storeId] ,C.[dob] ,C.[checks_id]) AS HEADER_ID\n\t\t ,C.[typeId] AS DISC_SRC_KEY\n\t\t ,C.[label] AS DISC_NAME\n\t\t ,CL.[id] AS CHILD_ID\n\t\t ,C.[note]\n\t\t ,CL.[amount]\n\t\t ,CASE WHEN C.[type] = 'Default' THEN 'VALUE' ELSE 'PERC' END AS VALUE_TYPE\n\t\t ,C.[amount] AS MASTER_DISC_VALUE\n\tFROM\n\t\t[int_ncraloha001].[DL_SALES_STREAM_COMPS] C\n\n\tINNER JOIN\n\t\t[int_ncraloha001].[DL_SALES_STREAM_COMPS_LINKEDITEMS] CL\n\tON CL.[storeId] = C.[storeId]\n\tAND CL.[dob] = C.[dob]\n\tAND CL.[checks_id] = C.[checks_id]\n\tAND CL.[comps_id] = C.[id]\n) SUB\n\nINNER JOIN\n\t[stage].NCR_LINE_ITEM_DETAIL LI\nON LI.HEADER_ID = SUB.HEADER_ID\nAND LI.LINE_ID = SUB.CHILD_ID\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "CHILD_SRC_KEY",
+        "BOTTOM_LEVEL",
+        "Level_Name",
+        "LI_PARENT_SRC_KEY",
+        "HEADER_ID",
+        "DISC_SRC_KEY",
+        "DISC_NAME",
+        "CHILD_ID",
+        "note",
+        "amount",
+        "VALUE_TYPE",
+        "MASTER_DISC_VALUE"
+      ]
+    },
+    {
+      "step_name": "Discount to Line Item",
+      "staging_table": "DISC_LI_LNK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.DISC_LI_LNK', 'U') IS NOT NULL\n    DROP TABLE [stage].[DISC_LI_LNK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[DISC_LI_LNK]\nFROM (\nSELECT\n    [ITEM_SRC_KEY]\n    ,[SRC_KEY]\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\nWHERE LINEITEM_TYPE = 'DISCOUNT'\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "ITEM_SRC_KEY",
+        "SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Mod to Line Item",
+      "staging_table": "MOD_LI_LNK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.MOD_LI_LNK', 'U') IS NOT NULL\n    DROP TABLE [stage].[MOD_LI_LNK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[MOD_LI_LNK]\nFROM (\nSELECT\n    [ITEM_SRC_KEY]\n    ,[SRC_KEY]\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\nWHERE LINEITEM_TYPE = 'MOD'\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "ITEM_SRC_KEY",
+        "SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Occasion to Line Item",
+      "staging_table": "OCC_LI_LNK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.OCC_LI_LNK', 'U') IS NOT NULL\n    DROP TABLE [stage].[OCC_LI_LNK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[OCC_LI_LNK]\nFROM (\nSELECT\n    SRC_KEY,\n    OCCASSION_SRC_KEY\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "SRC_KEY",
+        "OCCASSION_SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Product to Line Item",
+      "staging_table": "PROD_LI_LNK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.PROD_LI_LNK', 'U') IS NOT NULL\n    DROP TABLE [stage].[PROD_LI_LNK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[PROD_LI_LNK]\nFROM (\nSELECT\n    [ITEM_SRC_KEY]\n    ,[SRC_KEY]\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\nWHERE LINEITEM_TYPE = 'PROD'\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "ITEM_SRC_KEY",
+        "SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Service Charge & Line Item to Line Item",
+      "staging_table": "NCR_SVC",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_SVC', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_SVC];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_SVC]\nFROM (\nSELECT\n\tLI.SRC_KEY AS CHILD_SRC_KEY\n\t,1 AS BOTTOM_LEVEL\n\t,'Service Charge' AS Level_Name\n\t,SUB.*\nFROM\n(\n\tSELECT \n\t\tCONCAT_WS('-', C.[storeId] ,C.[dob] ,C.[checks_id], C.[id], 'SVC') AS LI_PARENT_SRC_KEY\n\t\t,CONCAT_WS('-', C.[storeId] ,C.[dob] ,C.[checks_id]) AS HEADER_ID\n\t\t ,C.[typeId] AS SVC_SRC_KEY\n\t\t ,C.[label] AS SVC_NAME\n\t\t ,CL.[linkedItems] AS CHILD_ID\n\t\t ,C.rate\n\t\t ,C.accounting\n\t\t ,C.type\n\tFROM\n\t\t[int_ncraloha001].[DL_SALES_STREAM_SURCHARGES] C\n\n\tINNER JOIN\n\t\t[int_ncraloha001].[DL_SALES_STREAM_SURCHARGES_LINKEDITEMS] CL\n\tON CL.[storeId] = C.[storeId]\n\tAND CL.[dob] = C.[dob]\n\tAND CL.[checks_id] = C.[checks_id]\n\tAND CL.[surcharges_id] = C.[id]\n\tWHERE LOWER(C.type) != 'tax'\n) SUB\n\nINNER JOIN\n\t[stage].NCR_LINE_ITEM_DETAIL LI\nON LI.HEADER_ID = SUB.HEADER_ID\nAND LI.LINE_ID = SUB.CHILD_ID\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "CHILD_SRC_KEY",
+        "BOTTOM_LEVEL",
+        "Level_Name",
+        "LI_PARENT_SRC_KEY",
+        "HEADER_ID",
+        "SVC_SRC_KEY",
+        "SVC_NAME",
+        "CHILD_ID",
+        "rate",
+        "accounting",
+        "type"
+      ]
+    },
+    {
+      "step_name": "Service Charge to Line Item",
+      "staging_table": "SVC_LI_LNK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.SVC_LI_LNK', 'U') IS NOT NULL\n    DROP TABLE [stage].[SVC_LI_LNK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[SVC_LI_LNK]\nFROM (\nSELECT\n    [ITEM_SRC_KEY]\n    ,[SRC_KEY]\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\nWHERE LINEITEM_TYPE IN ('SVC')\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "ITEM_SRC_KEY",
+        "SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Tax & Line Item to Line Item",
+      "staging_table": "NCR_TAX",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.NCR_TAX', 'U') IS NOT NULL\n    DROP TABLE [stage].[NCR_TAX];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[NCR_TAX]\nFROM (\nSELECT\n\tLI.SRC_KEY AS CHILD_SRC_KEY\n\t,1 AS BOTTOM_LEVEL\n\t,'Tax' AS Level_Name\n\t,SUB.*\nFROM\n(\n\tSELECT \n\t\tCONCAT_WS('-', C.[storeId] ,C.[dob] ,C.[checks_id], C.[id], 'TAX') AS LI_PARENT_SRC_KEY\n\t\t,CONCAT_WS('-', C.[storeId] ,C.[dob] ,C.[checks_id]) AS HEADER_ID\n\t\t ,C.[typeId] AS TAX_SRC_KEY\n\t\t ,C.[label] AS TAX_NAME\n\t\t ,CL.[linkedItems] AS CHILD_ID\n\t\t ,C.rate\n\t\t ,C.accounting\n\t\t ,C.type\n\tFROM\n\t\t[int_ncraloha001].[DL_SALES_STREAM_SURCHARGES] C\n\n\tINNER JOIN\n\t\t[int_ncraloha001].[DL_SALES_STREAM_SURCHARGES_LINKEDITEMS] CL\n\tON CL.[storeId] = C.[storeId]\n\tAND CL.[dob] = C.[dob]\n\tAND CL.[checks_id] = C.[checks_id]\n\tAND CL.[surcharges_id] = C.[id]\n\tWHERE LOWER(C.type) = 'tax'\n) SUB\n\nINNER JOIN\n\t[stage].NCR_LINE_ITEM_DETAIL LI\nON LI.HEADER_ID = SUB.HEADER_ID\nAND LI.LINE_ID = SUB.CHILD_ID\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "CHILD_SRC_KEY",
+        "BOTTOM_LEVEL",
+        "Level_Name",
+        "LI_PARENT_SRC_KEY",
+        "HEADER_ID",
+        "TAX_SRC_KEY",
+        "TAX_NAME",
+        "CHILD_ID",
+        "rate",
+        "accounting",
+        "type"
+      ]
+    },
+    {
+      "step_name": "Tax to Line Item",
+      "staging_table": "TAX_LI_LNK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.TAX_LI_LNK', 'U') IS NOT NULL\n    DROP TABLE [stage].[TAX_LI_LNK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[TAX_LI_LNK]\nFROM (\nSELECT\n    [ITEM_SRC_KEY]\n    ,[SRC_KEY]\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\nWHERE LINEITEM_TYPE IN ('TAX')\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "ITEM_SRC_KEY",
+        "SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Tender to Line Item",
+      "staging_table": "TEND_LI_LINK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.TEND_LI_LINK', 'U') IS NOT NULL\n    DROP TABLE [stage].[TEND_LI_LINK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[TEND_LI_LINK]\nFROM (\nSELECT\n    [ITEM_SRC_KEY]\n    ,[SRC_KEY]\nFROM\n    [stage].[NCR_LINE_ITEM_DETAIL]\nWHERE LINEITEM_TYPE IN ('TENDER')\n) AS source_query;",
+      "tier": 2,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "ITEM_SRC_KEY",
+        "SRC_KEY"
+      ]
+    },
+    {
+      "step_name": "Line Item to Line Item",
+      "staging_table": "LI_LI_LINK",
+      "query_sql": "-- Auto-generated re-runnable staging script\n-- Drops existing table and recreates it from the source query\n\n-- Drop the table if it exists\nIF OBJECT_ID('stage.LI_LI_LINK', 'U') IS NOT NULL\n    DROP TABLE [stage].[LI_LI_LINK];\n\n-- Create the staging table from the query\nSELECT * INTO [stage].[LI_LI_LINK]\nFROM (\nSELECT\n\tLI.SRC_KEY AS PARENT_SRC_KEY\n\t,PIT.SRC_KEY AS CHILD_SRC_KEY\n\t,NULL AS LABEL\n\t,NULL AS VALUE\n\t,NULL AS INFO\nFROM [stage].[NCR_LINE_ITEM_DETAIL] LI\n\nINNER JOIN\n  \n[stage].[NCR_LINE_ITEM_DETAIL] PIT\nON LI.HEADER_ID = PIT.HEADER_ID\nAND LI.PARENT_ITEM_SRC_KEY = PIT.LINE_ID\n\nUNION ALL\n\nSELECT\n\tDI.LI_PARENT_SRC_KEY AS PARENT_SRC_KEY\n\t,DI.CHILD_SRC_KEY\n\t,DI.DISC_NAME AS LABEL\n\t,DI.AMOUNT AS VALUE\n\t,DI.NOTE AS INFO\nFROM\n\t[stage].NCR_DISC DI\n\nUNION ALL\n\nSELECT\n\tDA.LI_PARENT_SRC_KEY AS PARENT_SRC_KEY\n\t,DA.CHILD_SRC_KEY\n\t,DA.DEAL_NAME AS LABEL\n\t,DA.AMOUNT AS VALUE\n\t,NULL AS INFO\nFROM\n\t[stage].NCR_DEAL DA\n\nUNION ALL\n\nSELECT\n\tTA.LI_PARENT_SRC_KEY AS PARENT_SRC_KEY\n\t,TA.CHILD_SRC_KEY\n\t,TA.TAX_NAME AS LABEL\n\t,NULL AS VALUE\n\t,NULL AS INFO\nFROM\n\t[stage].NCR_TAX TA\n\nUNION ALL\n\nSELECT\n\tSVC.LI_PARENT_SRC_KEY AS PARENT_SRC_KEY\n\t,SVC.CHILD_SRC_KEY\n\t,SVC.SVC_NAME AS LABEL\n\t,NULL AS VALUE\n\t,NULL AS INFO\nFROM\n\t[stage].NCR_SVC SVC\n) AS source_query;",
+      "tier": 3,
+      "step_type": "Staging",
+      "exclude": false,
+      "description": "",
+      "depends_on_steps": "Line Item Detail,Deals & Line Item to Line Item,Discount & Line Item to Line Item,Service Charge & Line Item to Line Item,Tax & Line Item to Line Item",
+      "retry_count": 3,
+      "timeout_minutes": 30,
+      "staging_columns": [
+        "PARENT_SRC_KEY",
+        "CHILD_SRC_KEY",
+        "LABEL",
+        "VALUE",
+        "INFO"
+      ]
+    }
+  ]
+}

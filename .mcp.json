@@ -1,0 +1,89 @@
+{
+  "mcpServers": {
+    "xms-bi-dev": {
+      "command": "node",
+      "args": ["./mcp-sqlserver/index.js"],
+      "env": {
+        "MSSQL_SERVER":     "${XMS_BI_MANAGED_DEV_SERVER}",
+        "MSSQL_USER":       "${XMS_BI_MANAGED_DEV_USER}",
+        "MSSQL_PASSWORD":   "${XMS_BI_MANAGED_DEV_PASSWORD}",
+        "MSSQL_PORT":       "${XMS_BI_MANAGED_DEV_PORT:-3342}",
+        "MSSQL_ENCRYPT":    "true",
+        "MSSQL_TRUST_CERT": "false"
+      }
+    },
+    "xms-bi-test": {
+      "command": "node",
+      "args": ["./mcp-sqlserver/index.js"],
+      "env": {
+        "MSSQL_SERVER":     "${XMS_BI_MANAGED_TEST_SERVER}",
+        "MSSQL_USER":       "${XMS_BI_MANAGED_TEST_USER}",
+        "MSSQL_PASSWORD":   "${XMS_BI_MANAGED_TEST_PASSWORD}",
+        "MSSQL_PORT":       "${XMS_BI_MANAGED_TEST_PORT:-3342}",
+        "MSSQL_ENCRYPT":    "true",
+        "MSSQL_TRUST_CERT": "false"
+      }
+    },
+    "xms-bi-uat": {
+      "command": "node",
+      "args": ["./mcp-sqlserver/index.js"],
+      "env": {
+        "MSSQL_SERVER":     "${XMS_BI_MANAGED_UAT_SERVER}",
+        "MSSQL_USER":       "${XMS_BI_MANAGED_UAT_USER}",
+        "MSSQL_PASSWORD":   "${XMS_BI_MANAGED_UAT_PASSWORD}",
+        "MSSQL_PORT":       "${XMS_BI_MANAGED_UAT_PORT:-3342}",
+        "MSSQL_ENCRYPT":    "true",
+        "MSSQL_TRUST_CERT": "false"
+      }
+    },
+    "microservice-dev": {
+      "command": "node",
+      "args": ["./mcp-sqlserver/index.js"],
+      "env": {
+        "MSSQL_SERVER":     "${AZURE_MICROSERVICE_DEV_SERVER}",
+        "MSSQL_USER":       "${AZURE_MICROSERVICE_DEV_USER}",
+        "MSSQL_PASSWORD":   "${AZURE_MICROSERVICE_DEV_PASSWORD}",
+        "MSSQL_PORT":       "${AZURE_MICROSERVICE_DEV_PORT:-1433}",
+        "MSSQL_ENCRYPT":    "true",
+        "MSSQL_TRUST_CERT": "false"
+      }
+    },
+    "microservice-test": {
+      "command": "node",
+      "args": ["./mcp-sqlserver/index.js"],
+      "env": {
+        "MSSQL_SERVER":     "${AZURE_MICROSERVICE_TEST_SERVER}",
+        "MSSQL_USER":       "${AZURE_MICROSERVICE_TEST_USER}",
+        "MSSQL_PASSWORD":   "${AZURE_MICROSERVICE_TEST_PASSWORD}",
+        "MSSQL_PORT":       "${AZURE_MICROSERVICE_TEST_PORT:-1433}",
+        "MSSQL_ENCRYPT":    "true",
+        "MSSQL_TRUST_CERT": "false"
+      }
+    },
+    "microservice-uat": {
+      "command": "node",
+      "args": ["./mcp-sqlserver/index.js"],
+      "env": {
+        "MSSQL_SERVER":     "${AZURE_MICROSERVICE_UAT_SERVER}",
+        "MSSQL_USER":       "${AZURE_MICROSERVICE_UAT_USER}",
+        "MSSQL_PASSWORD":   "${AZURE_MICROSERVICE_UAT_PASSWORD}",
+        "MSSQL_PORT":       "${AZURE_MICROSERVICE_UAT_PORT:-1433}",
+        "MSSQL_ENCRYPT":    "true",
+        "MSSQL_TRUST_CERT": "false"
+      }
+    },
+    "microservice-uat-report": {
+      "command": "node",
+      "args": ["./mcp-sqlserver/index.js"],
+      "env": {
+        "MSSQL_SERVER":     "${AZURE_MICROSERVICE_UAT_SERVER}",
+        "MSSQL_USER":       "${AZURE_MICROSERVICE_UAT_USER}",
+        "MSSQL_PASSWORD":   "${AZURE_MICROSERVICE_UAT_PASSWORD}",
+        "MSSQL_PORT":       "${AZURE_MICROSERVICE_UAT_PORT:-1433}",
+        "MSSQL_DATABASE":   "report",
+        "MSSQL_ENCRYPT":    "true",
+        "MSSQL_TRUST_CERT": "false"
+      }
+    }
+  }
+}

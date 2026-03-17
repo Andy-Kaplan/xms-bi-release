@@ -1,0 +1,104 @@
+Demo Organisation Deployment Steps — "The Oak & Vine"
+=====================================================
+
+Prerequisites: SQL Server access to core DB + demo org DB, Python 3.10+
+
+Step 1: Provision the demo organisation
+---------------------------------------
+Run these in SSMS against the core database:
+
+    EXEC core.AddOrganisation
+        @OrganisationName = 'The Oak & Vine',
+        @OrganisationCode = '<new-GUID>',
+        @DatabasePrefix = '20260316_XMS';
+
+    -- Note the OrganisationID and DatabaseName returned
+
+    EXEC core.sp_DeployObjects @DatabaseName = '<demo_db_name>';
+
+    -- Map POS integration (get IntegrationID for NCRAloha or equivalent)
+    EXEC core.MapOrganisationToIntegration
+        @OrganisationID = <org_id>,
+        @IntegrationID = <pos_integration_id>;
+
+    -- Map Inventory integration (get IntegrationID for MarketMan or equivalent)
+    EXEC core.MapOrganisationToIntegration
+        @OrganisationID = <org_id>,
+        @IntegrationID = <inv_integration_id>;
+
+    EXEC core.DeployPresentationTables @DatabaseName = '<demo_db_name>';
+
+Step 2: Verify integration schema names
+----------------------------------------
+Check which integration schemas were created:
+
+    SELECT SchemaName, IntegrationType
+    FROM core.core.Integrations
+    WHERE IntegrationID IN (<pos_integration_id>, <inv_integration_id>);
+
+Expected: e.g. 'int_ncraloha001' (POS), 'int_marketman001' (INVENTORY)
+
+Step 3: Update config.py if needed
+-----------------------------------
+If the schema names differ from the defaults, edit config.py:
+
+    POS_SRC = "int_ncraloha001"        # <-- update if different
+    INVENTORY_SRC = "int_marketman001"  # <-- update if different
+
+Step 4: Generate the CSV data
+-----------------------------
+    cd ClaudeDevelopment/demo-data
+    python generate.py
+
+Takes ~23 seconds. Produces 52 CSV files in output/ (~3.4M rows).
+Check output/summary.txt for row counts and narrative checkpoints.
+
+Step 5: Copy CSVs to SQL Server accessible path
+------------------------------------------------
+The BULK INSERT commands need a file path accessible from the SQL Server instance.
+Copy the output/ folder to a UNC share or local path on the SQL Server.
+
+Step 6: Load data into demo org
+-------------------------------
+Open load_demo_data.sql in SSMS. Set the two variables at the top:
+
+    DECLARE @CsvPath NVARCHAR(500) = N'\\server\share\demo-data\output';
+    DECLARE @DatabaseName NVARCHAR(255) = N'<demo_db_name>';
+
+Execute. Takes ~2-5 minutes. Watch for FAILED messages.
+
+Step 7: Build presentation layer
+---------------------------------
+After the loader completes successfully:
+
+    EXEC [<demo_db>].[core].[sp_PopulateCalendar] @YearsBefore = 2, @YearsAfter = 2
+    EXEC [<demo_db>].[core].[sp_ProcessPresentation]
+
+Step 8: Configure report database
+----------------------------------
+Create dashboard configuration in the microservice report DB so the front end
+renders cards for the demo org. Follow the pattern in:
+    ClaudeDevelopment/Deploy/growyze_report_db_dev.sql
+
+Insert records into: BiConfig, VisualisationConfig, VisualisationDataSetMap,
+DashboardGrid, DashboardItem, DashboardFilter, OrganisationDashboardConfig.
+
+Remember: TransactionId is IDENTITY (omit), IsDeleted has no DEFAULT (pass 0).
+
+Step 9: Verify
+--------------
+Spot-check these dashboard cards:
+  - Sales overview KPI: should show ~66K orders, revenue in expected range
+  - Product margins: ribeye margin should show decline from Dec 2025
+  - Location comparison: Edinburgh Old Town should underperform from Feb 2026
+  - Inventory waste: Edinburgh Old Town should show elevated waste
+  - Co-occurrence heatmap: burger+beer and steak+red wine should be hot spots
+
+Regeneration
+------------
+To regenerate with different parameters:
+  1. Edit config.py (adjust narratives, products, date range, etc.)
+  2. Re-run: python generate.py
+  3. In load_demo_data.sql, uncomment the TRUNCATE section at the top
+  4. Re-execute the loader
+  5. Re-run sp_PopulateCalendar + sp_ProcessPresentation

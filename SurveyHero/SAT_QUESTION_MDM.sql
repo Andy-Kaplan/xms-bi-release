@@ -1,0 +1,9 @@
+UPDATE [datavault].[SAT_QUESTION] 
+SET MICROSERVICE_NAME = REPLACE(QUESTION,'&amp;','&');
+
+UPDATE [datavault].[SAT_QUESTION] 
+SET MICROSERVICE_NAME = 'Activities & provision for family groups – adults & children of all ages'
+WHERE HUB_ID IN  (
+0x422C760875C47E9F2E108F4DB2FEC0F4BD3C281AAD3203BD6CB9D9FF77A780EB
+);
+

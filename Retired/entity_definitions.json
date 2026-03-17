@@ -1,0 +1,3052 @@
+{
+  "metadata": {
+    "export_date": "2025-09-24T13:51:01.477164",
+    "export_source": "Data Vault Entity Designer",
+    "version": "2.2.0",
+    "total_entities": 66
+  },
+  "data_types_info": {
+    "supported_types": [
+      "NVARCHAR(n) - Variable length string (custom length)",
+      "NVARCHAR(4000) - Variable length string (4000 chars)",
+      "NVARCHAR(MAX) - Variable length string (unlimited)",
+      "DECIMAL(38,10) - Fixed precision decimal",
+      "DATETIME2(7) - High precision datetime",
+      "BIGINT - 64-bit integer",
+      "DATE - Date only",
+      "TIME(7) - Time with high precision",
+      "DATETIMEOFFSET(7) - Datetime with timezone offset",
+      "VARBINARY(MAX) - Variable length binary data"
+    ]
+  },
+  "split_map_info": {
+    "patterns": {
+      "0": "Single physical table for all source systems",
+      "1": "Separate physical tables per source system",
+      "composite": "Link entities use underscore-separated pattern from constituent entities"
+    },
+    "description": "Split Map determines how Data Vault tables are physically implemented"
+  },
+  "entities": {
+    "ADDRESS": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "ADDRESS",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "POSTCODE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "REGION",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "COUNTRY",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LAT",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LONG",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TOWN",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "COUNTY",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "ADDRESS_INDIVIDUAL": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: ADDRESS, INDIVIDUAL",
+          "attributes": [],
+          "linked_entities": [
+            "ADDRESS",
+            "INDIVIDUAL"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "ADDRESS_LOCATION": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: ADDRESS, LOCATION",
+          "attributes": [],
+          "linked_entities": [
+            "ADDRESS",
+            "LOCATION"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "ANSWER": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "ANSWER",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ANSWER_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "ANSWER_QUESTION_TOUCHPOINT": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1_1",
+          "description": "Link entity connecting: ANSWER, QUESTION, TOUCHPOINT",
+          "attributes": [],
+          "linked_entities": [
+            "QUESTION",
+            "ANSWER",
+            "TOUCHPOINT"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "COMP": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "COMP_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "IS_WASTE",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "COMP_LINEITEM": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: COMP, LINEITEM",
+          "attributes": [],
+          "linked_entities": [
+            "LINEITEM",
+            "COMP"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "COMPANY": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "COMPANY_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DOMAIN",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "URL",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "COMPANY_INDIVIDUAL": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: COMPANY, INDIVIDUAL",
+          "attributes": [],
+          "linked_entities": [
+            "COMPANY",
+            "INDIVIDUAL"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "CONTACT": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "0",
+          "description": "",
+          "attributes": [
+            {
+              "name": "CONTACT",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "CONTACT_TYPE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "OPT_OUT",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOUNCE",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BLACKLIST",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ADJUSTED_CONTACT",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "CONTACT_INDIVIDUAL": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "0_1",
+          "description": "Link entity connecting: CONTACT, INDIVIDUAL",
+          "attributes": [],
+          "linked_entities": [
+            "CONTACT",
+            "INDIVIDUAL"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "CONTACT_TOUCHPOINT": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "0_1",
+          "description": "Link entity connecting: CONTACT, TOUCHPOINT",
+          "attributes": [],
+          "linked_entities": [
+            "CONTACT",
+            "TOUCHPOINT"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "CUSTORDER": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "GRAND_TOTAL",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GRAND_TOTAL_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISCOUNT_GROSS",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISCOUNT_GROSS_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "SVC_CHARGE_TOTAL",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "SVC_CHARGE_TOTAL_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GROSS_SALES",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GROSS_SALES_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TAX_TOTAL",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TAX_TOTAL_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "NET_SALES",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "NET_SALES_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GUEST_COUNT",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ITEM_COUNT",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ITEM_COUNT_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_COUNT",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "OPEN_TIME",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "CLOSE_TIME",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TABLE_NO",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_INFO",
+              "data_type": "NVARCHAR(MAX)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "EXTERNAL_REFERENCE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_STATUS",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PAYMENT_STATUS",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISCOUNT_NET",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISCOUNT_NET_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISCOUNT_TAX",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISCOUNT_TAX_SRC",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TENDERED_SALES",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TRADING_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "CUSTORDER_EMPLOYEE": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: CUSTORDER, EMPLOYEE",
+          "attributes": [],
+          "linked_entities": [
+            "CUSTORDER",
+            "EMPLOYEE"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "CUSTORDER_LINEITEM": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: CUSTORDER, LINEITEM",
+          "attributes": [],
+          "linked_entities": [
+            "CUSTORDER",
+            "LINEITEM"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "CUSTORDER_LOCATION": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: CUSTORDER, LOCATION",
+          "attributes": [],
+          "linked_entities": [
+            "CUSTORDER",
+            "LOCATION"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "CUSTORDER_OCCASION": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: CUSTORDER, OCCASION",
+          "attributes": [],
+          "linked_entities": [
+            "CUSTORDER",
+            "OCCASION"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "CUSTORDER_POSTX": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: CUSTORDER, POSTX",
+          "attributes": [],
+          "linked_entities": [
+            "CUSTORDER",
+            "POSTX"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "CUSTORDER_REFUND": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: CUSTORDER, REFUND",
+          "attributes": [],
+          "linked_entities": [
+            "CUSTORDER",
+            "REFUND"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "DEAL": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "DEAL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DEAL_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "DEAL_LINEITEM": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: DEAL, LINEITEM",
+          "attributes": [],
+          "linked_entities": [
+            "DEAL",
+            "LINEITEM"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "DISCOUNT": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "DISCOUNT_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "VALUE_TYPE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "IS_WASTE",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISCOUNT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "DISCOUNT_LINEITEM": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: DISCOUNT, LINEITEM",
+          "attributes": [],
+          "linked_entities": [
+            "DISCOUNT",
+            "LINEITEM"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "DISTRIBUTOR": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "DISTRIBUTOR_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "MICROSERVICE_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISTRIBUTOR_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "DISTRIBUTOR_STOCKORDER_SUPPLIER": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1_1",
+          "description": "Link entity connecting: DISTRIBUTOR, STOCKORDER, SUPPLIER",
+          "attributes": [],
+          "linked_entities": [
+            "SUPPLIER",
+            "DISTRIBUTOR",
+            "STOCKORDER"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "EMPLOYEE": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "SURNAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "FIRST_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "MIDDLE_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "POST_DESC",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ACTIVE_DATE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "END_DATE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TRONC_OPTOUT_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PAYTYPE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "EMPLOYEE_JOB_TIMECARD": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1_1",
+          "description": "Link entity connecting: EMPLOYEE, JOB, TIMECARD",
+          "attributes": [],
+          "linked_entities": [
+            "EMPLOYEE",
+            "TIMECARD",
+            "JOB"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "EMPLOYEE_LINEITEM": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: EMPLOYEE, LINEITEM",
+          "attributes": [],
+          "linked_entities": [
+            "EMPLOYEE",
+            "LINEITEM"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "EMPLOYEE_ROLE": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: EMPLOYEE, ROLE",
+          "attributes": [],
+          "linked_entities": [
+            "ROLE",
+            "EMPLOYEE"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "EVENT": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "EVENT_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "EVENT_CODE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "EVENT_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "EVENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "EVENT_TOUCHPOINT": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: EVENT, TOUCHPOINT",
+          "attributes": [],
+          "linked_entities": [
+            "EVENT",
+            "TOUCHPOINT"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "INDIVIDUAL": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "FORENAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "SURNAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "MIDDLE_NAMES",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TITLE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GENDER",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DOB",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "INVITEM": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "INVITEM_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "UOM",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "MICROSERVICE_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "INVITEM_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "INVITEM_INVITEM": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "Self-referencing link entity for INVITEM (e.g., parent-child relationships, hierarchies, or associations within the same entity type)",
+          "attributes": [
+            {
+              "name": "UOM",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "UOM_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ],
+          "linked_entities": [
+            "INVITEM"
+          ],
+          "is_self_referencing": true
+        }
+      ]
+    },
+    "INVITEM_OCCASION_PRODUCT": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1_1",
+          "description": "Link entity connecting: INVITEM, OCCASION, PRODUCT",
+          "attributes": [
+            {
+              "name": "UOM",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "UOM_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ],
+          "linked_entities": [
+            "PRODUCT",
+            "OCCASION",
+            "INVITEM"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "INVITEM_STOCKEVENT": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: INVITEM, STOCKEVENT",
+          "attributes": [],
+          "linked_entities": [
+            "STOCKEVENT",
+            "INVITEM"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "INVITEM_STOCKORDER": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: INVITEM, STOCKORDER",
+          "attributes": [],
+          "linked_entities": [
+            "STOCKORDER",
+            "INVITEM"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "JOB": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "JOB_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TRONC_FLAG",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "JOB_CODE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PAY_CODE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "LINEITEM": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "HEADER_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LINEITEM_TYPE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GROSS_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TAX_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "NET_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "QUANTITY",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "QUANTITY_INV",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LINEITEM_TIMESTAMP",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ITEM_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "VOID_FLAG",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LINE_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LINE_ORDER",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TRADING_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "SRC_KEY",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "LINEITEM_LINEITEM": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "Self-referencing link entity for LINEITEM (e.g., parent-child relationships, hierarchies, or associations within the same entity type)",
+          "attributes": [],
+          "linked_entities": [
+            "LINEITEM"
+          ],
+          "is_self_referencing": true
+        }
+      ]
+    },
+    "LINEITEM_MOD": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: LINEITEM, MOD",
+          "attributes": [],
+          "linked_entities": [
+            "LINEITEM",
+            "MOD"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "LINEITEM_OCCASION": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: LINEITEM, OCCASION",
+          "attributes": [],
+          "linked_entities": [
+            "LINEITEM",
+            "OCCASION"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "LINEITEM_PRODUCT": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: LINEITEM, PRODUCT",
+          "attributes": [],
+          "linked_entities": [
+            "LINEITEM",
+            "PRODUCT"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "LINEITEM_SVCCHARGE": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: LINEITEM, SVCCHARGE",
+          "attributes": [],
+          "linked_entities": [
+            "LINEITEM",
+            "SVCCHARGE"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "LINEITEM_TAX": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: LINEITEM, TAX",
+          "attributes": [],
+          "linked_entities": [
+            "LINEITEM",
+            "TAX"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "LINEITEM_TENDER": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: LINEITEM, TENDER",
+          "attributes": [],
+          "linked_entities": [
+            "LINEITEM",
+            "TENDER"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "LOCATION": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "LOCATION_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "MICROSERVICE_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LOCATION_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "LOCATION_STOCKEVENT": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: LOCATION, STOCKEVENT",
+          "attributes": [],
+          "linked_entities": [
+            "STOCKEVENT",
+            "LOCATION"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "MOD": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "MOD_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "MOD_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "OCCASION": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "OCCASION_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "OCCASSION_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "POSITEM": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "ITEM_TYPE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GROSS_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TAX_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "NET_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "QUANTITY",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ITEM_TIMESTAMP",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "POSITEM_POSTX": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: POSITEM, POSTX",
+          "attributes": [],
+          "linked_entities": [
+            "POSITEM",
+            "POSTX"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "POSTX": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "GRAND_TOTAL",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "DISCOUNT_TOTAL",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "SVC_CHARGE_TOTAL",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GROSS_SALES",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TAX_TOTAL",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "NET_SALES",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "GUEST_COUNT",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ITEM_COUNT",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_COUNT",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "OPEN_TIME",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "CLOSE_TIME",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TABLE_NO",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_INFO",
+              "data_type": "NVARCHAR(MAX)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "EXTERNAL_REFERENCE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_STATUS",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PAYMENT_STATUS",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_TYPE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "PRODUCT": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "PRODUCT_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PRODUCT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "QUESTION": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 3,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "QUESTION",
+              "data_type": "NVARCHAR(255)",
+              "nullable": false,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "QUESTION_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "REFUND": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "REFUND_TIMESTAMP",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "REFUND_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "REFUND_REF",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "REFUND_INFO",
+              "data_type": "NVARCHAR(MAX)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TAX_RECLAIM_FLAG",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "REFUND_DETAIL",
+              "data_type": "NVARCHAR(MAX)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "ROLE": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "ROLE_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ROLE_DESC",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "CONTROL_GROUP",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "STOCKEVENT": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "EVENT_TYPE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "EVENT_TS",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PACK_DESC",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PACK_QUANTITY",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "UOM",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "UOM_QUANITY",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "EXTERNAL_REF",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "INTERNAL_REF",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "EVENT_BEHAVIOUR",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "STOCKEVENT_STOCKORDER": {
+      "entity_type": "link",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1_1",
+          "description": "Link entity connecting: STOCKEVENT, STOCKORDER",
+          "attributes": [],
+          "linked_entities": [
+            "STOCKEVENT",
+            "STOCKORDER"
+          ],
+          "is_self_referencing": false
+        }
+      ]
+    },
+    "STOCKORDER": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Build",
+          "split_map": "1",
+          "description": "",
+          "attributes": []
+        }
+      ]
+    },
+    "SUPPLIER": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "SUPPLIER_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "MICROSERVICE_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "SUPPLIER_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "SVCCHARGE": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "SVCCHARGE_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "SVC_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "TAX": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 2,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "TAX_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "PARENT_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "LEVEL_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "BOTTOM_LEVEL",
+              "data_type": "BIGINT",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_1",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_2",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_3",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_4",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ATTR_5",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TAX_MULTIPLIER",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TAX_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "TENDER": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "TENDER_TIMESTAMP",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TENDER_NAME",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TENDER_ID",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TENDER_COUNT",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TENDER_VALUE",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TENDER_REF",
+              "data_type": "NVARCHAR(MAX)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TENDER_INFO",
+              "data_type": "NVARCHAR(MAX)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "ORDER_NUMBER",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "TIMECARD": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "",
+          "attributes": [
+            {
+              "name": "TRADING_DATE",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "CLOCK_IN_TS",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "CLOCK_OUT_TS",
+              "data_type": "DATETIME2(7)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "MINS_WORKED",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "HOURS_ADJ",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "OVERTIME_MINS",
+              "data_type": "DECIMAL(38,10)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    },
+    "TOUCHPOINT": {
+      "entity_type": "hub",
+      "versions": [
+        {
+          "version": 1,
+          "release_state": "Live",
+          "split_map": "1",
+          "description": "Standard entity which holds any interaction between a customer and the business",
+          "attributes": [
+            {
+              "name": "TOUCHPOINT_TYPE",
+              "data_type": "NVARCHAR(255)",
+              "nullable": false,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TOUCHPOINT_DATETIME",
+              "data_type": "DATETIME2(7)",
+              "nullable": false,
+              "business_key": false,
+              "description": ""
+            },
+            {
+              "name": "TOUCHPOINT_STATUS",
+              "data_type": "NVARCHAR(255)",
+              "nullable": true,
+              "business_key": false,
+              "description": ""
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

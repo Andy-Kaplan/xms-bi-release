@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XMS BI UAT Migration Planner</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #1a2744;
+    --border: #2a3a5c;
+    --text: #e0e0e0;
+    --text-dim: #8892a4;
+    --accent: #4fc3f7;
+    --accent-dim: #2a7a9e;
+    --green: #66bb6a;
+    --green-dim: #2e5a30;
+    --orange: #ffa726;
+    --orange-dim: #5a3e1a;
+    --red: #ef5350;
+    --red-dim: #5a1a1a;
+    --purple: #ab47bc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .header h1 { font-size: 16px; font-weight: 600; color: var(--accent); }
+  .header-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+  }
+  .stat-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .stat-orgs { background: var(--accent-dim); color: var(--accent); }
+  .stat-ints { background: var(--orange-dim); color: var(--orange); }
+  .stat-maps { background: #3a2a5a; color: var(--purple); }
+
+  /* Main layout */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Left panel - controls */
+  .controls {
+    width: 55%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 16px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .tab:hover { color: var(--text); background: rgba(79,195,247,0.05); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .tab-count {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    background: var(--border);
+    color: var(--text-dim);
+  }
+  .tab.active .tab-count { background: var(--accent-dim); color: var(--accent); }
+
+  /* Tab toolbar */
+  .tab-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-accent {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-accent:hover { background: var(--accent); color: var(--bg); }
+
+  /* Tab content */
+  .tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Item rows */
+  .item-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    gap: 10px;
+  }
+  .item-row:hover { border-color: var(--accent-dim); }
+  .item-row.selected { border-color: var(--accent); background: rgba(79,195,247,0.08); }
+  .item-row.in-uat {
+    opacity: 0.5;
+    cursor: default;
+    border-style: dashed;
+  }
+  .item-row.in-uat:hover { border-color: var(--border); }
+
+  .item-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-size: 12px;
+  }
+  .item-row.selected .item-check {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+  .item-row.in-uat .item-check {
+    background: var(--green-dim);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .item-info { flex: 1; min-width: 0; }
+  .item-name { font-size: 13px; font-weight: 500; }
+  .item-detail { font-size: 11px; color: var(--text-dim); margin-top: 2px; font-family: 'Cascadia Code', 'Fira Code', monospace; }
+
+  .item-badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  .badge-uat { background: var(--green-dim); color: var(--green); }
+  .badge-missing { background: var(--orange-dim); color: var(--orange); }
+  .badge-pos { background: #1a3a5a; color: #64b5f6; }
+  .badge-inventory { background: #1a4a3a; color: #4db6ac; }
+  .badge-survey { background: #3a2a4a; color: #ce93d8; }
+  .badge-other { background: #2a2a2a; color: #9e9e9e; }
+
+  /* Warnings */
+  .warning-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    background: var(--red-dim);
+    border: 1px solid var(--red);
+    font-size: 12px;
+    color: var(--red);
+  }
+
+  /* Mapping row extras */
+  .mapping-arrow { color: var(--text-dim); font-size: 14px; flex-shrink: 0; }
+  .mapping-parts { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .mapping-org, .mapping-int {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mapping-org { background: rgba(79,195,247,0.1); color: var(--accent); }
+  .mapping-int { background: rgba(255,167,38,0.1); color: var(--orange); }
+
+  /* Right panel - preview + prompt */
+  .right-panel {
+    width: 45%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Preview */
+  .preview {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .preview h3 {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .preview-section {
+    margin-bottom: 16px;
+  }
+  .preview-section h4 {
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .preview-item {
+    font-size: 12px;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+  }
+  .preview-item.int-item { border-left-color: var(--orange); }
+  .preview-item.map-item { border-left-color: var(--purple); }
+  .preview-empty {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 13px;
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .dep-order {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .dep-order h4 { font-size: 12px; color: var(--green); margin-bottom: 8px; }
+  .dep-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    padding: 4px 0;
+    color: var(--text-dim);
+  }
+  .dep-num {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+  .dep-step.active .dep-num { background: var(--green); color: var(--bg); }
+  .dep-step.active { color: var(--text); }
+
+  /* Prompt */
+  .prompt-section {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    max-height: 40%;
+    display: flex;
+    flex-direction: column;
+  }
+  .prompt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .prompt-header span { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .copy-btn {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--green);
+    background: var(--green-dim);
+    color: var(--green);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { background: var(--green); color: var(--bg); }
+  .prompt-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    white-space: pre-wrap;
+    color: var(--text-dim);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>XMS BI &mdash; UAT Migration Planner</h1>
+  <div class="header-stats">
+    <span class="stat-badge stat-orgs" id="statOrgs">0 Orgs</span>
+    <span class="stat-badge stat-ints" id="statInts">0 Integrations</span>
+    <span class="stat-badge stat-maps" id="statMaps">0 Mappings</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="controls">
+    <div class="tabs">
+      <div class="tab active" data-tab="orgs">Organisations <span class="tab-count" id="orgCount">0</span></div>
+      <div class="tab" data-tab="ints">Integrations <span class="tab-count" id="intCount">0</span></div>
+      <div class="tab" data-tab="maps">Mappings <span class="tab-count" id="mapCount">0</span></div>
+    </div>
+    <div class="tab-toolbar">
+      <button class="btn btn-accent" id="selectAllBtn">Select All Missing</button>
+      <button class="btn" id="clearAllBtn">Clear Selection</button>
+    </div>
+    <div class="tab-content">
+      <div class="tab-panel active" id="panel-orgs"></div>
+      <div class="tab-panel" id="panel-ints"></div>
+      <div class="tab-panel" id="panel-maps"></div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="preview" id="preview"></div>
+    <div class="prompt-section">
+      <div class="prompt-header">
+        <span>Generated Prompt</span>
+        <button class="copy-btn" id="copyBtn">Copy Prompt</button>
+      </div>
+      <div class="prompt-body" id="promptOutput">Select items to migrate...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === DATA ===
+const orgs = [
+  { name: 'Three Rocks Cafe', code: 'C14CF568-588D-F011-B3CD-000D3AD9E9D4', prefix: '20250917', inUat: true, uatName: 'Three Rocks Cafe' },
+  { name: 'Three Rocks Mexicana', code: '3667B921-5B8D-F011-B3CD-000D3AD9E9D4', prefix: '20250917', inUat: false },
+  { name: 'NeighboursSurvey', code: '3EBF26FE-E14A-40ED-A355-9A411B1273B4', prefix: '20251202', inUat: true, uatName: 'Neihgbours - Eastleigh' },
+  { name: 'Frankie & Bennys', code: '2D8F2756-6641-4885-BF14-8090135B6281', prefix: '20251112', inUat: false },
+  { name: 'Bella Italia', code: 'DBAB95ED-112E-42C6-B0E9-E0BFD20709D9', prefix: '20251112', inUat: false },
+  { name: 'Amalfi', code: 'B66AA165-592B-4F3F-ACF5-46D4B049801A', prefix: '20251208', inUat: false },
+  { name: 'Chiquito', code: '44775945-DB97-453C-BBBC-F54C7773D358', prefix: '20251208', inUat: false },
+  { name: 'Las Iguanas', code: '9C4FAF85-28D8-46CA-91B2-19DD48C2CEAA', prefix: '20251208', inUat: false },
+  { name: 'GrowyzeDev', code: '94A4B719-EB0F-421F-AD03-ABECDD888B14', prefix: '20251208', inUat: true, uatName: 'Padel Social' },
+  { name: 'Three Rocks Dev', code: 'C8575673-E345-4828-BA90-68B290E684D2', prefix: 'trdev', inUat: false },
+  { name: 'Workforce Test', code: 'E21A96B3-64BD-4321-9223-114C63E8B3E8', prefix: '20260129', inUat: false },
+  { name: 'Dover Street Counter', code: 'B55413A0-31FD-F011-8D4C-0022489A1D57', prefix: '20260129', inUat: true, uatName: 'Dover Street Counter' },
+  { name: 'Kudu', code: '5AD1BEAC-31FD-F011-8D4C-0022489A1D57', prefix: '20260129', inUat: true, uatName: 'Kudu' },
+  { name: "Martino's", code: 'A99E3EBA-31FD-F011-8D4C-0022489A1D57', prefix: '20260129', inUat: true, uatName: 'Martinos' },
+  { name: 'Myrtos', code: 'B34DA7C3-31FD-F011-8D4C-0022489A1D57', prefix: '20260129', inUat: true, uatName: 'Myrtos' },
+  { name: 'The Dover Restaurant', code: '7F1917D0-31FD-F011-8D4C-0022489A1D57', prefix: '20260129', inUat: true, uatName: 'The Dover Restaurant' },
+];
+
+const integrations = [
+  { name: 'Marketman001', type: 'INVENTORY', schema: 'int_marketman001', inUat: true },
+  { name: 'NCRAloha001', type: 'POS', schema: 'int_ncraloha001', inUat: true },
+  { name: 'SurveyHero001', type: 'SURVEY', schema: 'int_surveyhero001', inUat: false },
+  { name: 'TROaP001', type: 'POS', schema: 'int_troap001', inUat: false },
+  { name: 'Growyze001', type: 'INVENTORY', schema: 'int_growyze001', inUat: false },
+  { name: 'Workforce001', type: null, schema: 'int_workforce001', inUat: false },
+  { name: 'TBTBookingMetrics001', type: null, schema: 'int_tbtbookingmetrics001', inUat: false },
+];
+
+const mappings = [
+  { org: 'Three Rocks Cafe', int: 'Marketman001', inUat: true },
+  { org: 'Three Rocks Cafe', int: 'NCRAloha001', inUat: true },
+  { org: 'Three Rocks Mexicana', int: 'Marketman001', inUat: false },
+  { org: 'Three Rocks Mexicana', int: 'NCRAloha001', inUat: false },
+  { org: 'NeighboursSurvey', int: 'SurveyHero001', inUat: false },
+  { org: 'Frankie & Bennys', int: 'TROaP001', inUat: false },
+  { org: 'Frankie & Bennys', int: 'TBTBookingMetrics001', inUat: false },
+  { org: 'Bella Italia', int: 'TROaP001', inUat: false },
+  { org: 'Bella Italia', int: 'TBTBookingMetrics001', inUat: false },
+  { org: 'Amalfi', int: 'TROaP001', inUat: false },
+  { org: 'Amalfi', int: 'TBTBookingMetrics001', inUat: false },
+  { org: 'Chiquito', int: 'TROaP001', inUat: false },
+  { org: 'Chiquito', int: 'TBTBookingMetrics001', inUat: false },
+  { org: 'Las Iguanas', int: 'TROaP001', inUat: false },
+  { org: 'Las Iguanas', int: 'TBTBookingMetrics001', inUat: false },
+  { org: 'GrowyzeDev', int: 'Growyze001', inUat: false },
+  { org: 'Three Rocks Dev', int: 'Marketman001', inUat: false },
+  { org: 'Three Rocks Dev', int: 'SurveyHero001', inUat: false },
+  { org: 'Three Rocks Dev', int: 'TROaP001', inUat: false },
+  { org: 'Three Rocks Dev', int: 'Growyze001', inUat: false },
+  { org: 'Workforce Test', int: 'Workforce001', inUat: false },
+  { org: 'Dover Street Counter', int: 'Marketman001', inUat: true },
+  { org: 'Kudu', int: 'Marketman001', inUat: true },
+  { org: "Martino's", int: 'Marketman001', inUat: true },
+  { org: 'Myrtos', int: 'Marketman001', inUat: true },
+  { org: 'The Dover Restaurant', int: 'Marketman001', inUat: true },
+];
+
+// === STATE ===
+const state = {
+  activeTab: 'orgs',
+  selectedOrgs: new Set(),
+  selectedInts: new Set(),
+  selectedMaps: new Set(),
+};
+
+// === HELPERS ===
+function orgByName(name) { return orgs.find(o => o.name === name); }
+function intByName(name) { return integrations.find(i => i.name === name); }
+function mapKey(m) { return `${m.org}::${m.int}`; }
+
+function isOrgAvailable(orgName) {
+  const o = orgByName(orgName);
+  return o && (o.inUat || state.selectedOrgs.has(orgName));
+}
+function isIntAvailable(intName) {
+  const i = intByName(intName);
+  return i && (i.inUat || state.selectedInts.has(intName));
+}
+
+function typeBadgeClass(type) {
+  if (type === 'POS') return 'badge-pos';
+  if (type === 'INVENTORY') return 'badge-inventory';
+  if (type === 'SURVEY') return 'badge-survey';
+  return 'badge-other';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// === RENDER ===
+function renderOrgs() {
+  const panel = document.getElementById('panel-orgs');
+  panel.innerHTML = orgs.map(o => {
+    const sel = state.selectedOrgs.has(o.name);
+    const cls = o.inUat ? 'item-row in-uat' : (sel ? 'item-row selected' : 'item-row');
+    const badge = o.inUat
+      ? `<span class="item-badge badge-uat">In UAT${o.uatName !== o.name ? ' as "' + escHtml(o.uatName) + '"' : ''}</span>`
+      : `<span class="item-badge badge-missing">Needs Migration</span>`;
+    const check = o.inUat ? '&#10003;' : (sel ? '&#10003;' : '');
+    return `<div class="${cls}" data-org="${escHtml(o.name)}">
+      <div class="item-check">${check}</div>
+      <div class="item-info">
+        <div class="item-name">${escHtml(o.name)}</div>
+        <div class="item-detail">${escHtml(o.code)} &middot; prefix: ${escHtml(o.prefix)}</div>
+      </div>
+      ${badge}
+    </div>`;
+  }).join('');
+
+  panel.querySelectorAll('.item-row:not(.in-uat)').forEach(row => {
+    row.addEventListener('click', () => {
+      const name = row.dataset.org;
+      if (state.selectedOrgs.has(name)) state.selectedOrgs.delete(name);
+      else state.selectedOrgs.add(name);
+      updateAll();
+    });
+  });
+}
+
+function renderInts() {
+  const panel = document.getElementById('panel-ints');
+  panel.innerHTML = integrations.map(i => {
+    const sel = state.selectedInts.has(i.name);
+    const cls = i.inUat ? 'item-row in-uat' : (sel ? 'item-row selected' : 'item-row');
+    const badge = i.inUat
+      ? `<span class="item-badge badge-uat">In UAT</span>`
+      : `<span class="item-badge badge-missing">Needs Migration</span>`;
+    const typeBadge = `<span class="item-badge ${typeBadgeClass(i.type)}">${i.type || 'OTHER'}</span>`;
+    const check = i.inUat ? '&#10003;' : (sel ? '&#10003;' : '');
+    return `<div class="${cls}" data-int="${escHtml(i.name)}">
+      <div class="item-check">${check}</div>
+      <div class="item-info">
+        <div class="item-name">${escHtml(i.name)}</div>
+        <div class="item-detail">${escHtml(i.schema)}</div>
+      </div>
+      ${typeBadge}
+      ${badge}
+    </div>`;
+  }).join('');
+
+  panel.querySelectorAll('.item-row:not(.in-uat)').forEach(row => {
+    row.addEventListener('click', () => {
+      const name = row.dataset.int;
+      if (state.selectedInts.has(name)) state.selectedInts.delete(name);
+      else state.selectedInts.add(name);
+      updateAll();
+    });
+  });
+}
+
+function renderMaps() {
+  const panel = document.getElementById('panel-maps');
+  const warnings = [];
+  const rows = [];
+
+  mappings.forEach(m => {
+    const key = mapKey(m);
+    const sel = state.selectedMaps.has(key);
+
+    if (sel && !m.inUat) {
+      if (!isOrgAvailable(m.org)) warnings.push(`Org "${m.org}" is not in UAT and not selected for migration`);
+      if (!isIntAvailable(m.int)) warnings.push(`Integration "${m.int}" is not in UAT and not selected for migration`);
+    }
+
+    const cls = m.inUat ? 'item-row in-uat' : (sel ? 'item-row selected' : 'item-row');
+    const badge = m.inUat
+      ? `<span class="item-badge badge-uat">In UAT</span>`
+      : `<span class="item-badge badge-missing">Needs Migration</span>`;
+    const check = m.inUat ? '&#10003;' : (sel ? '&#10003;' : '');
+
+    rows.push(`<div class="${cls}" data-map="${escHtml(key)}">
+      <div class="item-check">${check}</div>
+      <div class="mapping-parts">
+        <span class="mapping-org">${escHtml(m.org)}</span>
+        <span class="mapping-arrow">&rarr;</span>
+        <span class="mapping-int">${escHtml(m.int)}</span>
+      </div>
+      ${badge}
+    </div>`);
+  });
+
+  const uniqueWarnings = [...new Set(warnings)];
+  const warningHtml = uniqueWarnings.map(w =>
+    `<div class="warning-row">&#9888; ${escHtml(w)}</div>`
+  ).join('');
+
+  panel.innerHTML = warningHtml + rows.join('');
+
+  panel.querySelectorAll('.item-row:not(.in-uat)').forEach(row => {
+    row.addEventListener('click', () => {
+      const key = row.dataset.map;
+      if (state.selectedMaps.has(key)) state.selectedMaps.delete(key);
+      else state.selectedMaps.add(key);
+      updateAll();
+    });
+  });
+}
+
+function renderPreview() {
+  const preview = document.getElementById('preview');
+  const selOrgs = [...state.selectedOrgs].map(n => orgByName(n)).filter(Boolean);
+  const selInts = [...state.selectedInts].map(n => intByName(n)).filter(Boolean);
+  const selMaps = [...state.selectedMaps].map(k => {
+    const [org, int] = k.split('::');
+    return mappings.find(m => m.org === org && m.int === int);
+  }).filter(Boolean);
+
+  const total = selOrgs.length + selInts.length + selMaps.length;
+
+  if (total === 0) {
+    preview.innerHTML = `<div class="preview-empty">Select items from the left panel to build your migration plan.</div>`;
+    return;
+  }
+
+  let html = '<h3>Migration Plan</h3>';
+
+  // Dependency order
+  html += `<div class="dep-order"><h4>Deployment Order</h4>`;
+  html += `<div class="dep-step ${selInts.length ? 'active' : ''}"><div class="dep-num">1</div> Integrations (${selInts.length})</div>`;
+  html += `<div class="dep-step ${selOrgs.length ? 'active' : ''}"><div class="dep-num">2</div> Organisations (${selOrgs.length})</div>`;
+  html += `<div class="dep-step ${selMaps.length ? 'active' : ''}"><div class="dep-num">3</div> Org-Integration Mappings (${selMaps.length})</div>`;
+  html += `</div>`;
+
+  if (selInts.length) {
+    html += `<div class="preview-section"><h4>Integrations (${selInts.length})</h4>`;
+    selInts.forEach(i => {
+      html += `<div class="preview-item int-item">sp_AddIntegration '${escHtml(i.name)}', '${i.type || 'NULL'}', '${escHtml(i.schema)}'</div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (selOrgs.length) {
+    html += `<div class="preview-section"><h4>Organisations (${selOrgs.length})</h4>`;
+    selOrgs.forEach(o => {
+      html += `<div class="preview-item">sp_AddOrganisation '${escHtml(o.code)}', '${escHtml(o.name)}', '${escHtml(o.prefix)}'</div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (selMaps.length) {
+    html += `<div class="preview-section"><h4>Org-Integration Mappings (${selMaps.length})</h4>`;
+    selMaps.forEach(m => {
+      html += `<div class="preview-item map-item">sp_AddOrganisationIntegration '${escHtml(m.org)}' &rarr; '${escHtml(m.int)}'</div>`;
+    });
+    html += `</div>`;
+  }
+
+  preview.innerHTML = html;
+}
+
+function updatePrompt() {
+  const el = document.getElementById('promptOutput');
+  const selOrgs = [...state.selectedOrgs].map(n => orgByName(n)).filter(Boolean);
+  const selInts = [...state.selectedInts].map(n => intByName(n)).filter(Boolean);
+  const selMaps = [...state.selectedMaps].map(k => {
+    const [org, int] = k.split('::');
+    return mappings.find(m => m.org === org && m.int === int);
+  }).filter(Boolean);
+
+  const total = selOrgs.length + selInts.length + selMaps.length;
+  if (total === 0) {
+    el.textContent = 'Select items to migrate...';
+    return;
+  }
+
+  let prompt = `Generate SQL scripts in ClaudeDevelopment/Deploy/ to migrate the following items from DEV to UAT. Each script should use EXEC calls to the appropriate stored procedures. Scripts must be ordered by dependency: integrations first, then organisations, then mappings.\n`;
+
+  if (selInts.length) {
+    prompt += `\n--- INTEGRATIONS (Script: 01_add_integrations.sql) ---\nCreate the following integrations using sp_AddIntegration:\n`;
+    selInts.forEach(i => {
+      prompt += `  EXEC core.core.sp_AddIntegration @IntegrationName = N'${i.name}', @IntegrationType = ${i.type ? "N'" + i.type + "'" : 'NULL'}, @SchemaName = N'${i.schema}';\n`;
+    });
+  }
+
+  if (selOrgs.length) {
+    prompt += `\n--- ORGANISATIONS (Script: 02_add_organisations.sql) ---\nCreate the following organisations using sp_AddOrganisation:\n`;
+    selOrgs.forEach(o => {
+      prompt += `  EXEC core.core.sp_AddOrganisation @OrganisationCode = N'${o.code}', @OrganisationName = N'${o.name}', @OrganisationPrefix = N'${o.prefix}';\n`;
+    });
+  }
+
+  if (selMaps.length) {
+    prompt += `\n--- ORG-INTEGRATION MAPPINGS (Script: 03_add_org_integrations.sql) ---\nLink organisations to integrations using sp_AddOrganisationIntegration:\n`;
+    selMaps.forEach(m => {
+      const o = orgByName(m.org);
+      prompt += `  EXEC core.core.sp_AddOrganisationIntegration @OrganisationCode = N'${o ? o.code : m.org}', @IntegrationName = N'${m.int}';\n`;
+    });
+  }
+
+  // Add warnings
+  const missingDeps = [];
+  selMaps.forEach(m => {
+    if (!isOrgAvailable(m.org)) missingDeps.push(`Mapping "${m.org} -> ${m.int}" requires org "${m.org}" which is not in UAT or selected`);
+    if (!isIntAvailable(m.int)) missingDeps.push(`Mapping "${m.org} -> ${m.int}" requires integration "${m.int}" which is not in UAT or selected`);
+  });
+  if (missingDeps.length) {
+    prompt += `\n--- DEPENDENCY WARNINGS ---\n`;
+    missingDeps.forEach(w => { prompt += `WARNING: ${w}\n`; });
+  }
+
+  prompt += `\nNotes:\n- These scripts will be executed manually against the UAT core database.\n- Verify sp_AddOrganisation, sp_AddIntegration, and sp_AddOrganisationIntegration parameter signatures before generating.\n- Each script should include a header comment with purpose and date.\n- Wrap each EXEC in a TRY/CATCH with PRINT statements for progress tracking.`;
+
+  el.textContent = prompt;
+}
+
+function updateCounts() {
+  document.getElementById('orgCount').textContent = state.selectedOrgs.size;
+  document.getElementById('intCount').textContent = state.selectedInts.size;
+  document.getElementById('mapCount').textContent = state.selectedMaps.size;
+  document.getElementById('statOrgs').textContent = `${state.selectedOrgs.size} Org${state.selectedOrgs.size !== 1 ? 's' : ''}`;
+  document.getElementById('statInts').textContent = `${state.selectedInts.size} Int${state.selectedInts.size !== 1 ? 's' : ''}`;
+  document.getElementById('statMaps').textContent = `${state.selectedMaps.size} Map${state.selectedMaps.size !== 1 ? 's' : ''}`;
+}
+
+function updateAll() {
+  renderOrgs();
+  renderInts();
+  renderMaps();
+  renderPreview();
+  updatePrompt();
+  updateCounts();
+}
+
+// === TABS ===
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    state.activeTab = tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`panel-${state.activeTab}`).classList.add('active');
+  });
+});
+
+// === SELECT ALL / CLEAR ===
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+  if (state.activeTab === 'orgs') {
+    orgs.filter(o => !o.inUat).forEach(o => state.selectedOrgs.add(o.name));
+  } else if (state.activeTab === 'ints') {
+    integrations.filter(i => !i.inUat).forEach(i => state.selectedInts.add(i.name));
+  } else {
+    mappings.filter(m => !m.inUat).forEach(m => state.selectedMaps.add(mapKey(m)));
+  }
+  updateAll();
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  if (state.activeTab === 'orgs') state.selectedOrgs.clear();
+  else if (state.activeTab === 'ints') state.selectedInts.clear();
+  else state.selectedMaps.clear();
+  updateAll();
+});
+
+// === COPY ===
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const text = document.getElementById('promptOutput').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy Prompt'; }, 1500);
+  });
+});
+
+// === INIT ===
+updateAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XMS BI &mdash; Integration Mappings</title>
+<style>
+:root {
+  --bg:#0f1117;--bg2:#161822;--bg3:#1e2030;--bg4:#252840;
+  --text:#c8cad8;--text2:#8b8fa8;--text3:#5c6080;
+  --accent:#6c8aff;--accent2:#4ecdc4;--accent3:#ff6b9d;--accent4:#ffd93d;
+  --border:#2a2d42;--border2:#363a54;
+  --code-bg:#1a1d2e;--card:#1a1d2e;
+  --shadow:0 4px 24px rgba(0,0,0,.3);
+  --radius:10px;--radius-sm:6px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'SF Mono','Cascadia Code','Fira Code',Consolas,monospace;
+  --transition:0.25s cubic-bezier(.4,0,.2,1);
+  --pos:#6c8aff;--inv:#4ecdc4;--survey:#ff6b9d;
+}
+[data-theme="light"] {
+  --bg:#f5f6fa;--bg2:#ffffff;--bg3:#eef0f6;--bg4:#dfe2ec;
+  --text:#2c2e3e;--text2:#5a5d72;--text3:#8b8fa8;
+  --border:#d8dae8;--border2:#c8cad8;--code-bg:#eef0f6;--card:#ffffff;
+  --shadow:0 4px 24px rgba(0,0,0,.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+#header{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+#header h1{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap}
+#header h1 span{color:var(--accent)}
+.header-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+#hstats{display:flex;gap:14px;flex-wrap:wrap}
+.hstat{font-size:11px;color:var(--text2)}
+.hstat strong{color:var(--text);font-weight:600}
+#header-right{margin-left:auto}
+.btn{padding:5px 11px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer;transition:all var(--transition);font-family:var(--font)}
+.btn:hover{background:var(--bg4);color:var(--text);border-color:var(--accent)}
+#tab-bar{display:flex;gap:2px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+#tab-bar::-webkit-scrollbar{height:4px}
+#tab-bar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.tab-btn{padding:10px 16px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all var(--transition);font-family:var(--font)}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-btn.pos.active{color:var(--pos);border-bottom-color:var(--pos)}
+.tab-btn.inv.active{color:var(--inv);border-bottom-color:var(--inv)}
+.tab-btn.survey.active{color:var(--survey);border-bottom-color:var(--survey)}
+#content{flex:1;overflow-y:auto;padding:24px 20px;max-width:1400px;width:100%;margin:0 auto}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center}
+.stat-card .sc-val{font-size:26px;font-weight:700;color:var(--accent);display:block;margin-bottom:4px}
+.stat-card .sc-lbl{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px}
+.int-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:24px}
+.int-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:border-color var(--transition)}
+.int-card:hover{border-color:var(--border2)}
+.int-card-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.int-name{font-size:14px;font-weight:700;color:var(--text)}
+.type-badge{padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.type-badge.pos{background:rgba(108,138,255,.15);color:var(--pos);border:1px solid rgba(108,138,255,.3)}
+.type-badge.inv{background:rgba(78,205,196,.15);color:var(--inv);border:1px solid rgba(78,205,196,.3)}
+.type-badge.survey{background:rgba(255,107,157,.15);color:var(--survey);border:1px solid rgba(255,107,157,.3)}
+.sdot{width:8px;height:8px;border-radius:50%;background:#4caf50;margin-left:auto;flex-shrink:0}
+.sdot.partial{background:var(--accent4)}
+.sdot.none{background:var(--text3)}
+.ic-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ic-mi{font-size:11px;color:var(--text2)}
+.ic-mi strong{color:var(--text);display:block;font-size:13px}
+.sec{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin:24px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.sec:first-child{margin-top:0}
+.int-hdr{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px}
+.int-hdr h2{font-size:18px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.int-hdr .schema-tag{font-family:var(--mono);font-size:12px;color:var(--accent2);background:var(--code-bg);padding:2px 8px;border-radius:4px}
+.int-hdr .api-url{font-size:11px;color:var(--text2);margin-top:4px}
+.dtable{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px}
+.dtable th{text-align:left;padding:7px 10px;color:var(--text2);font-weight:600;font-size:11px;background:var(--bg3);border-bottom:2px solid var(--border);white-space:nowrap}
+.dtable td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+.dtable tr:hover td{background:var(--bg3)}
+.dtable td code,.dtable td .mono{font-family:var(--mono);font-size:11px;background:var(--code-bg);padding:1px 4px;border-radius:3px;color:var(--accent2)}
+.flow{display:flex;align-items:center;flex-wrap:wrap;padding:20px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;gap:0}
+.fbox{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 16px;text-align:center}
+.fbox .fl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px}
+.fbox .fn{font-size:12px;font-weight:700;color:var(--text)}
+.fbox.api{border-color:var(--pos);background:rgba(108,138,255,.08)}
+.fbox.dl{border-color:var(--inv);background:rgba(78,205,196,.08)}
+.fbox.stg{border-color:var(--accent4);background:rgba(255,217,61,.08)}
+.fbox.dv{border-color:var(--survey);background:rgba(255,107,157,.08)}
+.fbox.pres{border-color:var(--accent2);background:rgba(78,205,196,.08)}
+.farr{font-size:20px;color:var(--text3);padding:0 10px;flex-shrink:0}
+.tier-wrap{display:flex;gap:12px;margin:16px 0 24px;flex-wrap:wrap;align-items:flex-start}
+.tier-blk{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;flex:1;min-width:170px}
+.tier-blk h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.tier-blk.t1 h4{color:var(--accent)}
+.tier-blk.t2 h4{color:var(--accent2)}
+.tier-blk.t3 h4{color:var(--accent4)}
+.tstep{padding:5px 8px;border-radius:3px;font-size:11px;color:var(--text);background:var(--bg3);margin-bottom:4px}
+.tstep .ts{font-family:var(--mono);font-size:10px;color:var(--accent2);display:block;margin-top:2px}
+.acc{margin-bottom:5px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.acc-hdr{padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--bg3);transition:background var(--transition);user-select:none}
+.acc-hdr:hover{background:var(--bg4)}
+.acc-arr{font-size:10px;color:var(--text3);transition:transform var(--transition);flex-shrink:0}
+.acc.open .acc-arr{transform:rotate(90deg)}
+.acc-title{font-size:12px;font-weight:600;color:var(--text)}
+.acc-sub{font-size:11px;color:var(--text2);margin-left:auto;padding-right:8px;white-space:nowrap}
+.acc-body{display:none;padding:14px;background:var(--bg2);border-top:1px solid var(--border)}
+.acc.open .acc-body{display:block}
+.etype{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.5px;margin-right:4px}
+.etype.hub{background:rgba(78,205,196,.15);color:var(--accent2);border:1px solid rgba(78,205,196,.25)}
+.etype.link{background:rgba(255,217,61,.15);color:var(--accent4);border:1px solid rgba(255,217,61,.25)}
+.minfo{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text2)}
+.minfo strong{color:var(--text)}
+.mtable{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+.mtable th{padding:5px 8px;background:var(--bg3);color:var(--text2);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+.mtable td{padding:4px 8px;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono)}
+.mtable tr:hover td{background:var(--bg3)}
+.hk{color:var(--accent);font-weight:700}
+.t2k{color:var(--accent3)}
+.ibox{background:rgba(108,138,255,.08);border:1px solid rgba(108,138,255,.2);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6}
+.wbox{background:rgba(255,107,157,.08);border:1px solid rgba(255,107,157,.2);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6}
+.ibox strong,.wbox strong{color:var(--text)}
+.mxwrap{overflow-x:auto;margin-bottom:20px}
+.mx{border-collapse:collapse;font-size:11px}
+.mx th{padding:6px 10px;background:var(--bg3);color:var(--text2);font-weight:600;border:1px solid var(--border);font-size:10px;letter-spacing:.4px;white-space:nowrap}
+.mx td{padding:5px 10px;border:1px solid var(--border);text-align:center;font-size:11px}
+.mx td.en{text-align:left;font-family:var(--mono);color:var(--text);font-size:11px;white-space:nowrap;padding-left:12px;min-width:200px}
+.mx tr.grp td{background:var(--bg3);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;padding:4px 12px;text-align:left}
+.cy{background:rgba(78,205,196,.15);color:var(--accent2)}
+.cm{background:rgba(108,138,255,.15);color:var(--accent)}
+.cn{color:var(--text3)}
+.cp{background:rgba(255,217,61,.12);color:var(--accent4)}
+.sr{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+#msearch{padding:7px 12px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:12px;width:240px;font-family:var(--font)}
+#msearch:focus{outline:none;border-color:var(--accent)}
+#msearch::placeholder{color:var(--text3)}
+.fbtn{padding:5px 10px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font);transition:all var(--transition)}
+.fbtn:hover{background:var(--bg4);color:var(--text)}
+.fbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin-bottom:20px}
+.uitem{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;font-size:11px;font-family:var(--mono);color:var(--text2)}
+.lgrow{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;color:var(--text2);align-items:center}
+.lgi{display:flex;align-items:center;gap:5px}
+.lgs{width:20px;height:14px;border-radius:3px;flex-shrink:0}
+.dlg{margin-bottom:18px}
+.dlgt{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:7px;padding:4px 8px;background:var(--bg3);border-radius:var(--radius-sm);border-left:3px solid var(--border2);text-transform:uppercase;letter-spacing:.5px}
+@media(max-width:640px){.int-cards{grid-template-columns:1fr}.tier-wrap{flex-direction:column}}
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>XMS BI &mdash; <span>Integration Mappings</span></h1>
+  <div class="header-sep"></div>
+  <div id="hstats">
+    <div class="hstat"><strong>5</strong> Integrations</div>
+    <div class="hstat"><strong>161</strong> DL Tables</div>
+    <div class="hstat"><strong>47</strong> Staging Steps</div>
+    <div class="hstat"><strong>60</strong> Entity Mappings</div>
+  </div>
+  <div id="header-right">
+    <button class="btn" onclick="toggleTheme()">&#9680; Theme</button>
+  </div>
+</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
+  <button class="tab-btn pos" onclick="showTab('ncr',this)">NCRAloha</button>
+  <button class="tab-btn inv" onclick="showTab('mm',this)">MarketMan</button>
+  <button class="tab-btn inv" onclick="showTab('gz',this)">Growyze</button>
+  <button class="tab-btn survey" onclick="showTab('sh',this)">SurveyHero</button>
+  <button class="tab-btn pos" onclick="showTab('troap',this)">TROAP</button>
+  <button class="tab-btn" onclick="showTab('coverage',this)">Coverage Matrix</button>
+</div>
+<div id="content">
+
+<!-- ============================================================ OVERVIEW ============================================================ -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="stats-row">
+    <div class="stat-card"><span class="sc-val">5</span><span class="sc-lbl">Integrations</span></div>
+    <div class="stat-card"><span class="sc-val">161</span><span class="sc-lbl">DL Tables</span></div>
+    <div class="stat-card"><span class="sc-val">47</span><span class="sc-lbl">Staging Steps</span></div>
+    <div class="stat-card"><span class="sc-val">60</span><span class="sc-lbl">Entity Mappings</span></div>
+    <div class="stat-card"><span class="sc-val">11</span><span class="sc-lbl">Shared Entities</span></div>
+    <div class="stat-card"><span class="sc-val">30</span><span class="sc-lbl">Unmapped Entities</span></div>
+  </div>
+
+  <div class="sec">Data Flow Pipeline</div>
+  <div class="flow">
+    <div class="fbox api"><span class="fl">Source</span><span class="fn">External API / DB</span></div>
+    <div class="farr">&rarr;</div>
+    <div class="fbox dl"><span class="fl">Stage 1</span><span class="fn">DL Tables</span></div>
+    <div class="farr">&rarr;</div>
+    <div class="fbox stg"><span class="fl">Stage 2</span><span class="fn">Staging</span></div>
+    <div class="farr">&rarr;</div>
+    <div class="fbox dv"><span class="fl">Stage 3</span><span class="fn">Load &rarr; Data Vault</span></div>
+    <div class="farr">&rarr;</div>
+    <div class="fbox pres"><span class="fl">Stage 4</span><span class="fn">Presentation</span></div>
+  </div>
+
+  <div class="sec">Integration Summary</div>
+  <div class="int-cards">
+    <div class="int-card">
+      <div class="int-card-hdr">
+        <span class="int-name">NCR Aloha</span>
+        <span class="type-badge pos">POS</span>
+        <span class="sdot"></span>
+      </div>
+      <div class="ic-meta">
+        <div class="ic-mi"><strong>int_ncraloha001</strong>Schema</div>
+        <div class="ic-mi"><strong>NCR REST API v3</strong>Source</div>
+        <div class="ic-mi"><strong>21</strong>DL Tables</div>
+        <div class="ic-mi"><strong>27</strong>Staging Steps</div>
+        <div class="ic-mi"><strong>34</strong>Entity Mappings</div>
+        <div class="ic-mi"><strong>15 Hub / 19 Link</strong>Type Split</div>
+      </div>
+    </div>
+    <div class="int-card">
+      <div class="int-card-hdr">
+        <span class="int-name">MarketMan</span>
+        <span class="type-badge inv">Inventory</span>
+        <span class="sdot"></span>
+      </div>
+      <div class="ic-meta">
+        <div class="ic-mi"><strong>int_marketman001</strong>Schema</div>
+        <div class="ic-mi"><strong>MarketMan REST API v3</strong>Source</div>
+        <div class="ic-mi"><strong>34</strong>DL Tables</div>
+        <div class="ic-mi"><strong>17</strong>Staging Steps</div>
+        <div class="ic-mi"><strong>22</strong>Entity Mappings</div>
+        <div class="ic-mi"><strong>9 Hub / 13 Link</strong>Type Split</div>
+      </div>
+    </div>
+    <div class="int-card">
+      <div class="int-card-hdr">
+        <span class="int-name">Growyze</span>
+        <span class="type-badge inv">Inventory</span>
+        <span class="sdot partial"></span>
+      </div>
+      <div class="ic-meta">
+        <div class="ic-mi"><strong>int_growyze001</strong>Schema</div>
+        <div class="ic-mi"><strong>Growyze REST API v1</strong>Source</div>
+        <div class="ic-mi"><strong>57</strong>DL Tables</div>
+        <div class="ic-mi"><strong>Embedded in INIT</strong>Staging</div>
+        <div class="ic-mi"><strong>No mapping SQL</strong>Mappings</div>
+        <div class="ic-mi"><strong>7</strong>API Endpoints</div>
+      </div>
+    </div>
+    <div class="int-card">
+      <div class="int-card-hdr">
+        <span class="int-name">SurveyHero</span>
+        <span class="type-badge survey">Survey</span>
+        <span class="sdot"></span>
+      </div>
+      <div class="ic-meta">
+        <div class="ic-mi"><strong>int_surveyhero001</strong>Schema</div>
+        <div class="ic-mi"><strong>SurveyHero REST API v1</strong>Source</div>
+        <div class="ic-mi"><strong>8+</strong>DL Tables</div>
+        <div class="ic-mi"><strong>3</strong>Staging Steps</div>
+        <div class="ic-mi"><strong>4</strong>Entity Mappings</div>
+        <div class="ic-mi"><strong>3 Hub / 1 Link</strong>Type Split</div>
+      </div>
+    </div>
+    <div class="int-card">
+      <div class="int-card-hdr">
+        <span class="int-name">TROAP</span>
+        <span class="type-badge pos">POS</span>
+        <span class="sdot none"></span>
+      </div>
+      <div class="ic-meta">
+        <div class="ic-mi"><strong>int_troap001</strong>Schema</div>
+        <div class="ic-mi"><strong>Internal SQL Database</strong>Source</div>
+        <div class="ic-mi"><strong>41</strong>DL Tables</div>
+        <div class="ic-mi"><strong>None</strong>Staging Steps</div>
+        <div class="ic-mi"><strong>None</strong>Mappings in Release</div>
+        <div class="ic-mi"><strong>Table copy pattern</strong>Method</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">Mapping Health Summary</div>
+  <table class="dtable">
+    <thead><tr><th>Integration</th><th>Type-2 SCD Columns</th><th>Track Deletions</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>NCRAloha</td><td class="wbox" style="border:none;padding:4px 6px;background:none;color:var(--accent3)">NULL on all 34 mappings</td><td>None</td><td><span style="color:var(--accent3)">No historical tracking</span></td></tr>
+      <tr><td>MarketMan</td><td>LOCATION_OCCASION_PRODUCT: NET_PRICE, NET_COST</td><td>None</td><td><span style="color:var(--accent2)">Partial (1/22 mapping)</span></td></tr>
+      <tr><td>Growyze</td><td>Embedded in INIT — not visible in release scripts</td><td>Unknown</td><td><span style="color:var(--text2)">Incomplete data</span></td></tr>
+      <tr><td>SurveyHero</td><td>None</td><td>None</td><td><span style="color:var(--text2)">Hub data only</span></td></tr>
+      <tr><td>TROAP</td><td>No mapping file</td><td>N/A</td><td><span style="color:var(--text3)">Not mapped</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============================================================ NCR ALOHA ============================================================ -->
+<div id="tab-ncr" class="tab-panel">
+  <div class="int-hdr">
+    <h2>NCR Aloha <span class="type-badge pos">POS</span></h2>
+    <div><span class="schema-tag">int_ncraloha001</span></div>
+    <div class="api-url">Source: NCR Aloha REST API v3 &mdash; https://api.ncr.com/rt</div>
+  </div>
+
+  <div class="sec">DL Tables (21)</div>
+  <div class="ibox"><strong>All DL columns are NVARCHAR(MAX)</strong> plus <code>LOADTS_UTC datetime2</code> and <code>INT_FETCH_DATE datetime2</code> system columns. Composite surrogate keys use <code>CONCAT_WS('-', storeId, dob, id)</code>.</div>
+
+  <div class="dlg">
+    <div class="dlgt">Labor Group</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Key Columns</th></tr></thead><tbody>
+      <tr><td><code>DL_LABOR</code></td><td>storeId, dob, id, manager, state, startDate, endDate, totalPay, employee_id, employee_name, job_id, job_label</td></tr>
+      <tr><td><code>DL_LABOR_PAYRATES</code></td><td>storeId, dob, shifts_id, rate, appliedAfter, time</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg">
+    <div class="dlgt">Sales Summary Group</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Key Columns</th></tr></thead><tbody>
+      <tr><td><code>DL_SALES</code></td><td>storeId, dob, netSales, payments, tips, comps, voids, checkCount, guestCount, serviceType</td></tr>
+      <tr><td><code>DL_SALES_CHECK</code></td><td>storeId, dob, id, printableId, total, netAmount, isClosed, isEmpty</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg">
+    <div class="dlgt">Sales Stream Group (Check-Level Detail)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Key Columns</th></tr></thead><tbody>
+      <tr><td><code>DL_SALES_STREAM</code></td><td>storeId, dob, checks_id, grossAmount, grandAmount, netAmount, revenueCenter_id, revenueCenter_label, period_id, period_label, takeOutOrderId, guestCounting_guests</td></tr>
+      <tr><td><code>DL_SALES_STREAM_CLEARS</code></td><td>storeId, dob, checks_id, type, id, typeId, label, amount</td></tr>
+      <tr><td><code>DL_SALES_STREAM_CLEARS_LINKEDITEMS</code></td><td>storeId, dob, checks_id, clears_id, id, amount</td></tr>
+      <tr><td><code>DL_SALES_STREAM_COMPS</code></td><td>storeId, dob, checks_id, type, note, id, typeId, label, amount</td></tr>
+      <tr><td><code>DL_SALES_STREAM_COMPS_LINKEDITEMS</code></td><td>storeId, dob, checks_id, comps_id, id, amount</td></tr>
+      <tr><td><code>DL_SALES_STREAM_EVENTS</code></td><td>storeId, dob, checks_id, customEventLabel, time, type</td></tr>
+      <tr><td><code>DL_SALES_STREAM_ITEMS</code></td><td>storeId, dob, checks_id, id, typeId, label, amount, netAmount, quantity, responsibleEmployeeId, modifierInfo_type, orderMode_id, orderMode_label, period_id, period_label</td></tr>
+      <tr><td><code>DL_SALES_STREAM_ITEMS_CATEGORIES</code></td><td>storeId, dob, checks_id, items_id, id, name, type</td></tr>
+      <tr><td><code>DL_SALES_STREAM_PAYMENTS</code></td><td>storeId, dob, checks_id, tip, type, id, typeId, label, amount, authorizationInfo_authorizationCode</td></tr>
+      <tr><td><code>DL_SALES_STREAM_PROMOS</code></td><td>storeId, dob, checks_id, discount, type, id, typeId, label, amount</td></tr>
+      <tr><td><code>DL_SALES_STREAM_PROMOS_LINKEDITEMS</code></td><td>storeId, dob, checks_id, promos_id, id, amount</td></tr>
+      <tr><td><code>DL_SALES_STREAM_RESPONSIBLEEMPLOYEES</code></td><td>storeId, dob, checks_id, shiftId, roleId, roleName, id, name, time</td></tr>
+      <tr><td><code>DL_SALES_STREAM_SURCHARGES</code></td><td>storeId, dob, checks_id, rate, type, id, typeId, label, amount</td></tr>
+      <tr><td><code>DL_SALES_STREAM_SURCHARGES_LINKEDITEMS</code></td><td>storeId, dob, checks_id, surcharges_id, linkedItems</td></tr>
+      <tr><td><code>DL_SALES_STREAM_VOIDS</code></td><td>storeId, dob, checks_id, type, id, typeId, label, amount</td></tr>
+      <tr><td><code>DL_SALES_STREAM_VOIDS_LINKEDITEMS</code></td><td>storeId, dob, checks_id, voids_id, id, amount</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg">
+    <div class="dlgt">Reference Group</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Key Columns</th></tr></thead><tbody>
+      <tr><td><code>DL_STORE</code></td><td>storeId, insightId, name, link</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="sec">Staging Pipeline (27 Steps)</div>
+  <div class="tier-wrap">
+    <div class="tier-blk t1">
+      <h4>Tier 1 &mdash; Base Staging (12)</h4>
+      <div class="tstep">Channel and Cust Order Link<span class="ts">NCR_CHANNEL_LINK</span></div>
+      <div class="tstep">Deal<span class="ts">NCR_DEAL</span></div>
+      <div class="tstep">Discount<span class="ts">NCR_DISC</span></div>
+      <div class="tstep">Employee Timecard<span class="ts">NCR_EMP_TIME</span></div>
+      <div class="tstep">Line Item Detail<span class="ts">NCR_LINE_ITEM_DETAIL</span></div>
+      <div class="tstep">Location<span class="ts">NCR_LOCATION</span></div>
+      <div class="tstep">Modifications<span class="ts">NCR_MODS</span></div>
+      <div class="tstep">Occasion<span class="ts">NCR_OCCASSION</span></div>
+      <div class="tstep">Product<span class="ts">NCR_PROD</span></div>
+      <div class="tstep">Revenue Center<span class="ts">NCR_REVC</span></div>
+      <div class="tstep">Service Charge<span class="ts">NCR_SVC</span></div>
+      <div class="tstep">Tax<span class="ts">NCR_TAX</span></div>
+    </div>
+    <div class="tier-blk t2">
+      <h4>Tier 2 &mdash; Link Staging (14)</h4>
+      <div class="tstep">Comp to Line Item<span class="ts">COMP_LI_LNK</span></div>
+      <div class="tstep">Deal to Line Item<span class="ts">DEAL_LI_LNK</span></div>
+      <div class="tstep">Deals &amp; LI to LI<span class="ts">NCR_DEAL_LI_LI</span></div>
+      <div class="tstep">Discount &amp; LI to LI<span class="ts">NCR_DISC_LI_LI</span></div>
+      <div class="tstep">Discount to Line Item<span class="ts">DISC_LI_LNK</span></div>
+      <div class="tstep">Mod to Line Item<span class="ts">MOD_LI_LNK</span></div>
+      <div class="tstep">Occasion to Line Item<span class="ts">OCC_LI_LNK</span></div>
+      <div class="tstep">Product to Line Item<span class="ts">PROD_LI_LNK</span></div>
+      <div class="tstep">Product to Loc &amp; Occasion<span class="ts">LOC_OCC_PROD_LNK</span></div>
+      <div class="tstep">Svc Charge &amp; LI to LI<span class="ts">NCR_SVC_LI_LI</span></div>
+      <div class="tstep">Svc Charge to Line Item<span class="ts">SVC_LI_LNK</span></div>
+      <div class="tstep">Tax &amp; LI to LI<span class="ts">NCR_TAX_LI_LI</span></div>
+      <div class="tstep">Tax to Line Item<span class="ts">TAX_LI_LNK</span></div>
+      <div class="tstep">Tender to Line Item<span class="ts">TEND_LI_LINK</span></div>
+    </div>
+    <div class="tier-blk t3">
+      <h4>Tier 3 &mdash; Self-Link (1)</h4>
+      <div class="tstep">Line Item to Line Item<span class="ts">LI_LI_LINK</span></div>
+    </div>
+  </div>
+
+  <div class="sec">Entity Mappings (34)</div>
+  <div class="wbox"><strong>Note:</strong> All 34 NCRAloha mappings have <code>type2_columns = NULL</code> &mdash; no SCD Type-2 historical tracking. Column <code>LEVE_NAME</code> (CHANNEL) is a source typo; should be <code>LEVEL_NAME</code>. <code>OCCASSION_SRC_KEY</code> reflects the double-S typo baked into the schema.</div>
+<div class="sec">Hub Mappings (15)</div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">CHANNEL</span>
+      <span class="acc-sub">source: NCR_CHANNEL_LINK &bull; 5 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_CHANNEL_LINK</span>
+        <span><strong>Hash Keys:</strong> CHANNEL</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>CHANNEL <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>CHANNEL</td><td>&rarr;</td><td>CHANNEL_NAME</td></tr><tr><td>CHANNEL</td><td>&rarr;</td><td>CHANNEL_ID</td></tr><tr><td>LEVE_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">CUSTORDER</span>
+      <span class="acc-sub">source: NCR_LINE_ITEM_DETAIL &bull; 21 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LINE_ITEM_DETAIL</span>
+        <span><strong>Hash Keys:</strong> HEADER_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>GRAND_TOTAL_SRC</td><td>&rarr;</td><td>GRAND_TOTAL_SRC</td></tr><tr><td>DISCOUNT_GROSS</td><td>&rarr;</td><td>DISCOUNT_GROSS</td></tr><tr><td>NET_SALES_SRC</td><td>&rarr;</td><td>NET_SALES_SRC</td></tr><tr><td>NET_SALES</td><td>&rarr;</td><td>NET_SALES</td></tr><tr><td>TAX_TOTAL</td><td>&rarr;</td><td>TAX_TOTAL</td></tr><tr><td>GROSS_SALES_SRC</td><td>&rarr;</td><td>GROSS_SALES_SRC</td></tr><tr><td>GROSS_SALES</td><td>&rarr;</td><td>GROSS_SALES</td></tr><tr><td>SVC_CHARGE__TOTAL</td><td>&rarr;</td><td>SVC_CHARGE_TOTAL</td></tr><tr><td>ITEM_COUNT</td><td>&rarr;</td><td>ITEM_COUNT</td></tr><tr><td>GUEST_COUNT</td><td>&rarr;</td><td>GUEST_COUNT</td></tr><tr><td>ORDER_COUNT</td><td>&rarr;</td><td>ORDER_COUNT</td></tr><tr><td>OPEN_TIME</td><td>&rarr;</td><td>OPEN_TIME</td></tr><tr><td>CLOSE_TIME</td><td>&rarr;</td><td>CLOSE_TIME</td></tr><tr><td>ORDER_DATE</td><td>&rarr;</td><td>ORDER_DATE</td></tr><tr><td>ORDER_INFO</td><td>&rarr;</td><td>ORDER_INFO</td></tr><tr><td>EXTERNAL_REFERENCE</td><td>&rarr;</td><td>EXTERNAL_REFERENCE</td></tr><tr><td>TRADING_DATE</td><td>&rarr;</td><td>TRADING_DATE</td></tr><tr><td>ORDER_STATUS</td><td>&rarr;</td><td>ORDER_STATUS</td></tr><tr><td>PAYMENT_STATUS</td><td>&rarr;</td><td>PAYMENT_STATUS</td></tr><tr><td>PAYMENT</td><td>&rarr;</td><td>TENDERED_SALES</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">DEAL</span>
+      <span class="acc-sub">source: NCR_DEAL &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_DEAL</span>
+        <span><strong>Hash Keys:</strong> ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PARENT_ITEM_SRC_KEY</td><td>&rarr;</td><td>PARENT_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>ITEM_SRC_KEY</td><td>&rarr;</td><td>DEAL_ID</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>label</td><td>&rarr;</td><td>DEAL_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">DISCOUNT</span>
+      <span class="acc-sub">source: NCR_DISC &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_DISC</span>
+        <span><strong>Hash Keys:</strong> ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PARENT_ITEM_SRC_KEY</td><td>&rarr;</td><td>PARENT_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>ITEM_SRC_KEY</td><td>&rarr;</td><td>DISCOUNT_ID</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>label</td><td>&rarr;</td><td>DISCOUNT_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">EMPLOYEE</span>
+      <span class="acc-sub">source: NCR_EMP_TIME &bull; 4 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_EMP_TIME</span>
+        <span><strong>Hash Keys:</strong> EMP_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>EMP_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>Surname</td><td>&rarr;</td><td>SURNAME</td></tr><tr><td>FirstName</td><td>&rarr;</td><td>FIRST_NAME</td></tr><tr><td>MiddleNames</td><td>&rarr;</td><td>MIDDLE_NAME</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">JOB</span>
+      <span class="acc-sub">source: NCR_EMP_TIME &bull; 3 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_EMP_TIME</span>
+        <span><strong>Hash Keys:</strong> JOB_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>JOB_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>job_label</td><td>&rarr;</td><td>JOB_NAME</td></tr><tr><td>JOB_SRC_KEY</td><td>&rarr;</td><td>JOB_CODE</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">LINEITEM</span>
+      <span class="acc-sub">source: NCR_LINE_ITEM_DETAIL &bull; 15 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LINE_ITEM_DETAIL</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>HEADER_ID</td><td>&rarr;</td><td>HEADER_ID</td></tr><tr><td>LINEITEM_TYPE</td><td>&rarr;</td><td>LINEITEM_TYPE</td></tr><tr><td>GROSS_VALUE</td><td>&rarr;</td><td>GROSS_VALUE</td></tr><tr><td>TAX_VALUE</td><td>&rarr;</td><td>TAX_VALUE</td></tr><tr><td>NET_VALUE</td><td>&rarr;</td><td>NET_VALUE</td></tr><tr><td>QUANTITY</td><td>&rarr;</td><td>QUANTITY</td></tr><tr><td>QUANTITY_INV</td><td>&rarr;</td><td>QUANTITY_INV</td></tr><tr><td>LINEITEM_TIMESTAMP</td><td>&rarr;</td><td>LINEITEM_TIMESTAMP</td></tr><tr><td>ITEM_DATE</td><td>&rarr;</td><td>ITEM_DATE</td></tr><tr><td>ORDER_DATE</td><td>&rarr;</td><td>ORDER_DATE</td></tr><tr><td>VOID_FLAG</td><td>&rarr;</td><td>VOID_FLAG</td></tr><tr><td>LINE_ID</td><td>&rarr;</td><td>LINE_ID</td></tr><tr><td>LINE_ORDER</td><td>&rarr;</td><td>LINE_ORDER</td></tr><tr><td>TRADING_DATE</td><td>&rarr;</td><td>TRADING_DATE</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">LOCATION</span>
+      <span class="acc-sub">source: NCR_LOCATION &bull; 5 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LOCATION</span>
+        <span><strong>Hash Keys:</strong> storeId</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>storeId <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>storeId</td><td>&rarr;</td><td>LOCATION_ID</td></tr><tr><td>name</td><td>&rarr;</td><td>LOCATION_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">MOD</span>
+      <span class="acc-sub">source: NCR_MODS &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_MODS</span>
+        <span><strong>Hash Keys:</strong> ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>PARENT_ITEM_SRC_KEY</td><td>&rarr;</td><td>PARENT_ID</td></tr><tr><td>label</td><td>&rarr;</td><td>MOD_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>ITEM_SRC_KEY</td><td>&rarr;</td><td>MOD_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">OCCASION</span>
+      <span class="acc-sub">source: NCR_OCCASSION &bull; 5 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_OCCASSION</span>
+        <span><strong>Hash Keys:</strong> orderMode_id</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>orderMode_id <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>orderMode_id</td><td>&rarr;</td><td>OCCASSION_ID</td></tr><tr><td>orderMode_label</td><td>&rarr;</td><td>OCCASION_NAME</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">PRODUCT</span>
+      <span class="acc-sub">source: NCR_PROD &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_PROD</span>
+        <span><strong>Hash Keys:</strong> ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>ITEM_SRC_KEY</td><td>&rarr;</td><td>PRODUCT_ID</td></tr><tr><td>PARENT_ITEM_SRC_KEY</td><td>&rarr;</td><td>PARENT_ID</td></tr><tr><td>label</td><td>&rarr;</td><td>PRODUCT_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">REVCENTER</span>
+      <span class="acc-sub">source: NCR_REVC &bull; 5 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_REVC</span>
+        <span><strong>Hash Keys:</strong> revenueCenter_id</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>revenueCenter_id <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>revenueCenter_id</td><td>&rarr;</td><td>REVC_ID</td></tr><tr><td>revenueCenter_label</td><td>&rarr;</td><td>REVC_NAME</td></tr><tr><td>Level_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">SVCCHARGE</span>
+      <span class="acc-sub">source: NCR_SVC &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_SVC</span>
+        <span><strong>Hash Keys:</strong> ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PARENT_ITEM_SRC_KEY</td><td>&rarr;</td><td>PARENT_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>ITEM_SRC_KEY</td><td>&rarr;</td><td>SVC_ID</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>label</td><td>&rarr;</td><td>SVCCHARGE_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">TAX</span>
+      <span class="acc-sub">source: NCR_TAX &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_TAX</span>
+        <span><strong>Hash Keys:</strong> ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PARENT_ITEM_SRC_KEY</td><td>&rarr;</td><td>PARENT_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>ITEM_SRC_KEY</td><td>&rarr;</td><td>TAX_ID</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>label</td><td>&rarr;</td><td>TAX_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">TIMECARD</span>
+      <span class="acc-sub">source: NCR_EMP_TIME &bull; 4 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_EMP_TIME</span>
+        <span><strong>Hash Keys:</strong> TIMECARD_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>TIMECARD_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>TIMECARD_DATE</td><td>&rarr;</td><td>TRADING_DATE</td></tr><tr><td>TIMECARD_START_TIMESTAMP</td><td>&rarr;</td><td>CLOCK_IN_TS</td></tr><tr><td>TIMECARD_END_TIMESTAMP</td><td>&rarr;</td><td>CLOCK_OUT_TS</td></tr></tbody>
+      </table>
+    </div>
+  </div><div class="sec" style="margin-top:20px">Link Mappings (19)</div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CHANNEL_CUSTORDER</span>
+      <span class="acc-sub">source: NCR_CHANNEL_LINK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_CHANNEL_LINK</span>
+        <span><strong>Hash Keys:</strong> HEADER_SRC_KEY, CHANNEL</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr><tr><td>CHANNEL <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CHANNEL_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">COMP_LINEITEM</span>
+      <span class="acc-sub">source: COMP_LI_LNK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> COMP_LI_LNK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>COMP_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CUSTORDER_EMPLOYEE</span>
+      <span class="acc-sub">source: NCR_LINE_ITEM_DETAIL &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LINE_ITEM_DETAIL</span>
+        <span><strong>Hash Keys:</strong> HEADER_ID, EMPLOYEE_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr><tr><td>EMPLOYEE_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>EMPLOYEE_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CUSTORDER_LINEITEM</span>
+      <span class="acc-sub">source: NCR_LINE_ITEM_DETAIL &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LINE_ITEM_DETAIL</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, HEADER_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CUSTORDER_LOCATION</span>
+      <span class="acc-sub">source: NCR_LINE_ITEM_DETAIL &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LINE_ITEM_DETAIL</span>
+        <span><strong>Hash Keys:</strong> HEADER_ID, LOCATION_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr><tr><td>LOCATION_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LOCATION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CUSTORDER_OCCASION</span>
+      <span class="acc-sub">source: NCR_LINE_ITEM_DETAIL &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LINE_ITEM_DETAIL</span>
+        <span><strong>Hash Keys:</strong> HEADER_ID, OCCASSION_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr><tr><td>OCCASSION_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>OCCASION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CUSTORDER_REVCENTER</span>
+      <span class="acc-sub">source: NCR_LINE_ITEM_DETAIL &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LINE_ITEM_DETAIL</span>
+        <span><strong>Hash Keys:</strong> HEADER_ID, REVENUE_CENTER_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr><tr><td>REVENUE_CENTER_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>REVCENTER_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">DEAL_LINEITEM</span>
+      <span class="acc-sub">source: DEAL_LI_LNK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> DEAL_LI_LNK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>DEAL_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">DISCOUNT_LINEITEM</span>
+      <span class="acc-sub">source: DISC_LI_LNK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> DISC_LI_LNK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>DISCOUNT_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">EMPLOYEE_JOB_TIMECARD</span>
+      <span class="acc-sub">source: NCR_EMP_TIME &bull; 3 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_EMP_TIME</span>
+        <span><strong>Hash Keys:</strong> EMP_SRC_KEY, JOB_SRC_KEY, TIMECARD_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>EMP_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>EMPLOYEE_HUB_ID</td></tr><tr><td>JOB_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>JOB_HUB_ID</td></tr><tr><td>TIMECARD_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>TIMECARD_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">EMPLOYEE_LINEITEM</span>
+      <span class="acc-sub">source: NCR_LINE_ITEM_DETAIL &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> NCR_LINE_ITEM_DETAIL</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, EMPLOYEE_SRC_SUB</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>EMPLOYEE_SRC_SUB <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>EMPLOYEE_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_LINEITEM</span>
+      <span class="acc-sub">source: LI_LI_LINK &bull; 5 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> LI_LI_LINK</span>
+        <span><strong>Hash Keys:</strong> PARENT_SRC_KEY, CHILD_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PARENT_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>PARENT_HUB_ID</td></tr><tr><td>CHILD_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CHILD_HUB_ID</td></tr><tr><td>LABEL</td><td>&rarr;</td><td>LABEL</td></tr><tr><td>VALUE</td><td>&rarr;</td><td>VALUE</td></tr><tr><td>INFO</td><td>&rarr;</td><td>INFO</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_MOD</span>
+      <span class="acc-sub">source: MOD_LI_LNK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MOD_LI_LNK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>MOD_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_OCCASION</span>
+      <span class="acc-sub">source: OCC_LI_LNK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> OCC_LI_LNK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, OCCASSION_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>OCCASSION_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>OCCASION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_PRODUCT</span>
+      <span class="acc-sub">source: PROD_LI_LNK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> PROD_LI_LNK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>PRODUCT_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_SVCCHARGE</span>
+      <span class="acc-sub">source: SVC_LI_LNK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> SVC_LI_LNK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>SVCCHARGE_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_TAX</span>
+      <span class="acc-sub">source: TAX_LI_LNK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> TAX_LI_LNK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>TAX_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_TENDER</span>
+      <span class="acc-sub">source: TEND_LI_LINK &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> TEND_LI_LINK</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, ITEM_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>TENDER_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LOCATION_OCCASION_PRODUCT</span>
+      <span class="acc-sub">source: LOC_OCC_PROD_LNK &bull; 4 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> LOC_OCC_PROD_LNK</span>
+        <span><strong>Hash Keys:</strong> ITEM_SRC_KEY, OCCASSION_SRC_KEY, LOCATION_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>ITEM_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>PRODUCT_HUB_ID</td></tr><tr><td>ITEM_SRC_KEY</td><td>&rarr;</td><td>PRODUCT_ID</td></tr><tr><td>OCCASSION_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>OCCASION_HUB_ID</td></tr><tr><td>LOCATION_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LOCATION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end NCR tab -->
+
+<!-- ============================================================ MARKETMAN ============================================================ -->
+<div id="tab-mm" class="tab-panel">
+  <div class="int-hdr">
+    <h2>MarketMan <span class="type-badge inv">Inventory</span></h2>
+    <div><span class="schema-tag">int_marketman001</span></div>
+    <div class="api-url">Source: MarketMan REST API v3 &mdash; https://api.marketman.com &mdash; All endpoints POST with BuyerGuid</div>
+  </div>
+
+  <div class="sec">DL Tables (34)</div>
+  <div class="dlg"><div class="dlgt">Actual vs Theoretical Usage</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_ACTUAL_VS_THEO</code></td><td>Header: IsSuccess, ErrorMessage, RequestID, storeId</td></tr>
+      <tr><td><code>DL_ACTUAL_VS_THEO_ACTUALTHEOCATEGORIESTOTALSROWS</code></td><td>Category totals: COGSCategory, CategorySales, ActualUsage, TheoreticalUsage, ActualGPPercent</td></tr>
+      <tr><td><code>DL_ACTUAL_VS_THEO_ACTUALTHEODATAROWS</code></td><td>Item-level detail rows within the A vs T report</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Categories / Buyer Users</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_CATEGORIES</code></td><td>Inventory categories: ID, Name, ParentID</td></tr>
+      <tr><td><code>DL_BUYER_USERS</code></td><td>User accounts: ID, Name, Email, Role</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Documents (Invoices / Credit Notes)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_DOCS_BY_DATE</code></td><td>Document header: DocNumber, DocDate, DocType, TotalAmount, storeId</td></tr>
+      <tr><td><code>DL_DOCS_BY_DATE_HISTORYLOG</code></td><td>Status history log entries per document</td></tr>
+      <tr><td><code>DL_DOCS_BY_DATE_ITEMS</code></td><td>Line items: CatalogItemID, Quantity, UnitPrice</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Inventory Counts</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_INVENTORY_COUNTS</code></td><td>Count header: ID, CountDate, Status, storeId</td></tr>
+      <tr><td><code>DL_INVENTORY_COUNTS_LINES</code></td><td>Count lines: LineID, ItemID, CountedQuantity, UOM</td></tr>
+      <tr><td><code>DL_INVENTORY_COUNTS_LINES_COUNTDEFDETAILS</code></td><td>Count definition details per line</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Inventory Items (Master Data)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_INVENTORY_ITEMS</code></td><td>Master item: ID, Name, CategoryID, UOM, ParLevel, IsDeleted (includes deleted)</td></tr>
+      <tr><td><code>DL_INVENTORY_ITEMS_PURCHASEITEMS</code></td><td>Vendor purchase configs: ProductCode, VendorGuid, PackSize, Price</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Inventory Preps / Menu Items</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_INVENTORY_PREPS</code></td><td>Prep recipe header: ID, Name, Yield, UOM</td></tr>
+      <tr><td><code>DL_INVENTORY_PREPS_SUBITEMS</code></td><td>Recipe sub-ingredients: ItemID, Quantity, UOM</td></tr>
+      <tr><td><code>DL_MENU_ITEMS</code></td><td>Menu item: ID, Name, PosCode, Price, RecipeIngredientsCost</td></tr>
+      <tr><td><code>DL_MENU_ITEMS_LOCATIONSYNCINFOS</code></td><td>Location-specific sync metadata per menu item</td></tr>
+      <tr><td><code>DL_MENU_ITEMS_SUBITEMS</code></td><td>Menu item sub-items: ItemID, Quantity</td></tr>
+      <tr><td><code>DL_MENU_PROFITABILITY</code></td><td>Profitability snapshot: ID, Name, SalesAmount, CostAmount, Margin</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Orders / Production / Sales</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_ORDERS_BY_SENTDATE</code></td><td>Purchase order header: OrderNumber, SupplierGuid, OrderDate, Status, storeId</td></tr>
+      <tr><td><code>DL_ORDERS_BY_SENTDATE_HISTORYLOG</code></td><td>Order status history</td></tr>
+      <tr><td><code>DL_ORDERS_BY_SENTDATE_ITEMS</code></td><td>Order items: CatalogItemID, Quantity, UnitPrice, PackSize</td></tr>
+      <tr><td><code>DL_PRODUCTION_EVENTS</code></td><td>Production event header: EventID, EventDate, Notes, storeId</td></tr>
+      <tr><td><code>DL_PRODUCTION_EVENTS_PRODUCTIONITEMS</code></td><td>Items produced: ItemID, Quantity, UOM</td></tr>
+      <tr><td><code>DL_SALES_BY_DATE</code></td><td>Sales summary: SaleSummaryID, SaleDate, TotalSales, storeId</td></tr>
+      <tr><td><code>DL_SALES_BY_DATE_CATEGORYSUMMARIES</code></td><td>Category sales breakdown: CategoryName, Sales, Quantity</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Reference / Transfers / Waste</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_STORE</code></td><td>Store reference: storeId, StoreName</td></tr>
+      <tr><td><code>DL_TAX_LEVELS</code></td><td>Tax levels: ID, Name, Rate</td></tr>
+      <tr><td><code>DL_UOM_TYPES</code></td><td>Unit of measure types: ID, Name, BaseUnitID</td></tr>
+      <tr><td><code>DL_VENDORS</code></td><td>Vendor master: Guid, Name, ContactName, Email</td></tr>
+      <tr><td><code>DL_TRANSFERS</code></td><td>Transfer header: ID, TransferDate, FromStore, ToStore, storeId</td></tr>
+      <tr><td><code>DL_TRANSFERS_LINES</code></td><td>Transfer items: LineID, ItemID, Quantity, UOM</td></tr>
+      <tr><td><code>DL_WASTE_EVENTS</code></td><td>Waste header: ID, WasteDate, Reason, storeId</td></tr>
+      <tr><td><code>DL_WASTE_EVENTS_LINES</code></td><td>Waste items: LineID, ItemID, Quantity, UOM, Cost</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="sec">Staging Pipeline (17 Steps)</div>
+  <div class="tier-wrap">
+    <div class="tier-blk t1">
+      <h4>Tier 1 &mdash; Base Staging (16)</h4>
+      <div class="tstep">Inventory Items<span class="ts">MMAN_INVITEMS</span></div>
+      <div class="tstep">Invoice Items<span class="ts">MMAN_PRE_INVOICE</span></div>
+      <div class="tstep">Location<span class="ts">MMAN_LOCATION</span></div>
+      <div class="tstep">Prep Recipes<span class="ts">MMAN_PREP_RECIPES</span></div>
+      <div class="tstep">Order Items<span class="ts">MMAN_PRE_ORDEREVENT</span></div>
+      <div class="tstep">Product Details<span class="ts">MMAN_PRODUCT</span></div>
+      <div class="tstep">Production<span class="ts">MMAN_PRE_PRODUCTION</span></div>
+      <div class="tstep">Production Events<span class="ts">MMAN_PROD_EVENTS</span></div>
+      <div class="tstep">Report<span class="ts">MMAN_REPORT</span></div>
+      <div class="tstep">Sales<span class="ts">MMAN_SALES</span></div>
+      <div class="tstep">Sales Line Item<span class="ts">MMAN_LINEITEM</span></div>
+      <div class="tstep">Stock Count<span class="ts">MMAN_PRE_STOCK_COUNT</span></div>
+      <div class="tstep">Stock Orders<span class="ts">MMAN_STOCKORDER</span></div>
+      <div class="tstep">Transfers<span class="ts">MMAN_TRANSFERS</span></div>
+      <div class="tstep">Vendors<span class="ts">MMAN_VENDORS</span></div>
+      <div class="tstep">Waste Events<span class="ts">MMAN_WASTE_EVENTS</span></div>
+    </div>
+    <div class="tier-blk t2">
+      <h4>Tier 2 &mdash; Derived (1)</h4>
+      <div class="tstep">Stock Event<span class="ts">MMAN_STOCKEVENT</span></div>
+      <p style="font-size:11px;color:var(--text2);margin-top:8px">Consolidates orders, transfers, waste events, and inventory counts into unified stock event stream. ROW_NUMBER() dedup by SRC_KEY + EVENT_BEHAVIOUR.</p>
+    </div>
+  </div>
+
+  <div class="sec">Entity Mappings (22)</div>
+  <div class="ibox"><strong>Notable:</strong> LOCATION_OCCASION_PRODUCT is the only mapping with <code>type2_columns</code> set (NET_PRICE, NET_COST) &mdash; enabling historical price/margin analysis. Source column <code>EVENT_BEHANIOUR</code> and entity column <code>UOM_QUANITY</code> are typos baked into the schema.</div>
+<div class="sec">Hub Mappings (9)</div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">CUSTORDER</span>
+      <span class="acc-sub">source: MMAN_LINEITEM &bull; 8 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_LINEITEM</span>
+        <span><strong>Hash Keys:</strong> HEADER_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>NET_VALUE_HDR</td><td>&rarr;</td><td>NET_SALES</td></tr><tr><td>QUANTITY_HDR</td><td>&rarr;</td><td>ITEM_COUNT</td></tr><tr><td>GROSS_VALUE_HDR</td><td>&rarr;</td><td>GROSS_SALES</td></tr><tr><td>SALE_DATE</td><td>&rarr;</td><td>OPEN_TIME</td></tr><tr><td>SALE_DATE</td><td>&rarr;</td><td>CLOSE_TIME</td></tr><tr><td>SALE_DATE</td><td>&rarr;</td><td>ORDER_DATE</td></tr><tr><td>SALE_DATE</td><td>&rarr;</td><td>TRADING_DATE</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">INVITEM</span>
+      <span class="acc-sub">source: MMAN_INVITEMS &bull; 12 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_INVITEMS</span>
+        <span><strong>Hash Keys:</strong> INVITEM_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>INVITEM_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>InvItemName</td><td>&rarr;</td><td>INVITEM_NAME</td></tr><tr><td>PARENT_ID</td><td>&rarr;</td><td>PARENT_ID</td></tr><tr><td>PARENT_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>UOM</td><td>&rarr;</td><td>UOM</td></tr><tr><td>ParLevel</td><td>&rarr;</td><td>ATTR_1</td></tr><tr><td>MinOrderQty</td><td>&rarr;</td><td>ATTR_2</td></tr><tr><td>MaxOrderQty</td><td>&rarr;</td><td>ATTR_3</td></tr><tr><td>DateRangeType</td><td>&rarr;</td><td>ATTR_4</td></tr><tr><td>IsDeleted</td><td>&rarr;</td><td>ATTR_5</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr><tr><td>INVITEM_ID</td><td>&rarr;</td><td>INVITEM_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">INVREPORT</span>
+      <span class="acc-sub">source: MMAN_REPORT &bull; 13 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_REPORT</span>
+        <span><strong>Hash Keys:</strong> REPORT_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>REPORT_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>TheoreticalUsageInReportingUOM</td><td>&rarr;</td><td>THEO_USAGE</td></tr><tr><td>ActualUsageInReportingUOM</td><td>&rarr;</td><td>ACTUAL_USAGE</td></tr><tr><td>VarianceQTYInReportingUOM</td><td>&rarr;</td><td>VARIANCE_QTY</td></tr><tr><td>RecordedWasteInReportingUOM</td><td>&rarr;</td><td>WASTE_QTY</td></tr><tr><td>REPORTING_DATE</td><td>&rarr;</td><td>REPORTING_DATE</td></tr><tr><td>ReportingUOM</td><td>&rarr;</td><td>REPORTING_UOM</td></tr><tr><td>CostByBlendedAverageByReportingUOM</td><td>&rarr;</td><td>UOM_COST</td></tr><tr><td>SalesUsageInReportingUOM</td><td>&rarr;</td><td>SALES_QTY</td></tr><tr><td>PurchaseQtyInReportingUOM</td><td>&rarr;</td><td>ORDER_QTY</td></tr><tr><td>TransferQtyInReportingUOM</td><td>&rarr;</td><td>TRANSFER_QTY</td></tr><tr><td>AvgDaysBetweenCounts</td><td>&rarr;</td><td>COUNT_FREQUENCY</td></tr><tr><td>DaysSinceLastCount</td><td>&rarr;</td><td>COUNT_RECENCY</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">LINEITEM</span>
+      <span class="acc-sub">source: MMAN_LINEITEM &bull; 11 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_LINEITEM</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>HEADER_ID</td><td>&rarr;</td><td>HEADER_ID</td></tr><tr><td>LINEITEM_TYPE</td><td>&rarr;</td><td>LINEITEM_TYPE</td></tr><tr><td>QUANTITY_FINAL</td><td>&rarr;</td><td>QUANTITY</td></tr><tr><td>QUANTITY_FINAL</td><td>&rarr;</td><td>QUANTITY_INV</td></tr><tr><td>SALE_DATE</td><td>&rarr;</td><td>LINEITEM_TIMESTAMP</td></tr><tr><td>SALE_DATE</td><td>&rarr;</td><td>ORDER_DATE</td></tr><tr><td>SALE_DATE</td><td>&rarr;</td><td>ITEM_DATE</td></tr><tr><td>SALE_DATE</td><td>&rarr;</td><td>TRADING_DATE</td></tr><tr><td>NET_VALUE</td><td>&rarr;</td><td>NET_VALUE</td></tr><tr><td>GROSS_VALUE</td><td>&rarr;</td><td>GROSS_VALUE</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">LOCATION</span>
+      <span class="acc-sub">source: MMAN_LOCATION &bull; 5 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_LOCATION</span>
+        <span><strong>Hash Keys:</strong> storeId</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>storeId <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>storeId</td><td>&rarr;</td><td>LOCATION_ID</td></tr><tr><td>StoreName</td><td>&rarr;</td><td>LOCATION_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LOCATION_OCCASION_PRODUCT</span>
+      <span class="acc-sub">source: MMAN_PRODUCT &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_PRODUCT</span>
+        <span><strong>Hash Keys:</strong> storeId, OCC_ID, PosCode</span>
+        <span><strong>Type-2 Cols:</strong> NET_PRICE, NET_COST</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PosCode</td><td>&rarr;</td><td>PRODUCT_ID</td></tr><tr><td>storeId <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LOCATION_HUB_ID</td></tr><tr><td>OCC_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>OCCASION_HUB_ID</td></tr><tr><td>MenuItemPrice</td><td>&rarr;</td><td>NET_PRICE <span class="t2k" title="Type-2 tracked">[T2]</span></td></tr><tr><td>RecipeIngredientsCost</td><td>&rarr;</td><td>NET_COST <span class="t2k" title="Type-2 tracked">[T2]</span></td></tr><tr><td>PosCode <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>PRODUCT_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">PRODUCT</span>
+      <span class="acc-sub">source: MMAN_PRODUCT &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_PRODUCT</span>
+        <span><strong>Hash Keys:</strong> PosCode</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PosCode <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>PosCode</td><td>&rarr;</td><td>PRODUCT_ID</td></tr><tr><td>MenuItemName</td><td>&rarr;</td><td>PRODUCT_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>PARENT_ID</td><td>&rarr;</td><td>PARENT_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">STOCKEVENT</span>
+      <span class="acc-sub">source: MMAN_STOCKEVENT &bull; 10 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_STOCKEVENT</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>EVENT_TYPE</td><td>&rarr;</td><td>EVENT_TYPE</td></tr><tr><td>EVENT_TS</td><td>&rarr;</td><td>EVENT_TS</td></tr><tr><td>PACK_DESC</td><td>&rarr;</td><td>PACK_DESC</td></tr><tr><td>PACK_QUANTITY</td><td>&rarr;</td><td>PACK_QUANTITY</td></tr><tr><td>UOM</td><td>&rarr;</td><td>UOM</td></tr><tr><td>UOM_QUANTITY</td><td>&rarr;</td><td>UOM_QUANITY</td></tr><tr><td>EXTERNAL_REF</td><td>&rarr;</td><td>EXTERNAL_REF</td></tr><tr><td>EVENT_BEHANIOUR</td><td>&rarr;</td><td>EVENT_BEHAVIOUR</td></tr><tr><td>itemId</td><td>&rarr;</td><td>INTERNAL_REF</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">STOCKORDER</span>
+      <span class="acc-sub">source: MMAN_STOCKORDER &bull; 7 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_STOCKORDER</span>
+        <span><strong>Hash Keys:</strong> ORDER_SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>ORDER_SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>ORDER_DATE</td><td>&rarr;</td><td>ORDER_DATE</td></tr><tr><td>DELIVERY_DATE</td><td>&rarr;</td><td>DELIVERY_DATE</td></tr><tr><td>ORDER_TOTAL</td><td>&rarr;</td><td>ORDER_TOTAL</td></tr><tr><td>ORDER_TAX</td><td>&rarr;</td><td>ORDER_TAX</td></tr><tr><td>ORDER_INFO</td><td>&rarr;</td><td>ORDER_INFO</td></tr><tr><td>ORDER_STATUS</td><td>&rarr;</td><td>ORDER_STATUS</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">SUPPLIER</span>
+      <span class="acc-sub">source: MMAN_VENDORS &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_VENDORS</span>
+        <span><strong>Hash Keys:</strong> Name</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>Name <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>Name</td><td>&rarr;</td><td>SUPPLIER_NAME</td></tr></tbody>
+      </table>
+    </div>
+  </div><div class="sec" style="margin-top:20px">Link Mappings (13)</div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CUSTORDER_LINEITEM</span>
+      <span class="acc-sub">source: MMAN_LINEITEM &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_LINEITEM</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, HEADER_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CUSTORDER_LOCATION</span>
+      <span class="acc-sub">source: MMAN_LINEITEM &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_LINEITEM</span>
+        <span><strong>Hash Keys:</strong> HEADER_ID, storeId</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr><tr><td>storeId <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LOCATION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">CUSTORDER_OCCASION</span>
+      <span class="acc-sub">source: MMAN_LINEITEM &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_LINEITEM</span>
+        <span><strong>Hash Keys:</strong> HEADER_ID, OCC_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>HEADER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CUSTORDER_HUB_ID</td></tr><tr><td>OCC_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>OCCASION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">INVITEM_INVITEM</span>
+      <span class="acc-sub">source: MMAN_PREP_RECIPES &bull; 4 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_PREP_RECIPES</span>
+        <span><strong>Hash Keys:</strong> PARENT_HUB_ID, CHILD_HUB_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PARENT_HUB_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>PARENT_HUB_ID</td></tr><tr><td>CHILD_HUB_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>CHILD_HUB_ID</td></tr><tr><td>UOM</td><td>&rarr;</td><td>UOM</td></tr><tr><td>UOM_VALUE</td><td>&rarr;</td><td>UOM_VALUE</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">INVITEM_INVREPORT</span>
+      <span class="acc-sub">source: MMAN_REPORT &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_REPORT</span>
+        <span><strong>Hash Keys:</strong> ItemID, REPORT_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>ItemID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>INVITEM_HUB_ID</td></tr><tr><td>REPORT_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>INVREPORT_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">INVITEM_LOCATION_OCCASION_PRODUCT</span>
+      <span class="acc-sub">source: MMAN_PRODUCT &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_PRODUCT</span>
+        <span><strong>Hash Keys:</strong> PosCode, INVITEM_ID, OCC_ID, storeId</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>PosCode <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>PRODUCT_HUB_ID</td></tr><tr><td>INVITEM_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>INVITEM_HUB_ID</td></tr><tr><td>OCC_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>OCCASION_HUB_ID</td></tr><tr><td>UOM</td><td>&rarr;</td><td>UOM</td></tr><tr><td>UOM_VALUE</td><td>&rarr;</td><td>UOM_VALUE</td></tr><tr><td>storeId <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LOCATION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">INVITEM_STOCKEVENT</span>
+      <span class="acc-sub">source: MMAN_STOCKEVENT &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_STOCKEVENT</span>
+        <span><strong>Hash Keys:</strong> itemId, SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>itemId <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>INVITEM_HUB_ID</td></tr><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>STOCKEVENT_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">INVITEM_STOCKORDER</span>
+      <span class="acc-sub">source: MMAN_PRE_ORDEREVENT &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_PRE_ORDEREVENT</span>
+        <span><strong>Hash Keys:</strong> OrderNumber, ItemId</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>OrderNumber <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>STOCKORDER_HUB_ID</td></tr><tr><td>ItemId <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>INVITEM_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">INVREPORT_LOCATION</span>
+      <span class="acc-sub">source: MMAN_REPORT &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_REPORT</span>
+        <span><strong>Hash Keys:</strong> REPORT_ID, storeId</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>REPORT_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>INVREPORT_HUB_ID</td></tr><tr><td>storeId <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LOCATION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_OCCASION</span>
+      <span class="acc-sub">source: MMAN_LINEITEM &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_LINEITEM</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, OCC_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>OCC_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>OCCASION_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LINEITEM_PRODUCT</span>
+      <span class="acc-sub">source: MMAN_LINEITEM &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_LINEITEM</span>
+        <span><strong>Hash Keys:</strong> SRC_KEY, PosCode</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LINEITEM_HUB_ID</td></tr><tr><td>PosCode <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>PRODUCT_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">LOCATION_STOCKEVENT</span>
+      <span class="acc-sub">source: MMAN_STOCKEVENT &bull; 2 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> MMAN_STOCKEVENT</span>
+        <span><strong>Hash Keys:</strong> storeID, SRC_KEY</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>storeID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>LOCATION_HUB_ID</td></tr><tr><td>SRC_KEY <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>STOCKEVENT_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end MM tab -->
+
+<div id="tab-gz" class="tab-panel">
+  <div class="int-hdr">
+    <h2>Growyze <span class="type-badge inv">Inventory</span></h2>
+    <div><span class="schema-tag">int_growyze001</span></div>
+    <div class="api-url">Source: Growyze REST API v1 &mdash; https://prod.growyze.com &mdash; GET requests, paginated via content array</div>
+  </div>
+  <div class="wbox"><strong>No Staging or Mapping SQL files in release scripts.</strong> Growyze embeds all staging query logic and entity mapping definitions within the INIT file (~691 lines). The staging and mapping steps follow the same StagingControl / EntityMappings upsert pattern but are consolidated into a single deployment script.</div>
+
+  <div class="sec">API Endpoints (7)</div>
+  <table class="dtable"><thead><tr><th>Endpoint</th><th>API Path</th><th>Description</th><th>Nesting Depth</th></tr></thead><tbody>
+    <tr><td>products</td><td>products</td><td>Products/inventory items with allergens, barcodes, ingredients, organizations</td><td>2 levels</td></tr>
+    <tr><td>recipes</td><td>recipes</td><td>Recipes/dishes with ingredients, sections, elements, nested product refs</td><td>5+ levels</td></tr>
+    <tr><td>orders</td><td>orders</td><td>Purchase orders with items, supplier, approvals, org metadata</td><td>3 levels</td></tr>
+    <tr><td>delivery-notes</td><td>delivery-notes</td><td>Delivery notes/GRNs with products, supplier, org metadata</td><td>2 levels</td></tr>
+    <tr><td>invoices</td><td>invoices</td><td>Invoices with products, delivery note links, Sage &amp; Xero accounting integration</td><td>3 levels</td></tr>
+    <tr><td>sales</td><td>sales</td><td>Sales records with items, organizations, sub-sales</td><td>2 levels</td></tr>
+    <tr><td>wastes</td><td>wastes</td><td>Waste records by day, broken down by dish, product, recipe with per-day quantities</td><td>3 levels</td></tr>
+  </tbody></table>
+
+  <div class="sec">DL Tables (57)</div>
+  <div class="dlg"><div class="dlgt">Delivery Notes (6 tables)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_DELIVERYNOTES</code></td><td>Header: id, deliveryDate, status, supplierId, totalAmount</td></tr>
+      <tr><td><code>DL_DELIVERYNOTES_ORGANIZATIONS</code></td><td>Organization codes associated with delivery note</td></tr>
+      <tr><td><code>DL_DELIVERYNOTES_ORGANIZATIONSNAMES</code></td><td>Organization display names</td></tr>
+      <tr><td><code>DL_DELIVERYNOTES_PRODUCTS</code></td><td>Products received: code, name, quantity, unitPrice, packSize</td></tr>
+      <tr><td><code>DL_DELIVERYNOTES_SUPPLIER</code></td><td>Supplier embedded in delivery note: id, name, contact fields</td></tr>
+      <tr><td><code>DL_DELIVERYNOTES_SUPPLIER_EMAILS</code></td><td>Supplier email addresses</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Invoices (9 tables)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_INVOICES</code></td><td>Header: id, invoiceDate, status, supplierId, totalAmount</td></tr>
+      <tr><td><code>DL_INVOICES_DELIVERYNOTES</code></td><td>Linked delivery note references</td></tr>
+      <tr><td><code>DL_INVOICES_GLOBALDISCREPANCIES</code></td><td>Global discrepancy records on the invoice</td></tr>
+      <tr><td><code>DL_INVOICES_ORGANIZATIONS</code></td><td>Organization codes</td></tr>
+      <tr><td><code>DL_INVOICES_ORGANIZATIONSNAMES</code></td><td>Organization display names</td></tr>
+      <tr><td><code>DL_INVOICES_PRODUCTS</code></td><td>Invoice line items: code, name, quantity, unitPrice</td></tr>
+      <tr><td><code>DL_INVOICES_SAGEINVOICE</code></td><td>Sage accounting integration metadata: invoiceNumber</td></tr>
+      <tr><td><code>DL_INVOICES_SAGEINVOICE_LINEITEMS</code></td><td>Sage line items within accounting record</td></tr>
+      <tr><td><code>DL_INVOICES_SUPPLIER</code></td><td>Supplier embedded in invoice</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Orders (5 tables)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_ORDERS</code></td><td>Purchase order header: id, orderDate, status, supplierId</td></tr>
+      <tr><td><code>DL_ORDERS_ITEMS</code></td><td>Ordered items: productId, quantity, unitPrice, packSize</td></tr>
+      <tr><td><code>DL_ORDERS_ORGANIZATIONS</code></td><td>Organization codes on the order</td></tr>
+      <tr><td><code>DL_ORDERS_ORGANIZATIONSNAMES</code></td><td>Organization display names</td></tr>
+      <tr><td><code>DL_ORDERS_SUPPLIER</code></td><td>Supplier embedded in order</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Products (6 tables)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_PRODUCTS</code></td><td>Product master: id, name, categoryId, uom, cost</td></tr>
+      <tr><td><code>DL_PRODUCTS_ALLERGENS</code></td><td>Allergen tags on the product</td></tr>
+      <tr><td><code>DL_PRODUCTS_BARCODES</code></td><td>Barcode values</td></tr>
+      <tr><td><code>DL_PRODUCTS_INGREDIENTS</code></td><td>Ingredient sub-components</td></tr>
+      <tr><td><code>DL_PRODUCTS_MAYCONTAINALLERGENS</code></td><td>May-contain allergen declarations</td></tr>
+      <tr><td><code>DL_PRODUCTS_ORGANIZATIONS</code></td><td>Organization assignments</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Recipes (18 tables)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_RECIPES</code></td><td>Recipe header: id, name, categoryId, yield, uom</td></tr>
+      <tr><td><code>DL_RECIPES_ALLERGENS</code></td><td>Allergen tags on the recipe</td></tr>
+      <tr><td><code>DL_RECIPES_DISHES</code></td><td>Dish associations</td></tr>
+      <tr><td><code>DL_RECIPES_INGREDIENTS</code></td><td>Top-level ingredients of the recipe</td></tr>
+      <tr><td><code>DL_RECIPES_INGREDIENTS_PRODUCT</code></td><td>Product referenced by top-level ingredient</td></tr>
+      <tr><td><code>DL_RECIPES_INGREDIENTS_PRODUCT_ALLERGENS</code></td><td>Allergens on the ingredient product</td></tr>
+      <tr><td><code>DL_RECIPES_INGREDIENTSINPRODUCTS</code></td><td>Ingredients-in-products cross-reference</td></tr>
+      <tr><td><code>DL_RECIPES_MAYCONTAINALLERGENS</code></td><td>May-contain allergen declarations for the recipe</td></tr>
+      <tr><td><code>DL_RECIPES_ORGANIZATIONS</code></td><td>Organization assignments</td></tr>
+      <tr><td><code>DL_RECIPES_SECTIONS</code></td><td>Recipe sections</td></tr>
+      <tr><td><code>DL_RECIPES_SECTIONS_ELEMENTS</code></td><td>Elements within each section: type (ingredient or recipe)</td></tr>
+      <tr><td><code>DL_RECIPES_SECTIONS_ELEMENTS_INGREDIENT</code></td><td>Ingredient-type element detail</td></tr>
+      <tr><td><code>DL_RECIPES_SECTIONS_ELEMENTS_INGREDIENT_PRODUCT</code></td><td>Product referenced by the section ingredient</td></tr>
+      <tr><td><code>DL_RECIPES_SECTIONS_ELEMENTS_INGREDIENT_PRODUCT_ALLERGENS</code></td><td>Allergens on that product</td></tr>
+      <tr><td><code>DL_RECIPES_SECTIONS_ELEMENTS_INGREDIENT_PRODUCT_INGREDIENTS</code></td><td>Sub-ingredients of the product</td></tr>
+      <tr><td><code>DL_RECIPES_SECTIONS_ELEMENTS_INGREDIENT_PRODUCT_MAYCONTAINALLERGENS</code></td><td>May-contain declarations</td></tr>
+      <tr><td><code>DL_RECIPES_SECTIONS_ELEMENTS_RECIPE</code></td><td>Recursive recipe-type element: embedded sub-recipe reference</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Sales / Wastes (13 tables)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_SALES</code></td><td>Sales record: id, saleDate, totalAmount, organizationId</td></tr>
+      <tr><td><code>DL_SALES_ORGANIZATIONS</code></td><td>Organization codes on the sale</td></tr>
+      <tr><td><code>DL_WASTES</code></td><td>Waste day header: id, wasteDate, organizationId</td></tr>
+      <tr><td><code>DL_WASTES_DISHES</code></td><td>Dish waste grouping entries</td></tr>
+      <tr><td><code>DL_WASTES_DISHES_DISH</code></td><td>Dish reference: id, name</td></tr>
+      <tr><td><code>DL_WASTES_DISHES_WASTESPERDAY</code></td><td>Per-day waste quantity for each dish</td></tr>
+      <tr><td><code>DL_WASTES_ORGANIZATIONS</code></td><td>Organization codes on waste record</td></tr>
+      <tr><td><code>DL_WASTES_ORGANIZATIONSNAMES</code></td><td>Organization display names</td></tr>
+      <tr><td><code>DL_WASTES_PRODUCTS</code></td><td>Product waste grouping entries</td></tr>
+      <tr><td><code>DL_WASTES_PRODUCTS_PRODUCT</code></td><td>Product reference: id, name</td></tr>
+      <tr><td><code>DL_WASTES_PRODUCTS_WASTESPERDAY</code></td><td>Per-day waste quantity for each product</td></tr>
+      <tr><td><code>DL_WASTES_RECIPES</code></td><td>Recipe waste grouping entries</td></tr>
+      <tr><td><code>DL_WASTES_RECIPES_WASTESPERDAY</code></td><td>Per-day waste quantity for each recipe</td></tr>
+    </tbody></table>
+  </div>
+</div><!-- end Growyze tab -->
+
+<!-- ============================================================ SURVEYHERO ============================================================ -->
+<div id="tab-sh" class="tab-panel">
+  <div class="int-hdr">
+    <h2>SurveyHero <span class="type-badge survey">Survey</span></h2>
+    <div><span class="schema-tag">int_surveyhero001</span></div>
+    <div class="api-url">Source: SurveyHero REST API v1 &mdash; https://api.surveyhero.com &mdash; Page-based pagination (has_more / page)</div>
+  </div>
+
+  <div class="sec">DL Tables (8 declared + 14 referenced in staging)</div>
+  <div class="dlg"><div class="dlgt">Core DL Tables (declared in DDL)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Key Columns</th></tr></thead><tbody>
+      <tr><td><code>DL_ANSWERS</code></td><td>survey_id, response_id, element_id, question_text, answer_type, text_value, number_value, file_value</td></tr>
+      <tr><td><code>DL_ANSWERS_CHOICES</code></td><td>survey_id, response_id, element_id, choice_id, label, image_url, row_id</td></tr>
+      <tr><td><code>DL_ANSWERS_INPUT_TABLE</code></td><td>survey_id, response_id, element_id, row_id, column_id, value</td></tr>
+      <tr><td><code>DL_ANSWERS_RANKING</code></td><td>survey_id, response_id, element_id, choice_id, rank</td></tr>
+      <tr><td><code>DL_ELEMENTS</code></td><td>survey_id, element_id, type, question_text, description_text, question_type, is_required, settings_json</td></tr>
+      <tr><td><code>DL_ELEMENTS_CHOICES</code></td><td>survey_id, element_id, choice_id, label, image_url, row_id, column_id</td></tr>
+      <tr><td><code>DL_RESPONSES</code></td><td>survey_id, response_id, collector_id, started_on, last_updated_on, status, language, ip_address</td></tr>
+      <tr><td><code>DL_SURVEYS</code></td><td>survey_id, title, language, created_on, modified_on, settings_is_anonymous, status</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Additional DL Tables (responses endpoint, referenced in staging)</div>
+    <table class="dtable"><thead><tr><th>Table</th><th>Description</th></tr></thead><tbody>
+      <tr><td><code>DL_RESPONSES_ANSWERS</code></td><td>Answer records per response: answer_element_id, answer_question_text, answer_type</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_CHOICES</code></td><td>Choice-type selections: choice_id, label</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_CHOICETABLES</code></td><td>Table-question row selections: row_id, row_label</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_CHOICETABLES_CHOICES</code></td><td>Cell-level table values: choice_id, label</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_DATES</code></td><td>Date-type answer values: value</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_INPUTS</code></td><td>Free-text input answers: input_id, label</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_NUMBERS</code></td><td>Numeric answer values: value</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_RANKINGS_NOTAPPLICABLE</code></td><td>N/A selections: choice_id, label</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_RANKINGS_RANKED</code></td><td>Ranked selections: choice_id, label, rank</td></tr>
+      <tr><td><code>DL_RESPONSES_ANSWERS_TEXTS</code></td><td>Long-text answer values: value</td></tr>
+      <tr><td><code>DL_ELEMENTS_QUESTIONS</code></td><td>Question elements with question_text, description_text</td></tr>
+      <tr><td><code>DL_ELEMENTS_QUESTIONS_CHOICELISTS_CHOICES</code></td><td>Choice list options per question: choice_id, label</td></tr>
+      <tr><td><code>DL_ELEMENTS_QUESTIONS_RATINGSCALES</code></td><td>Rating scale settings: left_label, left_value, right_label, right_value</td></tr>
+      <tr><td><code>DL_ELEMENTS_TEXTS</code></td><td>Text-type element content</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="sec">Staging Pipeline (3 Steps)</div>
+  <div class="tier-wrap">
+    <div class="tier-blk t1">
+      <h4>Tier 1 (1 step)</h4>
+      <div class="tstep">Element Mapping Table<span class="ts">SH_ELEMENT_MAPPING</span></div>
+      <p style="font-size:11px;color:var(--text2);margin-top:8px">Hardcoded VALUES clause with 100+ explicit (survey_id, element_id, parent_element_id) tuples. Establishes manual parent-child hierarchy for survey 2021183.</p>
+    </div>
+    <div class="tier-blk t2">
+      <h4>Tier 2 (2 steps)</h4>
+      <div class="tstep">Survey Hero Main<span class="ts">SH_MAIN</span></div>
+      <p style="font-size:11px;color:var(--text2);margin-top:4px;margin-bottom:8px">9-way COALESCE across all answer type tables. Produces: TOUCHPOINT_ID, QUESTION_ID, ANSWER_ID, ANSWER, TOUCHPOINT_STATUS, TOUCHPOINT_DATE, TOUCHPOINT_TYPE.</p>
+      <div class="tstep">Survey Hero Questions<span class="ts">SH_QUESTIONS</span></div>
+      <p style="font-size:11px;color:var(--text2);margin-top:4px">Joins question elements to element mapping for PARENT_ID. UNION ALL to generate synthetic rating scale sub-questions.</p>
+    </div>
+  </div>
+
+  <div class="sec">Entity Mappings (4)</div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">TOUCHPOINT</span>
+      <span class="acc-sub">source: SH_MAIN &bull; 4 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> SH_MAIN</span>
+        <span><strong>Hash Keys:</strong> TOUCHPOINT_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>TOUCHPOINT_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>TOUCHPOINT_TYPE</td><td>&rarr;</td><td>TOUCHPOINT_TYPE</td></tr><tr><td>TOUCHPOINT_DATE</td><td>&rarr;</td><td>TOUCHPOINT_DATETIME</td></tr><tr><td>TOUCHPOINT_STATUS</td><td>&rarr;</td><td>TOUCHPOINT_STATUS</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">QUESTION</span>
+      <span class="acc-sub">source: SH_QUESTIONS &bull; 6 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> SH_QUESTIONS</span>
+        <span><strong>Hash Keys:</strong> QUESTION_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>QUESTION_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>parent_element_id</td><td>&rarr;</td><td>PARENT_ID</td></tr><tr><td>question_text</td><td>&rarr;</td><td>QUESTION</td></tr><tr><td>LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr><tr><td>QUESTION_ID</td><td>&rarr;</td><td>QUESTION_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype hub">Hub</span>
+      <span class="acc-title">ANSWER</span>
+      <span class="acc-sub">source: SH_MAIN &bull; 4 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> SH_MAIN</span>
+        <span><strong>Hash Keys:</strong> ANSWER_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>ANSWER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>HUB_ID</td></tr><tr><td>ANSWER</td><td>&rarr;</td><td>ANSWER</td></tr><tr><td>BOTTOM_LEVEL</td><td>&rarr;</td><td>BOTTOM_LEVEL</td></tr><tr><td>ANSWER_LEVEL_NAME</td><td>&rarr;</td><td>LEVEL_NAME</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc">
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-arr">&#9658;</span>
+      <span class="etype link">Link</span>
+      <span class="acc-title">ANSWER_QUESTION_TOUCHPOINT</span>
+      <span class="acc-sub">source: SH_MAIN &bull; 3 cols</span>
+    </div>
+    <div class="acc-body">
+      <div class="minfo">
+        <span><strong>Source Table:</strong> SH_MAIN</span>
+        <span><strong>Hash Keys:</strong> TOUCHPOINT_ID, QUESTION_ID, ANSWER_ID</span>
+        <span><strong>Type-2 Cols:</strong> None</span>
+        <span><strong>Track Deletions:</strong> No</span>
+      </div>
+      <table class="mtable">
+        <thead><tr><th>Source Column</th><th></th><th>Entity Column</th></tr></thead>
+        <tbody><tr><td>TOUCHPOINT_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>TOUCHPOINT_HUB_ID</td></tr><tr><td>QUESTION_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>QUESTION_HUB_ID</td></tr><tr><td>ANSWER_ID <span class="hk" title="Hash key">&#9670;</span></td><td>&rarr;</td><td>ANSWER_HUB_ID</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end SH tab -->
+
+<div id="tab-troap" class="tab-panel">
+  <div class="int-hdr">
+    <h2>TROAP <span class="type-badge pos">POS</span></h2>
+    <div><span class="schema-tag">int_troap001</span></div>
+    <div class="api-url">Source: Internal Three Rocks OaP SQL Server database (direct table copy, no REST API)</div>
+  </div>
+  <div class="wbox"><strong>No Staging or Mapping SQL files.</strong> TROAP reads directly from an internal SQL Server application database using a table-copy approach. The INIT file stores a "tables" JSON object (not "endpoints") listing 41 source tables with optional delta_columns and parent_table definitions.</div>
+  <div class="ibox"><strong>Delta extraction patterns:</strong> (1) No delta config = full extract (static tables). (2) delta_columns = incremental by DateUpdated/DateCreated. (3) parent_table + fk_column = child table delta driven by parent's delta window.</div>
+
+  <div class="sec">DL Tables (41)</div>
+  <div class="dlg"><div class="dlgt">Reference / Static Tables (23 &mdash; no delta config)</div>
+    <table class="dtable"><thead><tr><th>DL Table</th><th>Source Table</th></tr></thead><tbody>
+      <tr><td><code>DL_Address</code></td><td>[dbo].[Address]</td></tr>
+      <tr><td><code>DL_Allergen</code></td><td>[dbo].[Allergen]</td></tr>
+      <tr><td><code>DL_AllowedStores</code></td><td>[dbo].[AllowedStores]</td></tr>
+      <tr><td><code>DL_AvailabilityRule</code></td><td>[dbo].[AvailabilityRule]</td></tr>
+      <tr><td><code>DL_AvailabilityRuleValidDays</code></td><td>[dbo].[AvailabilityRuleValidDays]</td></tr>
+      <tr><td><code>DL_CouponDiscount</code></td><td>[dbo].[CouponDiscount]</td></tr>
+      <tr><td><code>DL_Device</code></td><td>[dbo].[Device]</td></tr>
+      <tr><td><code>DL_Menu</code></td><td>[dbo].[Menu]</td></tr>
+      <tr><td><code>DL_MenuCategory</code></td><td>[dbo].[MenuCategory]</td></tr>
+      <tr><td><code>DL_MenuCategoryGroup</code></td><td>[dbo].[MenuCategoryGroup]</td></tr>
+      <tr><td><code>DL_MenuPriceBand</code></td><td>[dbo].[MenuPriceBand]</td></tr>
+      <tr><td><code>DL_MenuProduct</code></td><td>[dbo].[MenuProduct]</td></tr>
+      <tr><td><code>DL_Price</code></td><td>[dbo].[Price]</td></tr>
+      <tr><td><code>DL_Product</code></td><td>[dbo].[Product]</td></tr>
+      <tr><td><code>DL_ProductBase</code></td><td>[dbo].[ProductBase]</td></tr>
+      <tr><td><code>DL_ProductCategory</code></td><td>[dbo].[ProductCategory]</td></tr>
+      <tr><td><code>DL_Store</code></td><td>[dbo].[Store]</td></tr>
+      <tr><td><code>DL_StoreOpeningHours</code></td><td>[dbo].[StoreOpeningHours]</td></tr>
+      <tr><td><code>DL_StoreOpeningHoursGroup</code></td><td>[dbo].[StoreOpeningHoursGroup]</td></tr>
+      <tr><td><code>DL_StoreOrderType</code></td><td>[dbo].[StoreOrderType]</td></tr>
+      <tr><td><code>DL_StoreProductOutOfStock</code></td><td>[dbo].[StoreProductOutOfStock]</td></tr>
+      <tr><td><code>DL_ZonalMenu</code></td><td>[dbo].[ZonalMenu]</td></tr>
+      <tr><td><code>DL_ZonalProduct</code></td><td>[dbo].[ZonalProduct]</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Delta Tables &mdash; Own Timestamp (13)</div>
+    <table class="dtable"><thead><tr><th>DL Table</th><th>Source Table</th><th>Delta Columns</th></tr></thead><tbody>
+      <tr><td><code>DL_Basket</code></td><td>[dbo].[Basket]</td><td>DateUpdated, DateCreated</td></tr>
+      <tr><td><code>DL_BasketItem</code></td><td>[dbo].[BasketItem]</td><td>DateUpdated, DateCreated</td></tr>
+      <tr><td><code>DL_BrainTreePaymentIntent</code></td><td>[dbo].[BrainTreePaymentIntent]</td><td>DateUpdated, DateCreated</td></tr>
+      <tr><td><code>DL_BrainTreePaymentLog</code></td><td>[dbo].[BrainTreePaymentLog]</td><td>DateCreated</td></tr>
+      <tr><td><code>DL_Customer</code></td><td>[dbo].[Customer]</td><td>DateUpdated, DateCreated</td></tr>
+      <tr><td><code>DL_CustomerOpenCheck</code></td><td>[dbo].[CustomerOpenCheck]</td><td>DateUpdated, DateCreated</td></tr>
+      <tr><td><code>DL_CustomerOpenCheckBasket</code></td><td>[dbo].[CustomerOpenCheckBasket]</td><td>DateCreated</td></tr>
+      <tr><td><code>DL_Order</code></td><td>[dbo].[Order]</td><td>DateUpdated, DateCreated</td></tr>
+      <tr><td><code>DL_OrderItem</code></td><td>[dbo].[OrderItem]</td><td>DateUpdated, DateCreated</td></tr>
+      <tr><td><code>DL_OrderPayment</code></td><td>[dbo].[OrderPayment]</td><td>DateUpdated, DateCreated</td></tr>
+      <tr><td><code>DL_OrderRefundQueue</code></td><td>[dbo].[OrderRefundQueue]</td><td>DateCreated, DateProcessed</td></tr>
+      <tr><td><code>DL_OrderSplitBill</code></td><td>[dbo].[OrderSplitBill]</td><td>DateCreated</td></tr>
+      <tr><td><code>DL_OrderSplitBillItem</code></td><td>[dbo].[OrderSplitBillItem]</td><td>DateUpdated</td></tr>
+    </tbody></table>
+  </div>
+  <div class="dlg"><div class="dlgt">Delta Tables &mdash; Parent-Driven (5)</div>
+    <table class="dtable"><thead><tr><th>DL Table</th><th>Source Table</th><th>Parent Table</th><th>FK Column</th></tr></thead><tbody>
+      <tr><td><code>DL_CustomerOpenCheckCharge</code></td><td>[dbo].[CustomerOpenCheckCharge]</td><td>CustomerOpenCheck</td><td>CustomerOpenCheckId</td></tr>
+      <tr><td><code>DL_CustomerOpenCheckCouponDiscount</code></td><td>[dbo].[CustomerOpenCheckCouponDiscount]</td><td>CustomerOpenCheck</td><td>CustomerOpenCheckId</td></tr>
+      <tr><td><code>DL_CustomerOpenCheckDiscount</code></td><td>[dbo].[CustomerOpenCheckDiscount]</td><td>CustomerOpenCheck</td><td>CustomerOpenCheckId</td></tr>
+      <tr><td><code>DL_CustomerOpenCheckPromotion</code></td><td>[dbo].[CustomerOpenCheckPromotion]</td><td>CustomerOpenCheck</td><td>CustomerOpenCheckId</td></tr>
+      <tr><td><code>DL_OrderSplitBillPayment</code></td><td>[dbo].[OrderSplitBillPayment]</td><td>OrderSplitBill</td><td>OrderSplitBillId</td></tr>
+    </tbody></table>
+  </div>
+</div><!-- end TROAP tab -->
+
+<div id="tab-coverage" class="tab-panel">
+  <div class="sec" style="margin-top:0">Integration Coverage Matrix</div>
+  <div class="lgrow">
+    <div class="lgi"><div class="lgs" style="background:rgba(108,138,255,.3)"></div>Multi-integration (NCR + MM)</div>
+    <div class="lgi"><div class="lgs" style="background:rgba(78,205,196,.3)"></div>Single integration</div>
+    <div class="lgi"><div class="lgs" style="background:var(--bg3);border:1px solid var(--border)"></div>Not mapped</div>
+  </div>
+  <div class="sr">
+    <input type="text" id="msearch" placeholder="Search entities..." oninput="filterMatrix(this.value)">
+    <button class="fbtn" onclick="filterMapped(true)">Mapped only</button>
+    <button class="fbtn" onclick="filterMapped(false)">All entities</button>
+  </div>
+  <div class="mxwrap">
+    <table class="mx" id="mx-table">
+      <thead>
+        <tr>
+          <th style="min-width:200px;text-align:left">Entity</th>
+          <th style="color:var(--pos)">NCRAloha</th>
+          <th style="color:var(--inv)">MarketMan</th>
+          <th style="color:var(--inv)">Growyze</th>
+          <th style="color:var(--survey)">SurveyHero</th>
+          <th style="color:var(--pos)">TROAP</th>
+        </tr>
+      </thead>
+      <tbody id="mx-body">
+<tr class="grp"><td colspan="6">POS Hubs</td></tr>
+<tr data-entity="CHANNEL"><td class="en">CHANNEL</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="COMP"><td class="en" style="color:var(--text3)">COMP</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CUSTORDER"><td class="en" style="color:var(--accent)">CUSTORDER</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="DEAL"><td class="en">DEAL</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="DISCOUNT"><td class="en">DISCOUNT</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="EMPLOYEE"><td class="en">EMPLOYEE</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="JOB"><td class="en">JOB</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEM"><td class="en" style="color:var(--accent)">LINEITEM</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LOCATION"><td class="en" style="color:var(--accent)">LOCATION</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="MOD"><td class="en">MOD</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="OCCASION"><td class="en" style="color:var(--accent)">OCCASION</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="PRODUCT"><td class="en" style="color:var(--accent)">PRODUCT</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="REVCENTER"><td class="en">REVCENTER</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="SVCCHARGE"><td class="en">SVCCHARGE</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="TAX"><td class="en">TAX</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="TENDER"><td class="en" style="color:var(--text3)">TENDER</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="TIMECARD"><td class="en">TIMECARD</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr class="grp"><td colspan="6">Inventory Hubs</td></tr>
+<tr data-entity="INVITEM"><td class="en">INVITEM</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="INVREPORT"><td class="en">INVREPORT</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="STOCKEVENT"><td class="en">STOCKEVENT</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="STOCKORDER"><td class="en">STOCKORDER</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="SUPPLIER"><td class="en">SUPPLIER</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="DISTRIBUTOR"><td class="en" style="color:var(--text3)">DISTRIBUTOR</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr class="grp"><td colspan="6">Survey Hubs</td></tr>
+<tr data-entity="ANSWER"><td class="en">ANSWER</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="QUESTION"><td class="en">QUESTION</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="TOUCHPOINT"><td class="en">TOUCHPOINT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td></tr>
+<tr class="grp"><td colspan="6">CRM / Other Hubs</td></tr>
+<tr data-entity="ADDRESS"><td class="en" style="color:var(--text3)">ADDRESS</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="COMPANY"><td class="en" style="color:var(--text3)">COMPANY</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CONTACT"><td class="en" style="color:var(--text3)">CONTACT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="EVENT"><td class="en" style="color:var(--text3)">EVENT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="INDIVIDUAL"><td class="en" style="color:var(--text3)">INDIVIDUAL</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="POSITEM"><td class="en" style="color:var(--text3)">POSITEM</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="POSTX"><td class="en" style="color:var(--text3)">POSTX</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="REFUND"><td class="en" style="color:var(--text3)">REFUND</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="ROLE"><td class="en" style="color:var(--text3)">ROLE</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr class="grp"><td colspan="6">Build Hubs</td></tr>
+<tr data-entity="ASSET"><td class="en" style="color:var(--text3)">ASSET</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="BOOKING"><td class="en" style="color:var(--text3)">BOOKING</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="FORECAST"><td class="en" style="color:var(--text3)">FORECAST</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEMEVENT"><td class="en" style="color:var(--text3)">LINEITEMEVENT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="POSITEMEVENT"><td class="en" style="color:var(--text3)">POSITEMEVENT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr class="grp"><td colspan="6">POS Links</td></tr>
+<tr data-entity="CHANNEL_CUSTORDER"><td class="en">CHANNEL_CUSTORDER</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="COMP_LINEITEM"><td class="en">COMP_LINEITEM</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CUSTORDER_EMPLOYEE"><td class="en">CUSTORDER_EMPLOYEE</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CUSTORDER_LINEITEM"><td class="en" style="color:var(--accent)">CUSTORDER_LINEITEM</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CUSTORDER_LOCATION"><td class="en" style="color:var(--accent)">CUSTORDER_LOCATION</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CUSTORDER_OCCASION"><td class="en" style="color:var(--accent)">CUSTORDER_OCCASION</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CUSTORDER_POSTX"><td class="en" style="color:var(--text3)">CUSTORDER_POSTX</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CUSTORDER_REFUND"><td class="en" style="color:var(--text3)">CUSTORDER_REFUND</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CUSTORDER_REVCENTER"><td class="en">CUSTORDER_REVCENTER</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="DEAL_LINEITEM"><td class="en">DEAL_LINEITEM</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="DISCOUNT_LINEITEM"><td class="en">DISCOUNT_LINEITEM</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="EMPLOYEE_JOB_TIMECARD"><td class="en">EMPLOYEE_JOB_TIMECARD</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="EMPLOYEE_LINEITEM"><td class="en">EMPLOYEE_LINEITEM</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="EMPLOYEE_ROLE"><td class="en" style="color:var(--text3)">EMPLOYEE_ROLE</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEM_LINEITEM"><td class="en">LINEITEM_LINEITEM</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEM_MOD"><td class="en">LINEITEM_MOD</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEM_OCCASION"><td class="en" style="color:var(--accent)">LINEITEM_OCCASION</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEM_PRODUCT"><td class="en" style="color:var(--accent)">LINEITEM_PRODUCT</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEM_SVCCHARGE"><td class="en">LINEITEM_SVCCHARGE</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEM_TAX"><td class="en">LINEITEM_TAX</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LINEITEM_TENDER"><td class="en">LINEITEM_TENDER</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LOCATION_OCCASION_PRODUCT"><td class="en" style="color:var(--accent)">LOCATION_OCCASION_PRODUCT</td><td class="cm">&#10003; multi</td><td class="cm">&#10003; multi</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr class="grp"><td colspan="6">Inventory Links</td></tr>
+<tr data-entity="INVITEM_INVITEM"><td class="en">INVITEM_INVITEM</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="INVITEM_INVREPORT"><td class="en">INVITEM_INVREPORT</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="INVITEM_LOCATION_OCCASION_PRODUCT"><td class="en">INVITEM_LOCATION_OCCASION_PRODUCT</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="INVITEM_OCCASION_PRODUCT"><td class="en" style="color:var(--text3)">INVITEM_OCCASION_PRODUCT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="INVITEM_STOCKEVENT"><td class="en">INVITEM_STOCKEVENT</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="INVITEM_STOCKORDER"><td class="en">INVITEM_STOCKORDER</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="INVREPORT_LOCATION"><td class="en">INVREPORT_LOCATION</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="LOCATION_STOCKEVENT"><td class="en">LOCATION_STOCKEVENT</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="STOCKEVENT_STOCKORDER"><td class="en" style="color:var(--text3)">STOCKEVENT_STOCKORDER</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="DISTRIBUTOR_STOCKORDER_SUPPLIER"><td class="en" style="color:var(--text3)">DISTRIBUTOR_STOCKORDER_SUPPLIER</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr class="grp"><td colspan="6">Survey Links</td></tr>
+<tr data-entity="ANSWER_QUESTION_TOUCHPOINT"><td class="en">ANSWER_QUESTION_TOUCHPOINT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cy">&#10003;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="EVENT_TOUCHPOINT"><td class="en" style="color:var(--text3)">EVENT_TOUCHPOINT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CONTACT_TOUCHPOINT"><td class="en" style="color:var(--text3)">CONTACT_TOUCHPOINT</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr class="grp"><td colspan="6">CRM Links</td></tr>
+<tr data-entity="ADDRESS_INDIVIDUAL"><td class="en" style="color:var(--text3)">ADDRESS_INDIVIDUAL</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="ADDRESS_LOCATION"><td class="en" style="color:var(--text3)">ADDRESS_LOCATION</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="COMPANY_INDIVIDUAL"><td class="en" style="color:var(--text3)">COMPANY_INDIVIDUAL</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="CONTACT_INDIVIDUAL"><td class="en" style="color:var(--text3)">CONTACT_INDIVIDUAL</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+<tr data-entity="POSITEM_POSTX"><td class="en" style="color:var(--text3)">POSITEM_POSTX</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td><td class="cn">&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec">Unmapped Live Entities (30)</div>
+  <div class="ibox"><strong>30 live entities</strong> in the Data Vault have no integration mappings in the current release scripts. Growyze and TROAP have no Mapping SQL files, so their entity coverage is unknown.</div>
+  <div class="ugrid"><div class="uitem">ADDRESS</div><div class="uitem">ADDRESS_INDIVIDUAL</div><div class="uitem">ADDRESS_LOCATION</div><div class="uitem">ASSET</div><div class="uitem">BOOKING</div><div class="uitem">COMP</div><div class="uitem">COMPANY</div><div class="uitem">COMPANY_INDIVIDUAL</div><div class="uitem">CONTACT</div><div class="uitem">CONTACT_INDIVIDUAL</div><div class="uitem">CONTACT_TOUCHPOINT</div><div class="uitem">CUSTORDER_POSTX</div><div class="uitem">CUSTORDER_REFUND</div><div class="uitem">DISTRIBUTOR</div><div class="uitem">DISTRIBUTOR_STOCKORDER_SUPPLIER</div><div class="uitem">EMPLOYEE_ROLE</div><div class="uitem">EVENT</div><div class="uitem">EVENT_TOUCHPOINT</div><div class="uitem">FORECAST</div><div class="uitem">INDIVIDUAL</div><div class="uitem">INVITEM_OCCASION_PRODUCT</div><div class="uitem">LINEITEMEVENT</div><div class="uitem">POSITEM</div><div class="uitem">POSITEMEVENT</div><div class="uitem">POSITEM_POSTX</div><div class="uitem">POSTX</div><div class="uitem">REFUND</div><div class="uitem">ROLE</div><div class="uitem">STOCKEVENT_STOCKORDER</div><div class="uitem">TENDER</div></div>
+</div><!-- end coverage tab -->
+
+</div><!-- end #content -->
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+function toggleAcc(hdr) {
+  hdr.parentElement.classList.toggle('open');
+}
+function toggleTheme() {
+  const html = document.documentElement;
+  html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+function filterMatrix(q) {
+  const rows = document.querySelectorAll('#mx-body tr:not(.grp)');
+  const ql = q.toLowerCase();
+  rows.forEach(r => {
+    const entity = r.getAttribute('data-entity') || '';
+    r.style.display = entity.toLowerCase().includes(ql) ? '' : 'none';
+  });
+  document.querySelectorAll('#mx-body tr.grp').forEach(g => {
+    const next = g.nextElementSibling;
+    g.style.display = '';
+  });
+}
+function filterMapped(mappedOnly) {
+  const rows = document.querySelectorAll('#mx-body tr:not(.grp)');
+  rows.forEach(r => {
+    if (mappedOnly) {
+      const hasMapped = r.querySelector('td.cy, td.cm');
+      r.style.display = hasMapped ? '' : 'none';
+    } else {
+      r.style.display = '';
+    }
+  });
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('on'));
+  if (mappedOnly) event.target.classList.add('on');
+}
+</script>
+</body>
+</html>

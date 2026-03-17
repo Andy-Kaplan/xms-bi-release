@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XMS BI — Data Vault Entity Diagram</title>
+<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
+<style>
+:root {
+  --bg:#0f1117;--bg2:#161822;--bg3:#1e2030;--bg4:#252840;
+  --text:#c8cad8;--text2:#8b8fa8;--text3:#5c6080;
+  --accent:#6c8aff;--accent2:#4ecdc4;--accent3:#ff6b9d;--accent4:#ffd93d;
+  --border:#2a2d42;--border2:#363a54;
+  --code-bg:#1a1d2e;--card:#1a1d2e;
+  --shadow:0 4px 24px rgba(0,0,0,.3);
+  --radius:10px;--radius-sm:6px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'SF Mono','Cascadia Code','Fira Code',Consolas,monospace;
+  --transition:0.25s cubic-bezier(.4,0,.2,1);
+  --pos:#6c8aff;--inv:#4ecdc4;--survey:#ff6b9d;--crm:#ffd93d;--cross:#b8bcd0;--build:#5c6080;
+}
+[data-theme="light"] {
+  --bg:#f5f6fa;--bg2:#ffffff;--bg3:#eef0f6;--bg4:#dfe2ec;
+  --text:#2c2e3e;--text2:#5a5d72;--text3:#8b8fa8;
+  --border:#d8dae8;--border2:#c8cad8;
+  --code-bg:#eef0f6;--card:#ffffff;
+  --shadow:0 4px 24px rgba(0,0,0,.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+/* Header */
+#header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;z-index:10}
+#header h1{font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;letter-spacing:.3px}
+#header h1 span{color:var(--accent)}
+.header-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+/* Stats bar */
+#stats{display:flex;gap:14px;flex-wrap:wrap}
+.stat{font-size:11px;color:var(--text2)}
+.stat strong{color:var(--text);font-weight:600}
+/* Controls */
+#controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.btn{padding:5px 11px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer;transition:all var(--transition);white-space:nowrap;font-family:var(--font)}
+.btn:hover{background:var(--bg4);color:var(--text);border-color:var(--accent)}
+.btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.domain-btn{padding:4px 10px;border-radius:20px;font-size:11px}
+.domain-btn.pos{border-color:var(--pos);color:var(--pos)}
+.domain-btn.pos.active{background:var(--pos);color:#fff}
+.domain-btn.inv{border-color:var(--inv);color:var(--inv)}
+.domain-btn.inv.active{background:var(--inv);color:#fff}
+.domain-btn.survey{border-color:var(--survey);color:var(--survey)}
+.domain-btn.survey.active{background:var(--survey);color:#fff}
+.domain-btn.crm{border-color:var(--crm);color:var(--crm)}
+.domain-btn.crm.active{background:var(--crm);color:#1a1d2e}
+.domain-btn.cross{border-color:var(--cross);color:var(--cross)}
+.domain-btn.cross.active{background:var(--cross);color:#1a1d2e}
+.domain-btn.build{border-color:var(--build);color:var(--build)}
+.domain-btn.build.active{background:var(--build);color:var(--text)}
+/* Search */
+#search{padding:5px 10px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:12px;width:160px;font-family:var(--font);transition:border-color var(--transition)}
+#search:focus{outline:none;border-color:var(--accent)}
+#search::placeholder{color:var(--text3)}
+/* Theme toggle */
+#theme-toggle{padding:5px 8px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;transition:all var(--transition)}
+#theme-toggle:hover{background:var(--bg4);color:var(--text)}
+/* Main layout */
+#main{display:flex;flex:1;overflow:hidden}
+/* Graph */
+#cy{flex:1;background:var(--bg)}
+/* Detail panel */
+#detail-panel{width:360px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;transform:translateX(100%);transition:transform var(--transition);flex-shrink:0;overflow:hidden}
+#detail-panel.open{transform:translateX(0)}
+#panel-header{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid var(--border);flex-shrink:0}
+#panel-title{font-size:16px;font-weight:700;color:var(--text)}
+#panel-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:4px;line-height:1;border-radius:4px;transition:color var(--transition)}
+#panel-close:hover{color:var(--text)}
+#panel-content{overflow-y:auto;flex:1;padding:16px}
+#panel-content::-webkit-scrollbar{width:6px}
+#panel-content::-webkit-scrollbar-track{background:var(--bg3)}
+#panel-content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.panel-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-bottom:12px}
+.panel-badge.transactional{background:rgba(108,138,255,.15);color:var(--accent);border:1px solid rgba(108,138,255,.3)}
+.panel-badge.dimension{background:rgba(78,205,196,.15);color:var(--accent2);border:1px solid rgba(78,205,196,.3)}
+.panel-badge.nonhierarchical{background:rgba(255,107,157,.15);color:var(--accent3);border:1px solid rgba(255,107,157,.3)}
+.panel-badge.build{background:rgba(92,96,128,.15);color:var(--text2);border:1px solid var(--border2)}
+.panel-badge.link{background:rgba(255,217,61,.15);color:var(--accent4);border:1px solid rgba(255,217,61,.3)}
+.panel-meta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.meta-item{font-size:11px;color:var(--text2)}
+.meta-item strong{color:var(--text);font-weight:600}
+.panel-section{margin-bottom:20px}
+.panel-section h3{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.attr-table{width:100%;border-collapse:collapse;font-size:12px}
+.attr-table th{text-align:left;padding:6px 8px;color:var(--text2);font-weight:600;font-size:11px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.attr-table td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+.attr-table td.type{color:var(--accent2);font-family:var(--mono);font-size:11px;white-space:nowrap}
+.attr-table td.notes{color:var(--text2);font-size:11px}
+.attr-table tr:hover td{background:var(--bg3)}
+.bug-note{color:var(--accent3);font-style:italic}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin:2px}
+.tag.sat-lnk{background:rgba(255,217,61,.2);color:var(--accent4);border:1px solid rgba(255,217,61,.3)}
+.tag.self-ref{background:rgba(255,107,157,.2);color:var(--accent3);border:1px solid rgba(255,107,157,.3)}
+.connected-list{display:flex;flex-direction:column;gap:4px}
+.connected-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);background:var(--bg3);font-size:12px;cursor:pointer;transition:background var(--transition)}
+.connected-item:hover{background:var(--bg4)}
+.connected-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+/* Legend */
+#legend{position:absolute;bottom:16px;left:16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:11px;z-index:5;min-width:160px}
+#legend h4{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.legend-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--text2)}
+.legend-hub{width:26px;height:14px;border-radius:4px;flex-shrink:0}
+.legend-link-diamond{width:14px;height:14px;transform:rotate(45deg);flex-shrink:0;border-radius:2px}
+.legend-link-hex{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.legend-sat{width:10px;height:10px;border-radius:50%;border:2px solid;flex-shrink:0}
+/* Tooltip */
+#tooltip{position:absolute;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--text);pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:100;max-width:220px;box-shadow:var(--shadow)}
+/* Loading overlay */
+#loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:200;gap:12px}
+#loading .spinner{width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{color:var(--text2);font-size:13px}
+/* Highlight */
+.dimmed{opacity:0.15}
+/* Legend collapse */
+#legend-toggle{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;line-height:1;padding:2px 4px;border-radius:3px;transition:color var(--transition)}
+#legend-toggle:hover{color:var(--text)}
+#legend-body{overflow:hidden;transition:max-height 0.3s ease, opacity 0.3s ease;max-height:300px;opacity:1}
+#legend.collapsed #legend-body{max-height:0;opacity:0}
+#legend h4{cursor:pointer;user-select:none;padding-right:16px}
+/* Help toast */
+#help-toast{position:absolute;bottom:16px;right:16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:11px;color:var(--text2);z-index:5;max-width:240px;box-shadow:var(--shadow);transition:opacity 0.6s ease;opacity:1;line-height:1.6}
+#help-toast strong{color:var(--text);display:block;margin-bottom:4px}
+#help-toast.hidden{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>XMS BI &mdash; <span>Data Vault</span> Entity Diagram</h1>
+  <div class="header-sep"></div>
+  <div id="stats">
+    <div class="stat"><strong>35</strong> Live Hubs</div>
+    <div class="stat"><strong>39</strong> Live Links</div>
+    <div class="stat"><strong>5</strong> SAT_LNK</div>
+    <div class="stat" title="5 build-state hub stubs + 4 build-state link nodes"><strong>9</strong> Build/Future</div>
+  </div>
+  <div class="header-sep"></div>
+  <div id="controls">
+    <span style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.6px">Domains</span>
+    <button class="btn domain-btn pos active" data-domain="pos" onclick="toggleDomain(this,'pos')">POS</button>
+    <button class="btn domain-btn inv active" data-domain="inv" onclick="toggleDomain(this,'inv')">Inventory</button>
+    <button class="btn domain-btn survey active" data-domain="survey" onclick="toggleDomain(this,'survey')">Survey</button>
+    <button class="btn domain-btn crm active" data-domain="crm" onclick="toggleDomain(this,'crm')">CRM</button>
+    <button class="btn domain-btn cross active" data-domain="cross" onclick="toggleDomain(this,'cross')">Cross-Domain</button>
+    <button class="btn domain-btn build active" data-domain="build" onclick="toggleDomain(this,'build')">Build</button>
+    <div class="header-sep"></div>
+    <button class="btn active" id="btn-force" onclick="runLayout('fcose')">Force</button>
+    <button class="btn" id="btn-domain" onclick="runLayout('domain')">Domain</button>
+    <button class="btn" onclick="fitAll()">Fit</button>
+    <div class="header-sep"></div>
+    <input type="text" id="search" placeholder="Search entities..." oninput="searchNodes(this.value)">
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">&#9680;</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="cy"></div>
+  <div id="detail-panel">
+    <div id="panel-header">
+      <div id="panel-title">Entity Details</div>
+      <button id="panel-close" onclick="closePanel()">&#x2715;</button>
+    </div>
+    <div id="panel-content"></div>
+  </div>
+</div>
+
+<div id="legend">
+  <button id="legend-toggle" onclick="toggleLegend()" title="Collapse legend">&#x2212;</button>
+  <h4 onclick="toggleLegend()">Legend</h4>
+  <div id="legend-body">
+    <div class="legend-row"><div class="legend-hub" style="background:var(--pos)"></div>POS Hub</div>
+    <div class="legend-row"><div class="legend-hub" style="background:var(--inv)"></div>Inventory Hub</div>
+    <div class="legend-row"><div class="legend-hub" style="background:var(--survey)"></div>Survey Hub</div>
+    <div class="legend-row"><div class="legend-hub" style="background:var(--crm)"></div>CRM Hub</div>
+    <div class="legend-row"><div class="legend-hub" style="background:var(--cross)"></div>Cross-Domain Hub</div>
+    <div class="legend-row"><div class="legend-hub" style="background:var(--build);opacity:.5"></div>Build/Future Hub</div>
+    <div class="legend-row"><div class="legend-link-diamond" style="background:var(--bg4);border:2px solid var(--border2)"></div>Multi-Entity Link</div>
+    <div class="legend-row"><div class="legend-link-hex" style="background:var(--bg4);border:2px solid var(--border2)"></div>Self-Ref Link</div>
+    <div class="legend-row"><div class="legend-sat" style="border-color:var(--accent4)"></div>SAT_LNK Attrs</div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+<div id="loading"><div class="spinner"></div><p>Building entity graph...</p></div>
+<div id="help-toast">
+  <strong>Tip</strong>
+  Click any node to inspect it &bull; Use domain filters to focus &bull; Drag to pan &bull; Scroll to zoom
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const DOMAIN_COLORS = {
+  pos: '#6c8aff',
+  inv: '#4ecdc4',
+  survey: '#ff6b9d',
+  crm: '#ffd93d',
+  cross: '#b8bcd0',
+  build: '#5c6080'
+};
+
+const HUB_DOMAIN = {
+  CUSTORDER:'pos', LINEITEM:'pos', POSTX:'pos', POSITEM:'pos', EMPLOYEE:'pos',
+  CHANNEL:'pos', REVCENTER:'pos', MOD:'pos', DEAL:'pos', DISCOUNT:'pos',
+  COMP:'pos', TAX:'pos', SVCCHARGE:'pos', TENDER:'pos', REFUND:'pos',
+  ROLE:'pos', JOB:'pos', TIMECARD:'pos',
+  INVITEM:'inv', INVREPORT:'inv', STOCKEVENT:'inv', STOCKORDER:'inv',
+  DISTRIBUTOR:'inv', SUPPLIER:'inv',
+  ANSWER:'survey', QUESTION:'survey', TOUCHPOINT:'survey', EVENT:'survey', CONTACT:'survey',
+  ADDRESS:'crm', INDIVIDUAL:'crm', COMPANY:'crm',
+  LOCATION:'cross', OCCASION:'cross', PRODUCT:'cross',
+  ASSET:'build', BOOKING:'build', FORECAST:'build', LINEITEMEVENT:'build', POSITEMEVENT:'build'
+};
+
+const HUB_TYPE = {
+  CUSTORDER:'transactional', LINEITEM:'transactional', POSTX:'transactional',
+  INVREPORT:'transactional', STOCKEVENT:'transactional', STOCKORDER:'transactional',
+  TIMECARD:'transactional', TOUCHPOINT:'transactional',
+  CHANNEL:'dimension', COMP:'dimension', DEAL:'dimension', DISCOUNT:'dimension',
+  DISTRIBUTOR:'dimension', EVENT:'dimension', INVITEM:'dimension',
+  LOCATION:'dimension', MOD:'dimension', OCCASION:'dimension', PRODUCT:'dimension',
+  QUESTION:'dimension', REVCENTER:'dimension', SUPPLIER:'dimension', SVCCHARGE:'dimension',
+  TAX:'dimension', TENDER:'dimension',
+  JOB:'nonhierarchical', EMPLOYEE:'nonhierarchical', ADDRESS:'nonhierarchical', ANSWER:'nonhierarchical',
+  COMPANY:'nonhierarchical', CONTACT:'nonhierarchical', INDIVIDUAL:'nonhierarchical',
+  POSITEM:'nonhierarchical', REFUND:'nonhierarchical', ROLE:'nonhierarchical',
+  ASSET:'build', BOOKING:'build', FORECAST:'build', LINEITEMEVENT:'build', POSITEMEVENT:'build'
+};
+
+const HUB_VERSION = {
+  CUSTORDER:'v2', LINEITEM:'v3', POSTX:'v2', INVREPORT:'v5', STOCKEVENT:'v2',
+  STOCKORDER:'v3', TIMECARD:'v2', TOUCHPOINT:'v2',
+  CHANNEL:'v3', COMP:'v2', DEAL:'v5', DISCOUNT:'v5', DISTRIBUTOR:'v3', EVENT:'v4',
+  INVITEM:'v3', JOB:'v3', LOCATION:'v4', MOD:'v4', OCCASION:'v3', PRODUCT:'v4',
+  QUESTION:'v5', REVCENTER:'v2', SUPPLIER:'v3', SVCCHARGE:'v3', TAX:'v4', TENDER:'v3',
+  EMPLOYEE:'v3', ADDRESS:'v1', ANSWER:'v2', COMPANY:'v2', CONTACT:'v1', INDIVIDUAL:'v1',
+  POSITEM:'v1', REFUND:'v1', ROLE:'v1',
+  ASSET:'build', BOOKING:'build', FORECAST:'build', LINEITEMEVENT:'build', POSITEMEVENT:'build'
+};
+
+const HUB_SOURCE = {
+  CUSTORDER:'PoS', LINEITEM:'PoS', POSTX:'PoS', TIMECARD:'PoS', CHANNEL:'PoS',
+  COMP:'PoS', DEAL:'PoS',
+  INVREPORT:'Inventory', STOCKEVENT:'Inventory', STOCKORDER:'Inventory',
+  DISCOUNT:'NULL', DISTRIBUTOR:'NULL', EMPLOYEE:'NULL', EVENT:'NULL', INVITEM:'NULL', JOB:'NULL',
+  LOCATION:'NULL', MOD:'NULL', OCCASION:'NULL', PRODUCT:'NULL', QUESTION:'NULL',
+  REVCENTER:'NULL', SUPPLIER:'NULL', SVCCHARGE:'NULL', TAX:'NULL', TENDER:'NULL',
+  TOUCHPOINT:'NULL', ADDRESS:'NULL', ANSWER:'NULL', COMPANY:'NULL', CONTACT:'NULL',
+  INDIVIDUAL:'NULL', POSITEM:'NULL', REFUND:'NULL', ROLE:'NULL'
+};
+
+const HUB_ATTRS = {
+  CUSTORDER:[
+    {name:'GRAND_TOTAL',type:'DECIMAL(38,10)',notes:''},
+    {name:'GRAND_TOTAL_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'DISCOUNT_GROSS',type:'DECIMAL(38,10)',notes:''},
+    {name:'DISCOUNT_GROSS_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'SVC_CHARGE_TOTAL',type:'DECIMAL(38,10)',notes:''},
+    {name:'SVC_CHARGE_TOTAL_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'GROSS_SALES',type:'DECIMAL(38,10)',notes:''},
+    {name:'GROSS_SALES_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'TAX_TOTAL',type:'DECIMAL(38,10)',notes:''},
+    {name:'TAX_TOTAL_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'NET_SALES',type:'DECIMAL(38,10)',notes:''},
+    {name:'NET_SALES_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'GUEST_COUNT',type:'DECIMAL(38,10)',notes:''},
+    {name:'ITEM_COUNT',type:'DECIMAL(38,10)',notes:''},
+    {name:'ITEM_COUNT_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'ORDER_COUNT',type:'DECIMAL(38,10)',notes:''},
+    {name:'OPEN_TIME',type:'DATETIME2(7)',notes:''},
+    {name:'CLOSE_TIME',type:'DATETIME2(7)',notes:''},
+    {name:'ORDER_DATE',type:'DATETIME2(7)',notes:'Time-series column'},
+    {name:'TABLE_NO',type:'NVARCHAR(255)',notes:''},
+    {name:'ORDER_INFO',type:'NVARCHAR(MAX)',notes:''},
+    {name:'EXTERNAL_REFERENCE',type:'NVARCHAR(255)',notes:''},
+    {name:'ORDER_STATUS',type:'NVARCHAR(255)',notes:''},
+    {name:'PAYMENT_STATUS',type:'NVARCHAR(255)',notes:''},
+    {name:'DISCOUNT_NET',type:'DECIMAL(38,10)',notes:''},
+    {name:'DISCOUNT_NET_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'DISCOUNT_TAX',type:'DECIMAL(38,10)',notes:''},
+    {name:'DISCOUNT_TAX_SRC',type:'DECIMAL(38,10)',notes:''},
+    {name:'TENDERED_SALES',type:'DECIMAL(38,10)',notes:''},
+    {name:'TRADING_DATE',type:'DATETIME2(7)',notes:''}
+  ],
+  LINEITEM:[
+    {name:'HEADER_ID',type:'NVARCHAR(255)',notes:''},
+    {name:'LINEITEM_TYPE',type:'NVARCHAR(255)',notes:''},
+    {name:'GROSS_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'TAX_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'NET_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'QUANTITY',type:'DECIMAL(38,10)',notes:''},
+    {name:'QUANTITY_INV',type:'DECIMAL(38,10)',notes:''},
+    {name:'LINEITEM_TIMESTAMP',type:'DATETIME2(7)',notes:''},
+    {name:'ITEM_DATE',type:'DATETIME2(7)',notes:''},
+    {name:'ORDER_DATE',type:'DATETIME2(7)',notes:'Time-series column'},
+    {name:'VOID_FLAG',type:'BIGINT',notes:''},
+    {name:'LINE_ID',type:'NVARCHAR(255)',notes:''},
+    {name:'LINE_ORDER',type:'BIGINT',notes:''},
+    {name:'TRADING_DATE',type:'DATETIME2(7)',notes:''},
+    {name:'SRC_KEY',type:'NVARCHAR(255)',notes:''}
+  ],
+  POSTX:[
+    {name:'GRAND_TOTAL',type:'DECIMAL(38,10)',notes:''},
+    {name:'DISCOUNT_TOTAL',type:'DECIMAL(38,10)',notes:''},
+    {name:'SVC_CHARGE_TOTAL',type:'DECIMAL(38,10)',notes:''},
+    {name:'GROSS_SALES',type:'DECIMAL(38,10)',notes:''},
+    {name:'TAX_TOTAL',type:'DECIMAL(38,10)',notes:''},
+    {name:'NET_SALES',type:'DECIMAL(38,10)',notes:''},
+    {name:'GUEST_COUNT',type:'DECIMAL(38,10)',notes:''},
+    {name:'ITEM_COUNT',type:'DECIMAL(38,10)',notes:''},
+    {name:'ORDER_COUNT',type:'DECIMAL(38,10)',notes:''},
+    {name:'OPEN_TIME',type:'DATETIME2(7)',notes:''},
+    {name:'CLOSE_TIME',type:'DATETIME2(7)',notes:''},
+    {name:'ORDER_DATE',type:'DATETIME2(7)',notes:'Time-series column'},
+    {name:'TABLE_NO',type:'NVARCHAR(255)',notes:''},
+    {name:'ORDER_INFO',type:'NVARCHAR(MAX)',notes:''},
+    {name:'EXTERNAL_REFERENCE',type:'NVARCHAR(255)',notes:''},
+    {name:'ORDER_STATUS',type:'NVARCHAR(255)',notes:''},
+    {name:'PAYMENT_STATUS',type:'NVARCHAR(255)',notes:''},
+    {name:'ORDER_TYPE',type:'NVARCHAR(255)',notes:''}
+  ],
+  INVREPORT:[
+    {name:'THEO_USAGE',type:'DECIMAL(38,10)',notes:''},
+    {name:'ACTUAL_USAGE',type:'DECIMAL(38,10)',notes:''},
+    {name:'THEO_COST',type:'DECIMAL(38,10)',notes:''},
+    {name:'ACTUAL_COST',type:'DECIMAL(38,10)',notes:''},
+    {name:'VARIANCE_QTY',type:'DECIMAL(38,10)',notes:''},
+    {name:'VARIANCE_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'WASTE_QTY',type:'DECIMAL(38,10)',notes:''},
+    {name:'WASTE_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'REPORTING_DATE',type:'DATETIME2(7)',notes:'Time-series column'},
+    {name:'REPORTING_UOM',type:'NVARCHAR(255)',notes:''},
+    {name:'UOM_COST',type:'DECIMAL(38,10)',notes:''},
+    {name:'SALES_QTY',type:'DECIMAL(38,10)',notes:''},
+    {name:'ORDER_QTY',type:'DECIMAL(38,10)',notes:''},
+    {name:'TRANSFER_QTY',type:'DECIMAL(38,10)',notes:''},
+    {name:'COUNT_FREQUENCY',type:'DECIMAL(38,10)',notes:''},
+    {name:'COUNT_RECENCY',type:'DECIMAL(38,10)',notes:''}
+  ],
+  STOCKEVENT:[
+    {name:'EVENT_TYPE',type:'NVARCHAR(255)',notes:''},
+    {name:'EVENT_TS',type:'DATETIME2(7)',notes:'Time-series column'},
+    {name:'PACK_DESC',type:'NVARCHAR(255)',notes:''},
+    {name:'PACK_QUANTITY',type:'DECIMAL(38,10)',notes:''},
+    {name:'UOM',type:'NVARCHAR(255)',notes:''},
+    {name:'UOM_QUANITY',type:'DECIMAL(38,10)',notes:'BUG: Typo — should be UOM_QUANTITY'},
+    {name:'EXTERNAL_REF',type:'NVARCHAR(255)',notes:''},
+    {name:'INTERNAL_REF',type:'NVARCHAR(255)',notes:''},
+    {name:'EVENT_BEHAVIOUR',type:'NVARCHAR(255)',notes:''}
+  ],
+  STOCKORDER:[
+    {name:'ORDER_DATE',type:'DATETIME2(7)',notes:'Time-series column'},
+    {name:'DELIVERY_DATE',type:'DATETIME2(7)',notes:''},
+    {name:'ORDER_TOTAL',type:'DECIMAL(38,10)',notes:''},
+    {name:'ORDER_TAX',type:'DECIMAL(38,10)',notes:''},
+    {name:'ORDER_INFO',type:'NVARCHAR(MAX)',notes:''},
+    {name:'ORDER_STATUS',type:'NVARCHAR(255)',notes:''}
+  ],
+  TIMECARD:[
+    {name:'TRADING_DATE',type:'DATETIME2(7)',notes:'Time-series column'},
+    {name:'CLOCK_IN_TS',type:'DATETIME2(7)',notes:''},
+    {name:'CLOCK_OUT_TS',type:'DATETIME2(7)',notes:''},
+    {name:'MINS_WORKED',type:'DECIMAL(38,10)',notes:''},
+    {name:'HOURS_ADJ',type:'DECIMAL(38,10)',notes:''},
+    {name:'OVERTIME_MINS',type:'DECIMAL(38,10)',notes:''}
+  ],
+  TOUCHPOINT:[
+    {name:'TOUCHPOINT_TYPE',type:'NVARCHAR(255)',notes:'NOT NULL'},
+    {name:'TOUCHPOINT_DATETIME',type:'DATETIME2(7)',notes:'NOT NULL, time-series column'},
+    {name:'TOUCHPOINT_STATUS',type:'NVARCHAR(255)',notes:''}
+  ],
+  EMPLOYEE:[
+    {name:'SURNAME',type:'NVARCHAR(255)',notes:''},
+    {name:'FIRST_NAME',type:'NVARCHAR(255)',notes:''},
+    {name:'MIDDLE_NAME',type:'NVARCHAR(255)',notes:''},
+    {name:'POST_DESC',type:'NVARCHAR(255)',notes:''},
+    {name:'ACTIVE_DATE',type:'DECIMAL(38,10)',notes:'BUG: Should be DATETIME2'},
+    {name:'END_DATE',type:'DECIMAL(38,10)',notes:'BUG: Should be DATETIME2'},
+    {name:'TRONC_OPTOUT_DATE',type:'DATETIME2(7)',notes:''},
+    {name:'PAYTYPE',type:'NVARCHAR(255)',notes:''},
+    {name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},
+    {name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},
+    {name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}
+  ],
+  ADDRESS:[
+    {name:'ADDRESS',type:'NVARCHAR(255)',notes:''},
+    {name:'POSTCODE',type:'NVARCHAR(255)',notes:''},
+    {name:'REGION',type:'NVARCHAR(255)',notes:''},
+    {name:'COUNTRY',type:'NVARCHAR(255)',notes:''},
+    {name:'LAT',type:'NVARCHAR(255)',notes:''},
+    {name:'LONG',type:'NVARCHAR(255)',notes:''},
+    {name:'TOWN',type:'NVARCHAR(255)',notes:''},
+    {name:'COUNTY',type:'NVARCHAR(255)',notes:''}
+  ],
+  ANSWER:[
+    {name:'ANSWER',type:'NVARCHAR(255)',notes:''},
+    {name:'PARENT',type:'NVARCHAR(255)',notes:''},
+    {name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},
+    {name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},
+    {name:'ANSWER_ID',type:'NVARCHAR(255)',notes:''}
+  ],
+  COMPANY:[
+    {name:'COMPANY_NAME',type:'NVARCHAR(255)',notes:''},
+    {name:'DOMAIN',type:'NVARCHAR(255)',notes:''},
+    {name:'URL',type:'NVARCHAR(255)',notes:''}
+  ],
+  CONTACT:[
+    {name:'CONTACT',type:'NVARCHAR(255)',notes:''},
+    {name:'CONTACT_TYPE',type:'NVARCHAR(255)',notes:''},
+    {name:'OPT_OUT',type:'BIGINT',notes:''},
+    {name:'BOUNCE',type:'BIGINT',notes:''},
+    {name:'BLACKLIST',type:'BIGINT',notes:''},
+    {name:'ADJUSTED_CONTACT',type:'NVARCHAR(255)',notes:''}
+  ],
+  INDIVIDUAL:[
+    {name:'FORENAME',type:'NVARCHAR(255)',notes:''},
+    {name:'SURNAME',type:'NVARCHAR(255)',notes:''},
+    {name:'MIDDLE_NAMES',type:'NVARCHAR(255)',notes:''},
+    {name:'TITLE',type:'NVARCHAR(255)',notes:''},
+    {name:'GENDER',type:'NVARCHAR(255)',notes:''},
+    {name:'DOB',type:'NVARCHAR(255)',notes:''}
+  ],
+  POSITEM:[
+    {name:'ITEM_TYPE',type:'NVARCHAR(255)',notes:''},
+    {name:'GROSS_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'TAX_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'NET_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'QUANTITY',type:'DECIMAL(38,10)',notes:''},
+    {name:'ITEM_TIMESTAMP',type:'DATETIME2(7)',notes:''}
+  ],
+  REFUND:[
+    {name:'REFUND_TIMESTAMP',type:'DATETIME2(7)',notes:''},
+    {name:'REFUND_VALUE',type:'DECIMAL(38,10)',notes:''},
+    {name:'REFUND_REF',type:'NVARCHAR(255)',notes:''},
+    {name:'REFUND_INFO',type:'NVARCHAR(MAX)',notes:''},
+    {name:'TAX_RECLAIM_FLAG',type:'BIGINT',notes:''},
+    {name:'REFUND_DETAIL',type:'NVARCHAR(MAX)',notes:''}
+  ],
+  ROLE:[
+    {name:'ROLE_NAME',type:'NVARCHAR(255)',notes:''},
+    {name:'ROLE_DESC',type:'NVARCHAR(255)',notes:''},
+    {name:'CONTROL_GROUP',type:'NVARCHAR(255)',notes:''}
+  ],
+  // Hierarchical dims — standard pattern
+  CHANNEL:[{name:'CHANNEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'CHANNEL_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  COMP:[{name:'COMP_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT',type:'NVARCHAR(255)',notes:'BUG: Named PARENT not PARENT_ID'},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'IS_WASTE',type:'BIGINT',notes:''}],
+  DEAL:[{name:'DEAL_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'DEAL_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  DISCOUNT:[{name:'DISCOUNT_NAME',type:'NVARCHAR(255)',notes:''},{name:'VALUE_TYPE',type:'NVARCHAR(255)',notes:''},{name:'VALUE',type:'DECIMAL(38,10)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'IS_WASTE',type:'BIGINT',notes:''},{name:'DISCOUNT_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  DISTRIBUTOR:[{name:'DISTRIBUTOR_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'DISTRIBUTOR_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  EVENT:[{name:'EVENT_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''},{name:'EVENT_CODE',type:'NVARCHAR(255)',notes:''},{name:'EVENT_DATE',type:'DATETIME2(7)',notes:''},{name:'EVENT_ID',type:'NVARCHAR(255)',notes:''}],
+  INVITEM:[{name:'INVITEM_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'UOM',type:'NVARCHAR(255)',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'INVITEM_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  JOB:[{name:'JOB_NAME',type:'NVARCHAR(255)',notes:''},{name:'TRONC_FLAG',type:'BIGINT',notes:''},{name:'JOB_CODE',type:'NVARCHAR(255)',notes:''},{name:'PAY_CODE',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  LOCATION:[{name:'LOCATION_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''},{name:'LOCATION_ID',type:'NVARCHAR(255)',notes:''}],
+  MOD:[{name:'MOD_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MOD_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  OCCASION:[{name:'OCCASION_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'OCCASSION_ID',type:'NVARCHAR(255)',notes:'BUG: Typo — double-S in column name'},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  PRODUCT:[{name:'PRODUCT_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''},{name:'PRODUCT_ID',type:'NVARCHAR(255)',notes:''}],
+  QUESTION:[{name:'QUESTION',type:'NVARCHAR(255)',notes:'NOT NULL'},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'QUESTION_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  REVCENTER:[{name:'REVC_NAME',type:'NVARCHAR(255)',notes:''},{name:'REVC_ID',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  SUPPLIER:[{name:'SUPPLIER_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'SUPPLIER_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  SVCCHARGE:[{name:'SVCCHARGE_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'SVC_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  TAX:[{name:'TAX_NAME',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'TAX_MULTIPLIER',type:'DECIMAL(38,10)',notes:''},{name:'TAX_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}],
+  TENDER:[{name:'TENDER_NAME',type:'NVARCHAR(255)',notes:''},{name:'TENDER_ID',type:'NVARCHAR(255)',notes:''},{name:'PARENT_ID',type:'NVARCHAR(255)',notes:''},{name:'LEVEL_NAME',type:'NVARCHAR(255)',notes:''},{name:'BOTTOM_LEVEL',type:'BIGINT',notes:''},{name:'ATTR_1',type:'NVARCHAR(255)',notes:''},{name:'ATTR_2',type:'NVARCHAR(255)',notes:''},{name:'ATTR_3',type:'NVARCHAR(255)',notes:''},{name:'ATTR_4',type:'NVARCHAR(255)',notes:''},{name:'ATTR_5',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_NAME',type:'NVARCHAR(255)',notes:''},{name:'MICROSERVICE_ID_BIN',type:'BINARY(32)',notes:''}]
+};
+
+// Link definitions
+const BINARY_LINKS = [
+  ['ADDRESS','INDIVIDUAL'],['ADDRESS','LOCATION'],['CHANNEL','CUSTORDER'],['COMPANY','INDIVIDUAL'],
+  ['COMP','LINEITEM'],['CONTACT','INDIVIDUAL'],['CONTACT','TOUCHPOINT'],['CUSTORDER','EMPLOYEE'],
+  ['CUSTORDER','LINEITEM'],['CUSTORDER','LOCATION'],['CUSTORDER','OCCASION'],['CUSTORDER','POSTX'],
+  ['CUSTORDER','REFUND'],['CUSTORDER','REVCENTER'],['DEAL','LINEITEM'],['DISCOUNT','LINEITEM'],
+  ['EMPLOYEE','LINEITEM'],['EMPLOYEE','ROLE'],['EVENT','TOUCHPOINT'],['INVITEM','INVREPORT'],
+  ['INVITEM','STOCKEVENT'],['INVITEM','STOCKORDER'],['INVREPORT','LOCATION'],['LINEITEM','MOD'],
+  ['LINEITEM','OCCASION'],['LINEITEM','PRODUCT'],['LINEITEM','SVCCHARGE'],['LINEITEM','TAX'],
+  ['LINEITEM','TENDER'],['LOCATION','STOCKEVENT'],['POSITEM','POSTX'],['STOCKEVENT','STOCKORDER']
+];
+
+const MULTI_LINKS = [
+  {id:'ANSWER_QUESTION_TOUCHPOINT', hubs:['ANSWER','QUESTION','TOUCHPOINT'], satLnk:false, isSelfRef:false, build:false},
+  {id:'EMPLOYEE_JOB_TIMECARD', hubs:['EMPLOYEE','JOB','TIMECARD'], satLnk:false, isSelfRef:false, build:false},
+  {id:'INVITEM_OCCASION_PRODUCT', hubs:['INVITEM','OCCASION','PRODUCT'], satLnk:true, isSelfRef:false, build:false, satAttrs:[{name:'UOM',type:'NVARCHAR(255)',purpose:'Unit of measure'},{name:'UOM_VALUE',type:'DECIMAL(38,10)',purpose:'Quantity per recipe/portion'}]},
+  {id:'DISTRIBUTOR_STOCKORDER_SUPPLIER', hubs:['DISTRIBUTOR','STOCKORDER','SUPPLIER'], satLnk:false, isSelfRef:false, build:false},
+  {id:'LOCATION_OCCASION_PRODUCT', hubs:['LOCATION','OCCASION','PRODUCT'], satLnk:true, isSelfRef:false, build:false, satAttrs:[{name:'NET_PRICE',type:'DECIMAL(38,10)',purpose:'Selling price at location for occasion'},{name:'NET_COST',type:'DECIMAL(38,10)',purpose:'Cost at location for occasion'},{name:'PRODUCT_ID',type:'NVARCHAR(255)',purpose:'ANOMALY: Denormalized hub reference'}]},
+  {id:'INVITEM_LOCATION_OCCASION_PRODUCT', hubs:['INVITEM','LOCATION','OCCASION','PRODUCT'], satLnk:true, isSelfRef:false, build:false, satAttrs:[{name:'UOM',type:'NVARCHAR(255)',purpose:'Unit of measure'},{name:'UOM_VALUE',type:'DECIMAL(38,10)',purpose:'Location-specific conversion rate'}]}
+];
+
+const SELF_REF_LINKS = [
+  {id:'INVITEM_INVITEM', hub:'INVITEM', satLnk:true, satAttrs:[{name:'UOM',type:'NVARCHAR(255)',purpose:'Unit of measure for conversion'},{name:'UOM_VALUE',type:'DECIMAL(38,10)',purpose:'Conversion ratio between parent/child INVITEM'}]},
+  {id:'LINEITEM_LINEITEM', hub:'LINEITEM', satLnk:true, satAttrs:[{name:'LABEL',type:'NVARCHAR(255)',purpose:'Relationship descriptor'},{name:'VALUE',type:'DECIMAL(38,10)',purpose:'Numeric value'},{name:'INFO',type:'NVARCHAR(MAX)',purpose:'Flexible JSON payload for metadata'}]}
+];
+
+const BUILD_LINKS = [
+  {id:'ASSET_BOOKING_CUSTORDER', hubs:['ASSET','BOOKING','CUSTORDER']},
+  {id:'ASSET_CUSTORDER', hubs:['ASSET','CUSTORDER']},
+  {id:'LINEITEM_LINEITEMEVENT', hubs:['LINEITEM','LINEITEMEVENT']},
+  {id:'POSITEM_POSITEMEVENT', hubs:['POSITEM','POSITEMEVENT']}
+];
+
+// ============================================================
+// BUILD CYTOSCAPE ELEMENTS
+// ============================================================
+function buildElements() {
+  const elements = [];
+  const connectionCount = {};
+
+  // Count connections per hub for node sizing
+  BINARY_LINKS.forEach(([a,b]) => {
+    connectionCount[a] = (connectionCount[a]||0)+1;
+    connectionCount[b] = (connectionCount[b]||0)+1;
+  });
+  MULTI_LINKS.forEach(lk => lk.hubs.forEach(h => { connectionCount[h] = (connectionCount[h]||0)+1; }));
+  SELF_REF_LINKS.forEach(lk => { connectionCount[lk.hub] = (connectionCount[lk.hub]||0)+2; });
+  BUILD_LINKS.forEach(lk => lk.hubs.forEach(h => { connectionCount[h] = (connectionCount[h]||0)+1; }));
+
+  // Hub nodes
+  Object.keys(HUB_DOMAIN).forEach(hub => {
+    const domain = HUB_DOMAIN[hub];
+    const count = connectionCount[hub] || 0;
+    const size = Math.max(60, Math.min(110, 60 + count * 4));
+    const isBuild = domain === 'build';
+    elements.push({
+      data: {
+        id: hub,
+        label: hub,
+        type: 'hub',
+        domain: domain,
+        hubType: HUB_TYPE[hub] || 'nonhierarchical',
+        version: HUB_VERSION[hub] || '',
+        source: HUB_SOURCE[hub] || '',
+        attrs: HUB_ATTRS[hub] || [],
+        connectionCount: count,
+        size: size,
+        isBuild: isBuild
+      }
+    });
+  });
+
+  // Binary link edges
+  BINARY_LINKS.forEach(([a,b]) => {
+    const linkId = `${a}_${b}`;
+    const domA = HUB_DOMAIN[a] || 'cross';
+    const domB = HUB_DOMAIN[b] || 'cross';
+    const edgeColor = domA === domB ? DOMAIN_COLORS[domA] : '#5c6080';
+    elements.push({
+      data: {
+        id: `edge_${linkId}`,
+        source: a,
+        target: b,
+        type: 'binary',
+        linkId: linkId,
+        edgeColor: edgeColor,
+        domainA: domA,
+        domainB: domB
+      }
+    });
+  });
+
+  // Multi-entity link nodes + edges
+  MULTI_LINKS.forEach(lk => {
+    elements.push({
+      data: {
+        id: lk.id,
+        label: lk.id.replace(/_/g,'\n'),
+        type: 'multi-link',
+        hubs: lk.hubs,
+        satLnk: lk.satLnk,
+        satAttrs: lk.satAttrs || [],
+        isBuild: false
+      }
+    });
+    lk.hubs.forEach(hub => {
+      elements.push({
+        data: {
+          id: `edge_${lk.id}_${hub}`,
+          source: lk.id,
+          target: hub,
+          type: 'link-edge',
+          edgeColor: DOMAIN_COLORS[HUB_DOMAIN[hub]] || '#5c6080'
+        }
+      });
+    });
+    if (lk.satLnk && lk.satAttrs && lk.satAttrs.length > 0) {
+      const satId = `SAT_${lk.id}`;
+      elements.push({
+        data: { id: satId, label: 'SAT_LNK', type: 'sat-lnk', parentLink: lk.id, attrs: lk.satAttrs }
+      });
+      elements.push({
+        data: { id: `edge_sat_${lk.id}`, source: satId, target: lk.id, type: 'sat-edge', edgeColor: '#ffd93d' }
+      });
+    }
+  });
+
+  // Self-ref link nodes + edges
+  SELF_REF_LINKS.forEach(lk => {
+    elements.push({
+      data: {
+        id: lk.id,
+        label: lk.id.replace(/_/g,'\n'),
+        type: 'self-ref',
+        hub: lk.hub,
+        satLnk: lk.satLnk,
+        satAttrs: lk.satAttrs || [],
+        isBuild: false
+      }
+    });
+    elements.push({
+      data: { id: `edge_${lk.id}_parent`, source: lk.id, target: lk.hub, type: 'link-edge', edgeColor: DOMAIN_COLORS[HUB_DOMAIN[lk.hub]] || '#5c6080', label: 'parent' }
+    });
+    elements.push({
+      data: { id: `edge_${lk.id}_child`, source: lk.hub, target: lk.id, type: 'link-edge', edgeColor: DOMAIN_COLORS[HUB_DOMAIN[lk.hub]] || '#5c6080', label: 'child' }
+    });
+    if (lk.satLnk && lk.satAttrs && lk.satAttrs.length > 0) {
+      const satId = `SAT_${lk.id}`;
+      elements.push({
+        data: { id: satId, label: 'SAT_LNK', type: 'sat-lnk', parentLink: lk.id, attrs: lk.satAttrs }
+      });
+      elements.push({
+        data: { id: `edge_sat_${lk.id}`, source: satId, target: lk.id, type: 'sat-edge', edgeColor: '#ffd93d' }
+      });
+    }
+  });
+
+  // Build-state link nodes + edges
+  BUILD_LINKS.forEach(lk => {
+    elements.push({
+      data: {
+        id: lk.id,
+        label: lk.id.replace(/_/g,'\n'),
+        type: 'multi-link',
+        hubs: lk.hubs,
+        satLnk: false,
+        satAttrs: [],
+        isBuild: true
+      }
+    });
+    lk.hubs.forEach(hub => {
+      elements.push({
+        data: {
+          id: `edge_${lk.id}_${hub}`,
+          source: lk.id,
+          target: hub,
+          type: 'link-edge',
+          edgeColor: '#5c6080',
+          isBuild: true
+        }
+      });
+    });
+  });
+
+  return elements;
+}
+
+// ============================================================
+// CYTOSCAPE STYLE
+// ============================================================
+function getCyStyle() {
+  return [
+    // Hub nodes
+    {
+      selector: 'node[type="hub"]',
+      style: {
+        'shape': 'round-rectangle',
+        'width': 'data(size)',
+        'height': 36,
+        'label': 'data(label)',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'font-size': 10,
+        'font-weight': 700,
+        'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        'color': '#ffffff',
+        'background-color': 'data(domainColor)',
+        'border-width': 2,
+        'border-color': 'data(borderColor)',
+        'text-max-width': 'data(size)',
+        'text-wrap': 'ellipsis',
+        'shadow-blur': 8,
+        'shadow-color': 'data(domainColor)',
+        'shadow-opacity': 0.4,
+        'shadow-offset-x': 0,
+        'shadow-offset-y': 2
+      }
+    },
+    // Build hubs — dashed, lower opacity
+    {
+      selector: 'node[type="hub"][isBuild=true]',
+      style: {
+        'opacity': 0.55,
+        'border-style': 'dashed',
+        'border-width': 2,
+        'shadow-opacity': 0.1
+      }
+    },
+    // Multi-entity link nodes (diamond-ish)
+    {
+      selector: 'node[type="multi-link"]',
+      style: {
+        'shape': 'diamond',
+        'width': 28,
+        'height': 28,
+        'label': '',
+        'background-color': '#252840',
+        'border-width': 2,
+        'border-color': '#363a54'
+      }
+    },
+    {
+      selector: 'node[type="multi-link"][isBuild=true]',
+      style: { 'opacity': 0.4, 'border-style': 'dashed' }
+    },
+    // Self-ref link nodes (hexagon/octagon)
+    {
+      selector: 'node[type="self-ref"]',
+      style: {
+        'shape': 'octagon',
+        'width': 28,
+        'height': 28,
+        'label': '',
+        'background-color': '#252840',
+        'border-width': 2,
+        'border-color': '#ff6b9d'
+      }
+    },
+    // SAT_LNK nodes
+    {
+      selector: 'node[type="sat-lnk"]',
+      style: {
+        'shape': 'ellipse',
+        'width': 18,
+        'height': 18,
+        'label': '',
+        'background-color': '#2a2d42',
+        'border-width': 2,
+        'border-color': '#ffd93d',
+        'border-style': 'dashed'
+      }
+    },
+    // Edges
+    {
+      selector: 'edge[type="binary"]',
+      style: {
+        'width': 1.5,
+        'line-color': 'data(edgeColor)',
+        'opacity': 0.45,
+        'curve-style': 'bezier',
+        'target-arrow-shape': 'none'
+      }
+    },
+    {
+      selector: 'edge[type="link-edge"]',
+      style: {
+        'width': 1.2,
+        'line-color': 'data(edgeColor)',
+        'opacity': 0.35,
+        'curve-style': 'bezier',
+        'target-arrow-shape': 'none'
+      }
+    },
+    {
+      selector: 'edge[type="sat-edge"]',
+      style: {
+        'width': 1,
+        'line-color': '#ffd93d',
+        'opacity': 0.5,
+        'curve-style': 'bezier',
+        'line-style': 'dashed',
+        'target-arrow-shape': 'none'
+      }
+    },
+    // Selected
+    {
+      selector: 'node:selected, edge:selected',
+      style: { 'overlay-color': '#6c8aff', 'overlay-opacity': 0.2 }
+    },
+    // Highlighted
+    {
+      selector: '.highlighted',
+      style: { 'opacity': 1, 'z-index': 100 }
+    },
+    {
+      selector: '.dimmed',
+      style: { 'opacity': 0.08 }
+    }
+  ];
+}
+
+// ============================================================
+// INIT CYTOSCAPE
+// ============================================================
+let cy;
+let activeDomains = new Set(['pos','inv','survey','crm','cross','build']);
+let highlightMode = false;
+
+function domainColor(domain) {
+  return DOMAIN_COLORS[domain] || '#5c6080';
+}
+function borderColor(domain) {
+  const c = DOMAIN_COLORS[domain] || '#5c6080';
+  return c;
+}
+
+function initCy() {
+  const elements = buildElements();
+
+  // Attach domain colors to hub nodes
+  elements.forEach(el => {
+    if (el.data && el.data.type === 'hub') {
+      el.data.domainColor = domainColor(el.data.domain);
+      el.data.borderColor = borderColor(el.data.domain);
+    }
+  });
+
+  cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: elements,
+    style: getCyStyle(),
+    layout: getFcoseLayout(false),
+    userZoomingEnabled: true,
+    userPanningEnabled: true,
+    boxSelectionEnabled: false,
+    autounselectify: false,
+    wheelSensitivity: 0.3
+  });
+
+  // Events
+  cy.on('tap', 'node', function(evt) {
+    const node = evt.target;
+    showPanel(node);
+    highlightNeighborhood(node);
+  });
+
+  cy.on('tap', function(evt) {
+    if (evt.target === cy) {
+      clearHighlight();
+      closePanel();
+    }
+  });
+
+  cy.on('mouseover', 'node', function(evt) {
+    const node = evt.target;
+    showTooltip(evt, node);
+    document.getElementById('cy').style.cursor = 'pointer';
+  });
+
+  cy.on('mouseout', 'node', function() {
+    hideTooltip();
+    document.getElementById('cy').style.cursor = 'default';
+  });
+
+  cy.on('mousemove', function(evt) {
+    moveTooltip(evt);
+  });
+
+  document.getElementById('loading').style.display = 'none';
+}
+
+// ============================================================
+// HIGHLIGHT
+// ============================================================
+function highlightNeighborhood(node) {
+  highlightMode = true;
+  let highlighted = node.neighborhood().add(node);
+  // Extend through intermediate nodes (multi-link, self-ref, sat-lnk) to reach the hubs beyond them
+  highlighted.nodes().forEach(n => {
+    const t = n.data('type');
+    if (t === 'multi-link' || t === 'self-ref' || t === 'sat-lnk') {
+      highlighted = highlighted.union(n.neighborhood());
+    }
+  });
+  cy.elements().addClass('dimmed').removeClass('highlighted');
+  highlighted.addClass('highlighted').removeClass('dimmed');
+}
+
+function clearHighlight() {
+  highlightMode = false;
+  cy.elements().removeClass('dimmed highlighted');
+}
+
+// ============================================================
+// TOOLTIP
+// ============================================================
+let tooltipTarget = null;
+
+function showTooltip(evt, node) {
+  const data = node.data();
+  const tt = document.getElementById('tooltip');
+  let content = '';
+  if (data.type === 'hub') {
+    const typeLabel = {transactional:'Transactional',dimension:'Dimension (Hierarchical)',nonhierarchical:'Dimension (Non-Hierarchical)',build:'Build Stub'}[data.hubType] || data.hubType;
+    const statusLabel = data.isBuild ? 'Build' : `${data.version} Live`;
+    content = `<strong>${data.label}</strong><br><span style="color:var(--text2);font-size:11px">${typeLabel} &middot; ${statusLabel}</span>`;
+    if (data.attrs && data.attrs.length > 0) content += `<br><span style="color:var(--text3);font-size:11px">${data.attrs.length} attributes &middot; ${data.connectionCount} links</span>`;
+  } else if (data.type === 'multi-link' || data.type === 'self-ref') {
+    content = `<strong>${data.id}</strong><br><span style="color:var(--text2);font-size:11px">${data.satLnk ? 'Has SAT_LNK' : 'No SAT_LNK'}</span>`;
+  } else if (data.type === 'sat-lnk') {
+    content = `<strong>SAT_LNK</strong><br><span style="color:var(--accent4);font-size:11px">Link satellite attributes</span>`;
+  }
+  tt.innerHTML = content;
+  tt.style.opacity = '1';
+  tooltipTarget = node;
+}
+
+function moveTooltip(evt) {
+  if (!tooltipTarget) return;
+  const tt = document.getElementById('tooltip');
+  const pos = evt.originalEvent;
+  const x = pos.clientX + 14;
+  const y = pos.clientY - 10;
+  tt.style.left = x + 'px';
+  tt.style.top = y + 'px';
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').style.opacity = '0';
+  tooltipTarget = null;
+}
+
+// ============================================================
+// DETAIL PANEL
+// ============================================================
+function showPanel(node) {
+  const data = node.data();
+  const panel = document.getElementById('detail-panel');
+  const content = document.getElementById('panel-content');
+  const title = document.getElementById('panel-title');
+
+  title.textContent = data.id || data.label || 'Details';
+  content.innerHTML = buildPanelContent(data, node);
+  panel.classList.add('open');
+}
+
+function buildPanelContent(data, node) {
+  let html = '';
+  if (data.type === 'hub') {
+    const typeLabel = {transactional:'Transactional',dimension:'Dimension (Hierarchical)',nonhierarchical:'Dimension (Non-Hierarchical)',build:'Build Stub'}[data.hubType] || data.hubType;
+    const badgeClass = {transactional:'transactional',dimension:'dimension',nonhierarchical:'nonhierarchical',build:'build'}[data.hubType] || 'build';
+    const domainLabel = {pos:'POS',inv:'Inventory',survey:'Survey',crm:'CRM',cross:'Cross-Domain',build:'Build/Future'}[data.domain] || data.domain;
+    const domainColor = DOMAIN_COLORS[data.domain] || '#5c6080';
+
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">`;
+    html += `<div style="width:12px;height:12px;border-radius:3px;background:${domainColor};flex-shrink:0"></div>`;
+    html += `<span style="font-size:13px;color:var(--text2)">${domainLabel} Domain</span>`;
+    html += `</div>`;
+
+    html += `<span class="panel-badge ${badgeClass}">${typeLabel}</span>`;
+    html += `<div class="panel-meta">`;
+    html += `<div class="meta-item"><strong>Version:</strong> ${data.version}</div>`;
+    html += `<div class="meta-item"><strong>Status:</strong> ${data.isBuild ? 'Build' : 'Live'}</div>`;
+    if (data.source && data.source !== 'NULL') html += `<div class="meta-item"><strong>Source:</strong> ${data.source}</div>`;
+    html += `<div class="meta-item"><strong>Connections:</strong> ${data.connectionCount}</div>`;
+    html += `</div>`;
+
+    // Tables
+    html += `<div class="panel-section"><h3>Physical Tables</h3>`;
+    html += `<div style="font-size:11px;font-family:var(--mono);background:var(--bg3);border-radius:var(--radius-sm);padding:10px;color:var(--accent2);line-height:1.8">`;
+    html += `datavault.HUB_${data.id}<br>datavault.SAT_${data.id}<br>load.${data.id}`;
+    html += `</div></div>`;
+
+    // Attributes
+    if (data.attrs && data.attrs.length > 0) {
+      html += `<div class="panel-section"><h3>Attributes (${data.attrs.length})</h3>`;
+      html += `<table class="attr-table"><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>`;
+      data.attrs.forEach(attr => {
+        const hasBug = attr.notes && attr.notes.toLowerCase().includes('bug');
+        html += `<tr>`;
+        html += `<td style="font-family:var(--mono);font-size:11px">${attr.name}</td>`;
+        html += `<td class="type">${attr.type}</td>`;
+        html += `<td class="notes${hasBug ? ' bug-note' : ''}">${attr.notes || ''}</td>`;
+        html += `</tr>`;
+      });
+      html += `</tbody></table></div>`;
+    } else if (data.isBuild) {
+      html += `<div class="panel-section"><h3>Attributes</h3><p style="color:var(--text3);font-size:12px;font-style:italic">No attributes — build stub generates empty SAT table.</p></div>`;
+    }
+
+    // Connected links
+    const connectedEdges = node.connectedEdges();
+    const connectedNodes = node.neighborhood('node');
+    if (connectedNodes.length > 0) {
+      html += `<div class="panel-section"><h3>Connected Entities (${connectedNodes.length})</h3>`;
+      html += `<div class="connected-list">`;
+      connectedNodes.forEach(n => {
+        const nd = n.data();
+        const dot = nd.type === 'hub' ? `background:${DOMAIN_COLORS[nd.domain] || '#5c6080'}` : 'background:var(--border2)';
+        const label = nd.id;
+        html += `<div class="connected-item" onclick="jumpToNode('${nd.id}')">`;
+        html += `<div class="connected-dot" style="${dot}"></div>`;
+        html += `<span style="font-size:12px;font-family:var(--mono)">${label}</span>`;
+        if (nd.type === 'hub') html += `<span style="margin-left:auto;font-size:10px;color:var(--text3)">${nd.domain}</span>`;
+        html += `</div>`;
+      });
+      html += `</div></div>`;
+    }
+
+  } else if (data.type === 'multi-link' || data.type === 'self-ref') {
+    html += `<span class="panel-badge link">${data.type === 'self-ref' ? 'Self-Referencing Link' : (data.hubs && data.hubs.length === 4 ? 'Quaternary Link' : 'Ternary Link')}</span>`;
+
+    const hubs = data.type === 'self-ref' ? [data.hub, data.hub] : (data.hubs || []);
+    html += `<div class="panel-section"><h3>Connected Hubs</h3><div class="connected-list">`;
+    const uniqueHubs = [...new Set(hubs)];
+    uniqueHubs.forEach(hub => {
+      const domain = HUB_DOMAIN[hub] || 'cross';
+      html += `<div class="connected-item" onclick="jumpToNode('${hub}')">`;
+      html += `<div class="connected-dot" style="background:${DOMAIN_COLORS[domain]}"></div>`;
+      html += `<span style="font-size:12px;font-family:var(--mono)">${hub}</span>`;
+      if (data.type === 'self-ref') html += `<span style="margin-left:auto;font-size:10px;color:var(--text3)">PARENT & CHILD</span>`;
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+
+    html += `<div class="panel-section"><h3>Physical Tables</h3>`;
+    html += `<div style="font-size:11px;font-family:var(--mono);background:var(--bg3);border-radius:var(--radius-sm);padding:10px;color:var(--accent2);line-height:1.8">`;
+    html += `datavault.LNK_${data.id}<br>load.${data.id}`;
+    if (data.satLnk) html += `<br>datavault.SAT_LNK_${data.id}`;
+    html += `</div></div>`;
+
+    if (data.satLnk && data.satAttrs && data.satAttrs.length > 0) {
+      html += `<div class="panel-section"><h3>SAT_LNK Attributes <span class="tag sat-lnk">SAT_LNK</span></h3>`;
+      html += `<table class="attr-table"><thead><tr><th>Column</th><th>Type</th><th>Purpose</th></tr></thead><tbody>`;
+      data.satAttrs.forEach(attr => {
+        html += `<tr><td style="font-family:var(--mono);font-size:11px">${attr.name}</td><td class="type">${attr.type}</td><td class="notes">${attr.purpose || ''}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+    } else {
+      html += `<div class="panel-section"><h3>SAT_LNK</h3><p style="color:var(--text3);font-size:12px;font-style:italic">No satellite attributes on this link.</p></div>`;
+    }
+
+  } else if (data.type === 'sat-lnk') {
+    html += `<span class="panel-badge link">Link Satellite</span>`;
+    html += `<div style="font-size:12px;color:var(--text2);margin-bottom:16px">Satellite attributes attached to link: <code style="font-family:var(--mono);color:var(--accent)">${data.parentLink}</code></div>`;
+    if (data.attrs && data.attrs.length > 0) {
+      html += `<div class="panel-section"><h3>Attributes</h3>`;
+      html += `<table class="attr-table"><thead><tr><th>Column</th><th>Type</th><th>Purpose</th></tr></thead><tbody>`;
+      data.attrs.forEach(attr => {
+        html += `<tr><td style="font-family:var(--mono);font-size:11px">${attr.name}</td><td class="type">${attr.type}</td><td class="notes">${attr.purpose || ''}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+    }
+  }
+
+  return html;
+}
+
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
+function jumpToNode(nodeId) {
+  const node = cy.getElementById(nodeId);
+  if (node && node.length > 0) {
+    cy.animate({ center: { eles: node }, zoom: 2 }, { duration: 400 });
+    highlightNeighborhood(node);
+    showPanel(node);
+  }
+}
+
+// ============================================================
+// DOMAIN FILTER
+// ============================================================
+function toggleDomain(btn, domain) {
+  if (activeDomains.has(domain)) {
+    if (activeDomains.size <= 1) return; // keep at least one
+    activeDomains.delete(domain);
+    btn.classList.remove('active');
+  } else {
+    activeDomains.add(domain);
+    btn.classList.add('active');
+  }
+  applyDomainFilter();
+}
+
+function applyDomainFilter() {
+  cy.nodes('[type="hub"]').forEach(n => {
+    const domain = n.data('domain');
+    if (activeDomains.has(domain)) {
+      n.style('display', 'element');
+    } else {
+      n.style('display', 'none');
+    }
+  });
+
+  // Show/hide edges and link nodes based on whether both connected hubs are visible
+  cy.nodes('[type="multi-link"],[type="self-ref"]').forEach(ln => {
+    const data = ln.data();
+    let visible = false;
+    if (data.type === 'self-ref') {
+      visible = activeDomains.has(HUB_DOMAIN[data.hub] || 'build');
+    } else if (data.hubs) {
+      visible = data.hubs.every(h => activeDomains.has(HUB_DOMAIN[h] || 'build'));
+    }
+    ln.style('display', visible ? 'element' : 'none');
+    if (data.isBuild && !activeDomains.has('build')) ln.style('display', 'none');
+  });
+
+  cy.edges().forEach(e => {
+    const src = cy.getElementById(e.data('source'));
+    const tgt = cy.getElementById(e.data('target'));
+    const srcVis = src.style('display') !== 'none';
+    const tgtVis = tgt.style('display') !== 'none';
+    e.style('display', srcVis && tgtVis ? 'element' : 'none');
+  });
+
+  cy.nodes('[type="sat-lnk"]').forEach(n => {
+    const parentLinkId = n.data('parentLink');
+    const parentLink = cy.getElementById(parentLinkId);
+    n.style('display', parentLink.style('display') !== 'none' ? 'element' : 'none');
+  });
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function searchNodes(query) {
+  if (!query || !query.trim()) {
+    clearHighlight();
+    return;
+  }
+  const q = query.toUpperCase();
+  const matches = cy.nodes().filter(n => n.data('id').toUpperCase().includes(q));
+  if (matches.length === 0) {
+    clearHighlight();
+    return;
+  }
+  highlightMode = true;
+  cy.elements().addClass('dimmed').removeClass('highlighted');
+  matches.forEach(n => {
+    const neighborhood = n.neighborhood().add(n);
+    neighborhood.addClass('highlighted').removeClass('dimmed');
+  });
+  if (matches.length === 1) {
+    cy.animate({ center: { eles: matches.first() }, zoom: 2 }, { duration: 400 });
+  } else {
+    cy.animate({ fit: { eles: matches, padding: 80 } }, { duration: 400 });
+  }
+}
+
+// ============================================================
+// LAYOUT
+// ============================================================
+function getFcoseLayout(animate) {
+  // Check if fcose is registered; fall back to cose if not
+  const layoutName = (typeof cytoscapeFcose !== 'undefined') ? 'fcose' : 'cose';
+  if (layoutName === 'cose') {
+    return {
+      name: 'cose',
+      animate: animate,
+      animationDuration: animate ? 900 : 0,
+      randomize: !animate,
+      nodeRepulsion: () => 9000,
+      idealEdgeLength: () => 90,
+      edgeElasticity: () => 100,
+      gravity: 0.6,
+      numIter: 2500,
+      nodeDimensionsIncludeLabels: true
+    };
+  }
+  return {
+    name: 'fcose',
+    animate: animate,
+    animationDuration: animate ? 900 : 0,
+    animationEasing: 'ease-out',
+    randomize: !animate,
+    quality: 'proof',
+    nodeDimensionsIncludeLabels: true,
+    uniformNodeDimensions: false,
+    packComponents: true,
+    nodeRepulsion: () => 12000,
+    idealEdgeLength: () => 90,
+    edgeElasticity: () => 0.45,
+    nestingFactor: 0.1,
+    gravity: 0.25,
+    gravityRangeCompound: 1.5,
+    gravityCompound: 1.0,
+    gravityRange: 3.8,
+    numIter: 2500,
+    tilingPaddingVertical: 10,
+    tilingPaddingHorizontal: 10,
+    initialEnergyOnIncremental: 0.3
+  };
+}
+
+function getDomainPositions() {
+  // Fixed domain centres on a 1600×900 virtual canvas
+  const centres = {
+    pos:    { x: 400,  y: 350 },
+    inv:    { x: 1200, y: 350 },
+    survey: { x: 1200, y: 700 },
+    crm:    { x: 400,  y: 700 },
+    cross:  { x: 800,  y: 500 },
+    build:  { x: 800,  y: 150 }
+  };
+  const positions = {};
+  const counts = {};
+  // Count hub nodes per domain
+  cy.nodes('[type="hub"]').forEach(n => {
+    const d = n.data('domain');
+    counts[d] = (counts[d] || 0) + 1;
+  });
+  const indices = {};
+  cy.nodes('[type="hub"]').forEach(n => {
+    const d = n.data('domain');
+    const idx = indices[d] = (indices[d] || 0) + 1;
+    const total = counts[d];
+    const c = centres[d] || { x: 800, y: 500 };
+    const spread = Math.min(200, Math.max(100, total * 18));
+    const angle = (idx / total) * 2 * Math.PI;
+    positions[n.id()] = {
+      x: c.x + Math.cos(angle) * spread,
+      y: c.y + Math.sin(angle) * (spread * 0.65)
+    };
+  });
+  // Position link/sat nodes near their connected hubs centroid with deterministic offset
+  let linkIdx = 0;
+  cy.nodes('[type!="hub"]').forEach(n => {
+    const neighbors = n.neighborhood('node[type="hub"]');
+    if (neighbors.length > 0) {
+      let sx = 0, sy = 0;
+      neighbors.forEach(nb => {
+        const p = positions[nb.id()];
+        if (p) { sx += p.x; sy += p.y; }
+      });
+      // Use a stable angular offset based on node index to spread link nodes out from centroid
+      const angle = (linkIdx * 2.399963) % (2 * Math.PI); // golden angle spiral for even distribution
+      const r = 28;
+      positions[n.id()] = { x: sx / neighbors.length + Math.cos(angle) * r, y: sy / neighbors.length + Math.sin(angle) * r };
+    } else {
+      positions[n.id()] = { x: 800, y: 500 };
+    }
+    linkIdx++;
+  });
+  return positions;
+}
+
+let currentLayout = 'fcose';
+
+function runLayout(name) {
+  // Update button active state
+  document.getElementById('btn-force').classList.toggle('active', name === 'fcose');
+  document.getElementById('btn-domain').classList.toggle('active', name === 'domain');
+  currentLayout = name;
+
+  if (name === 'fcose') {
+    const opts = getFcoseLayout(true);
+    cy.layout(opts).run();
+  } else if (name === 'domain') {
+    const positions = getDomainPositions();
+    cy.layout({
+      name: 'preset',
+      positions: node => positions[node.id()] || { x: 800, y: 500 },
+      animate: true,
+      animationDuration: 700,
+      animationEasing: 'ease-in-out'
+    }).run();
+  }
+}
+
+function fitAll() {
+  cy.animate({ fit: { padding: 40 } }, { duration: 400 });
+}
+
+// ============================================================
+// THEME
+// ============================================================
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+  // Refresh cy background
+  if (cy) {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    document.getElementById('cy').style.background = bg;
+  }
+}
+
+// ============================================================
+// LEGEND COLLAPSE
+// ============================================================
+function toggleLegend() {
+  const legend = document.getElementById('legend');
+  const btn = document.getElementById('legend-toggle');
+  const isCollapsed = legend.classList.toggle('collapsed');
+  btn.textContent = isCollapsed ? '+' : '−';
+  btn.title = isCollapsed ? 'Expand legend' : 'Collapse legend';
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+window.addEventListener('load', function() {
+  // Register fcose layout extension if available
+  if (typeof cytoscapeFcose !== 'undefined') {
+    cytoscape.use(cytoscapeFcose);
+  }
+  // Small delay to let layout render
+  setTimeout(initCy, 100);
+  // Auto-dismiss help toast after 6 seconds
+  setTimeout(function() {
+    const toast = document.getElementById('help-toast');
+    if (toast) toast.classList.add('hidden');
+  }, 6000);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,3494 @@
+Aztec Dimensions
+
+Reporting Data Table Schema
+
+v3.27 January 2021
+                                            Aztec Dimensions ­ Reporting Data Table Schema
+
+Version Date  Notes                                      Author
+
+1.0  30-1-18 First draft to support Aztec v3.10.       Mohammed
+                                                       Choudhury and
+1.1  22-3-19 Updated to support Aztec 3.16             Hosain Fettah
+
+1.2  20-4-20 Updated to support Aztec 3.17             Howard McLean
+
+1.3  6-1-21 Updated with Rpt_AccountDetails New Table  Howard McLean
+
+                                                       Howard McLean
+
+                                                       2
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+                            Contents
+
+Introduction................................................................................................................................................................... 7
+   Sales and Payments Tables .................................................................................................................................... 8
+      Rpt_AccountDetails .............................................................................................................................................. 8
+      Rpt_SalesTransactions ........................................................................................................................................ 9
+      Rpt_ChildTransactions ....................................................................................................................................... 11
+      Rpt_ParentTransactions..................................................................................................................................... 13
+      Rpt_PaymentTransactions ................................................................................................................................. 14
+      Rpt_ProductSales .............................................................................................................................................. 16
+      Rpt_PromotionalSales........................................................................................................................................ 17
+      Rpt_EventPricingHeader .................................................................................................................................... 18
+      Rpt_SubCatSales ............................................................................................................................................... 19
+      Rpt_DivSales...................................................................................................................................................... 20
+      Rpt_GiftCardTransactions.................................................................................................................................. 21
+   Financial Transaction Tables ................................................................................................................................. 22
+      Rpt_FinancialTransactions ................................................................................................................................. 22
+      Rpt_FinancialTransactionsTypes ....................................................................................................................... 23
+      Transaction Types Definition.............................................................................................................................. 24
+      dbo.TransAct ...................................................................................................................................................... 25
+      dbo.TransTab ..................................................................................................................................................... 26
+   Stock Data Tables .................................................................................................................................................. 27
+      Rpt_StockHeader ............................................................................................................................................... 27
+      Rpt_StockSummary ........................................................................................................................................... 28
+      Rpt_StockDetail.................................................................................................................................................. 29
+      Rpt_StockSales .................................................................................................................................................. 31
+      Rpt_TheoStock................................................................................................................................................... 32
+      Rpt_TheoStockHdr ............................................................................................................................................. 33
+      Rpt_StockOrders ................................................................................................................................................ 34
+      Rpt_StockOrdersDetail....................................................................................................................................... 35
+      PchMain.............................................................................................................................................................. 36
+      PchDets .............................................................................................................................................................. 37
+   Base Data Tables................................................................................................................................................... 38
+      Dim_Calendar .................................................................................................................................................... 38
+      Rpt_Company .................................................................................................................................................... 39
+
+                                                                                                                               3
+                                                                                   Aztec Dimensions ­ Reporting Data Table Schema
+
+   SiteList................................................................................................................................................................ 40
+   Rpt_ProductList .................................................................................................................................................. 41
+   DivList................................................................................................................................................................. 43
+   Rpt_SubCat ........................................................................................................................................................ 44
+   Rpt_OrderDestinations ....................................................................................................................................... 45
+   PortionList .......................................................................................................................................................... 45
+   Rpt_TariffPrices.................................................................................................................................................. 45
+   Rpt_PriceBands ................................................................................................................................................. 46
+   Rpt_PriceBandsSupplement .............................................................................................................................. 47
+   CorrList ............................................................................................................................................................... 48
+   Rpt_CorrectionReason....................................................................................................................................... 48
+   Rpt_RecipeCosts ............................................................................................................................................... 49
+   PayList................................................................................................................................................................ 50
+   Rpt_Discounts .................................................................................................................................................... 50
+   Rpt_Promotions.................................................................................................................................................. 50
+   Rpt_EventPromotion .......................................................................................................................................... 51
+   Rpt_Threads....................................................................................................................................................... 51
+   Rpt_PurchaseUnits ............................................................................................................................................ 52
+   Rpt_UnitList ........................................................................................................................................................ 52
+   Rpt_Employees .................................................................................................................................................. 53
+   dbo.PortionTable ................................................................................................................................................ 54
+   Rpt_PaymentList ................................................................................................................................................ 55
+   dbo.SAList .......................................................................................................................................................... 56
+   dbo.Supplier ....................................................................................................................................................... 57
+   dbo.TimeSlot ...................................................................................................................................................... 57
+   dbo.Validity ......................................................................................................................................................... 58
+   dbo.VatTable ...................................................................................................................................................... 58
+   dbo.PromoList .................................................................................................................................................... 59
+   Dbo.Rpt_ProductGroupValues........................................................................................................................... 63
+   Dbo.Dim_CalendarPR ........................................................................................................................................ 64
+   Dbo.Dim_ReportStats ........................................................................................................................................ 65
+Analysis Codes Tables........................................................................................................................................... 67
+   Rpt_AnalysisCompany ....................................................................................................................................... 67
+   Rpt_AnalysisDivision .......................................................................................................................................... 67
+   Rpt_AnalysisProduct .......................................................................................................................................... 67
+   Rpt_AnalysisPromotion ...................................................................................................................................... 68
+
+                                                                                                                            4
+                                                                                   Aztec Dimensions ­ Reporting Data Table Schema
+
+   Rpt_AnalysisSalesArea...................................................................................................................................... 68
+   Rpt_AnalysisSession.......................................................................................................................................... 68
+   Rpt_AnalysisSite ................................................................................................................................................ 69
+   Rpt_AnalysisSubCategory ................................................................................................................................. 69
+   Rpt_AnalysisUnit ................................................................................................................................................ 69
+Line Check Tables.................................................................................................................................................. 70
+   Dbo.LineCheck ................................................................................................................................................... 70
+   Dbo.LineCheckDetail.......................................................................................................................................... 71
+   Dbo.LineCheckSum ........................................................................................................................................... 72
+Tag Tables ............................................................................................................................................................. 73
+   dbo.Rpt_TagAreaHeader ................................................................................................................................... 73
+   dbo.Rpt_TagAreaHeader ................................................................................................................................... 74
+   dbo.Rpt_TagProduct .......................................................................................................................................... 74
+   dbo.Rpt_TagProductHeader .............................................................................................................................. 75
+   dbo.Rpt_TagProductValues ............................................................................................................................... 76
+   dbo.Rpt_TagSalesArea ...................................................................................................................................... 76
+   dbo.Rpt_TagSalesAreaHeader .......................................................................................................................... 77
+   dbo.Rpt_TagSalesAreaValues ........................................................................................................................... 78
+   dbo.Rpt_TagSite ................................................................................................................................................ 79
+   dbo.Rpt_TagSiteHeader..................................................................................................................................... 80
+   dbo.Rpt_TagSiteValues ..................................................................................................................................... 81
+   dbo.Rpt_TagTerminalHeader............................................................................................................................. 82
+   dbo.Rpt_TagTerminalValues ............................................................................................................................. 83
+Sales and Payment Tables .................................................................................................................................... 84
+   dbo.Rpt_Payment............................................................................................................................................... 84
+   dbo.Rpt_ProductSalesHalfHourly ...................................................................................................................... 85
+Bookings Tables ..................................................................................................................................................... 86
+   dbo.DimView_Booking ....................................................................................................................................... 86
+   dbo.DimView_BookingDeposit ........................................................................................................................... 87
+   dbo.DimView_BookingRedemption.................................................................................................................... 88
+   dbo.DimView_BookingType ............................................................................................................................... 89
+Employee Tables.................................................................................................................................................... 90
+   dbo.EmpData ..................................................................................................................................................... 90
+   Dbo.EmpError .................................................................................................................................................... 91
+   dbo.EmpHalfHourSales ...................................................................................................................................... 92
+   dbo.EmpHr ......................................................................................................................................................... 93
+
+                                                                                                                            5
+                                                                                   Aztec Dimensions ­ Reporting Data Table Schema
+   dbo.EmpSales .................................................................................................................................................... 94
+   dbo.EmpWages .................................................................................................................................................. 95
+   dbo.Employee .................................................................................................................................................... 96
+   dbo.DimView_EmployeeSalesErrorsAndHours ................................................................................................. 97
+   dbo.DimView_EmployeeSalesErrorsAndWages ............................................................................................... 98
+Analysis Tables ...................................................................................................................................................... 99
+   dbo.Rpt_AnalysisTransactionTypes................................................................................................................... 99
+   dbo.Rpt_AnalysisPortion .................................................................................................................................. 101
+   dbo.Rpt_PortionAnalysis .................................................................................................................................. 103
+   dbo.Rpt_PortionAnalysisDetail......................................................................................................................... 104
+
+                                                                                                                            6
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Introduction
+
+This document describes the table schema of the Dimensions SQL reporting database which is populated from the
+AZTEC SQL operational database.
+The Dimensions SQL Reporting Database is created and updated by the Dimensions Update program and is
+designed to provide a simplified schema for reporting purposes.
+The Dimensions Update runs on a scheduled basis, typically each morning following the completion of Site to Head
+Office communications. The update process transfers the latest data from the AZTEC operational database into the
+Dimensions reporting database to allow simplified and faster reporting.
+The structure of this database is set to provide a set of summarised and fully detailed data for transactions that are
+reported.
+Each site is grouped into sales areas, which in turn hold terminals. Each site is in an area which in turn is in a
+company which is then in an Estate, which is the top level
+From the product side, the top level is defined as division. This is used as the reporting breakdown top level and
+also to determine stock systems.
+Under the Division there is a Sub Division, then Super Category, Category, Sub Category and finally Product.
+Each product is defined as belonging to a single Sub Category with in turn automatically applies it to the hierarchy
+above it.
+Each customer transaction is stored as a unique terminal Account, with its own Account ID, and then each part of
+the terminal account has a unique transaction ID.
+The tables listed below are those that contain the data most frequently used by BI report writers to provide what is
+required.
+
+                                                                                                                               7
+                                       Aztec Dimensions ­ Reporting Data Table Schema
+
+Sales and Payments Tables
+
+Rpt_AccountDetails
+
+Column Name         Primary Data Type  Description
+                    Key
+
+SiteId              Y  Int
+
+AccouintId          Y  Bigint          Account identifier
+
+TransDate              DateTime        Business Date the transaction was closed
+
+EmployeeId             Bigint          Id of employee who owns this account
+
+EmpFullName            Varchar (41) Full text name of employee who owns this account
+
+ClosedBy               Bigint          Id of employee who closed this account
+
+OpenDateTime           DateTime        Date and time the account was first opened
+
+CloseDateTime          DateTime        Date and time the account was closed
+
+TableNo                Varchar (4)     Recorded Table number this account is on
+
+Covers                 Int             No of covers as entered by employees on the till
+
+AccountTotal           Money           Gross sales value of this account
+
+OpenTransDate          DateTime        Business Date the transaction was opened
+
+ClosedByName           Varchar (41) Full text name of employee who closed this account
+
+Promotion              Money           Value of all promotions applied to this account
+
+Discount               Money           Value of all discounts applied to this account
+
+IncTax                 Money           Total Inclusive tax (VAT) amount on this account
+
+ExcTax                 Money           Total Exclusive tax amount on this account
+
+ServiceCharge          Money           Total service charge amount on this account
+
+Tip                    Money           Total Tips amount on this account
+
+ItemCount              Int             Count of the number of product items on this account
+
+DwellTime              Decimal (15,4) Total time from account opening till account closing
+
+SubCatCovers           Int             Count of the No of dishes in this account set to be a cover
+
+ReopenedAccount        DateTime        Date and time the account was re-opened
+
+                                                                                                    8
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_SalesTransactions
+This table provides details of sales transactions to an individual account level. This is the original source of all
+sales data.
+
+Column Name     Primary Data Type  Description
+                Key
+TransactionID
+                Y  Bigint          Unique transaction identifier ­ must be used with Terminal
+TerminalID                         ID
+
+AccountID       Y  int             Terminal identifier used to determine where this transaction
+AccountNo                          took place
+Order
+OrderLine          Bigint          Account identifier
+TransDateTime
+TransDate          Varchar (21) Account number ­ Shows on receipt
+TransTime
+HalfHour           Bigint          Order number ­ may be multiple per account
+ProdCode
+PortionTypeID      Bigint          Order line number
+EmpCode
+OwnerCode       Y  DateTime        Actual date and time of sale
+AuthCode
+CorrCode           DateTime        Business date
+DiscCode
+PromoCode          Varchar (5)     Time of sale
+EventCode
+CorrReasonCode     Varchar (5)     Half hourly ending timeslot
+CardNumber
+                   Bigint          Product identifier
+
+                   Smallint        Portion size identifier
+
+                   Bigint          Employee SEC
+
+                   Bigint          Employee owner SEC
+
+                   Bigint          Employee authoriser SEC
+
+                   Int             Correction method ID
+
+                   Smallint        Discount ID
+
+                   Bigint          Promo ID
+
+                   Bigint          Event pricing promo ID
+
+                   Smallint        Reason code provided from till
+
+                   Varchar (40) Card Number from authorising discounts
+
+                                                                                                 9
+                                Aztec Dimensions ­ Reporting Data Table Schema
+
+PromoCardNumber   Varchar (25)  Card Number from authorising promotions
+iZoneCardNumber   Varchar (40)  Card Number from authorising iZone transactions
+DiscountBarcode   Varchar (25)  Barcode recorded to call a discount
+PromoBarcode      Varchar (25)  Barcode recorded to call a promotion
+DestinationCode   Int           The destination code supplied by the till for this item
+Ratio             Float         Ratio
+RefundMode        Bit           Determines if this row is a refund
+Quantity          Float         Quantity sold
+Gross             Float         Gross amount
+IncTax            Float         Inclusive tax amount (VAT)
+ExcTax            Float         Exclusive tax amount
+Service           Float         Service charge
+Tariff            Float         Sales at tariff price
+Cost              Float         Sales at latest Cost Price
+FIFOCost          Float         Cost calculated using FIFO
+Discount          Float         Discount amount
+Promotion         Float         Promotion amount
+QuantityPromoted  Float         Number of items promoted
+Volume            Float         Volume in millilitres of liquid sales
+LMDT              DateTime      Last modified DateTime by Aztec comms
+
+                                                                                         10
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_ChildTransactions
+This table provides details of transactions that are originated from a product sale.
+
+Column Name      Primary Data Type  Description
+                 Key
+                                    Unique transaction identifier ­ must be used with TerminalID
+ParentOrderLine Y   Bigint          Order line number
+                                    Order number ­ may be multiple per account
+OrderLine        Y  Bigint          Terminal identifier
+                                    Actual date and time of sale
+Order               Bigint          Business date
+                                    Time of sale
+TerminalID          Int             Half hourly ending timeslot
+                                    Product identifier
+TransDateTime       DateTime        Portion size identifier
+                                    Correction method ID
+TransDate           DateTime        Discount ID
+                                    Promo ID
+TransTime           Varchar (5)     Event pricing promo ID
+                                    Reason code provided from till
+HalfHour            Varchar (5)     Card Number from authorising discounts
+                                    Card number recorded to trigger promotion
+ProdCode            Bigint
+                                    Barcode recorded to call a discount
+PortionTypeID       Smallint        Barcode recorded to call a promotion
+                                    The destination code supplied by the till for this item
+CorrCode            Int             Ratio
+                                    Quantity sold
+DiscCode            Smallint
+
+PromoCode           Bigint
+
+EventCode           Bigint
+
+CorrReasonCode      Smallint
+
+CardNumber          Varchar (25)
+
+PromoCardNumb       Varchar (25)
+er
+
+DiscountBarcode     Varchar (25)
+
+PromoBarcode        Varchar (25)
+
+DestinationCode     Int
+
+Ratio               Float
+
+Quantity            Float
+
+                                                                                                  11
+Gross      Float                   Aztec Dimensions ­ Reporting Data Table Schema
+IncTax     Float
+ExcTax     Float  Gross amount
+Service    Float  Inclusive tax amount (VAT)
+Tariff     Float  Exclusive tax amount
+Cost       Float  Service charge
+FIFOCost   Float  Sales at tariff price
+Discount   Float  Sales at latest Cost Price
+Promotion  Float  Cost calculated using FIFO
+Volume     Float  Discount amount
+                  Promotion amount
+                  Volume in millilitres of liquid sales
+
+                  12
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_ParentTransactions
+This table provides details of transactions that are originated from a product sale.
+
+Column Name    Primary Data Type  Description
+               Key
+OrderLine                         Unique transaction identifier ­ must be used with TerminalID
+TransactionId  Y  Bigint          Unique transaction id
+TransDateTime                     Actual date and time of sale
+TerminalID     Y  Bigint          Terminal identifier
+Gross                             Gross amount
+IncTax         Y  DateTime        Inclusive tax amount (VAT)
+ExcTax                            Exclusive tax amount
+Service        Y  Int             Service charge
+Tariff                            Sales at tariff price
+Cost              Money           Sales at latest Cost Price
+FIFOCost                          Cost calculated using FIFO
+Discount          Money           Discount amount
+Promotion                         Promotion amount
+Volume            Money           Volume in millilitres of liquid sales
+
+                  Money
+
+                  Money
+
+                  Money
+
+                  Money
+
+                  Money
+
+                  Money
+
+                  Float
+
+                                                                                                13
+                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_PaymentTransactions
+This table provides details of payment transactions.
+
+Column Name Primary Data Type  Description
+                        Key
+
+TransactionID Y  Bigint        Unique transaction identifier ­ must be used with Terminal ID
+
+TerminalID   Y   int           Terminal identifier
+
+AccountID        Bigint        Account identifier
+
+AccountNo        Varchar (21) Account number ­ Shows on receipt
+
+Order            Bigint        Order number ­ may be multiple per account
+
+PaymentLine      int           Payment line number
+
+TransDateTime Y  DateTime      Actual date and time of payment
+
+TransDate        DateTime      Business date
+
+TransTime        Varchar (5)   Time of payment
+
+HalfHour         Varchar (5)   Half hourly ending timeslot
+
+PayCode          Int           Payment method identifier
+
+EmpCode          Bigint        Employee SEC
+
+OwnerCode        Bigint        Employee owner SEC
+
+AuthCode         Bigint        Employee authoriser SEC
+
+CorrCode         Int           Correction method ID
+
+Payout           Bit           Payout flag ­ true/false
+
+Cashback         Bit           Cashback flag ­ true/false
+
+EFT              Bit           EFT flag ­ true/false
+
+TableNo          Smallint      Table number
+
+Covers           Smallint      Number of till entered covers
+
+Customer         Varchar (50) Customer name
+
+ReceiptNo        Varchar (50) Receipt number
+
+CardNo           VarChar (25) Card number used
+
+                                                                                              14
+Quantity      Bigint                      Aztec Dimensions ­ Reporting Data Table Schema
+Gross         Money
+IncTax        Money   Payment count
+ExcTax        Money   Gross amount
+Service       Money   Inclusive tax amount (VAT)
+Tip           Money   Exclusive tax amount
+Tendered      Money   Service charge
+Forfeit       Money   Tip amount
+FinalPayment  Bit     Amount tendered
+                      Amount forfeited
+                      Records if this is the final payment on this account
+
+                      15
+                                                          Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_ProductSales
+This table provides details of daily sales transactions.
+
+Column Name Primary Data Type   Description
+                        Key
+                                Business date of sale (adjusted for end of day not being
+TransDate      Y  DateTime      midnight)
+                                Terminal identifier
+TerminalID     Y  Int           Secondary terminal ID
+                  int           Product identifier
+PosCode        Y  Bigint        The ID of the portion sold
+                  Smallint      Text name of the portion sold
+ProdCode       Y  Varchar (25)  Id of the promotion this product was sold in (-1 = not in a promo)
+                  Bigint        Quantity of the item sold
+PortionID      Y  Float         Selling price achieved
+                  Money         Gross sales less tax
+Portion        Y  Money         Budgeted Cost price in force at time of sale
+                  Float         Stock FIFO cost of this item
+PromoID        Y  Money         Selling price before any promos
+                  Money         Value of discount applied to this product
+Quantity          Money
+
+GrossSales
+
+NetSales
+
+CostPrice
+
+FIFOCost
+
+TariffSales
+
+AmtDiscounted
+
+                                                          16
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_PromotionalSales
+This table provides details of daily sales transactions where discount and promotions were applied.
+
+Column Name Primary Data Type  Description
+                        Key
+                               Business date of sale (adjusted for end of day not being
+TransDate      Y  DateTime     midnight)
+                               Terminal identifier
+TerminalID     Y  int          Employee identifier
+                  Bigint       Account Id to allow joining
+EmpCode        Y  Bigint       The ID of the promotion
+                  Bigint       Quantity of the item sold
+AccountID      Y  Float        Selling price before any promotion applied
+                  Float        Amount of discount applied due to this promotion
+PromoCode      Y  Float
+                               Final price paid for this account
+Quantity          Float
+
+TariffPrice
+
+DiscountedAmo
+unts
+
+PaidAmount
+
+                                                                                         17
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_EventPricingHeader
+This table provides details the starting and ending of event promotions.
+
+Column Name Primary Data Type  Description
+                        Key
+
+SiteCode     Y  int            Site identifier
+
+SalesAreaID  Y  int            Sales area identifier
+
+TransDate    Y  DateTime       Business date of transaction (adjusted for end of day not being
+                               midnight)
+
+ChangeID     Y  int            ID of the change to the event price
+
+PromoID      Y  Bigint         The ID of the promotion
+
+GroupID      Y  int            ID of the group included
+
+GroupName       VarChar (30) Name of the group chosen
+
+WhoStarted      VarChar (50) Employee who started the event
+
+StartDT         DateTime       Date and time the event was started
+
+WhoEnded        VarChar (25) Employee who ended the event
+
+EndDT           DateTime       Date and time the event was ended
+
+                                                                                                18
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_SubCatSales
+This table provides summary sales info to sub-category level per day.
+
+Column Name Primary Data Type  Description
+                        Key
+
+TransDate   Y  DateTime        Business date of sale (adjusted for end of day not being
+                               midnight)
+
+HalfHour    Y  VarChar (5) The half hour ending
+
+TerminalId  Y  int             The ID of the terminal involved
+
+PosCode        int             Secondary Id of the terminal
+
+SubCat         VarChar (20) Name of the sub cat
+
+Amount         Float           Cash amount of the sale
+
+VAT            Float           VAT amount of the sale
+
+Qty            Float           Quantity sold
+
+SubCatCode Y   Int             Internal code for this sub cat
+
+ExcTax         Money           Value of any tax applied post product sale
+
+Service        Money           Value of service charge
+
+Tariff         Money           Price these items are sold at when sold at full price
+
+Cost           Money           Current cost price
+
+FIFOCost       Money           FIFO cost of these products
+
+Discount       Money           Value of discount applied to these products
+
+Promotion      Money           Value of promotion applied to these products
+
+                                                                                         19
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_DivSales
+This table provides a summary of the daily sales per division.
+
+Column Name  Primary  Data Type  Description
+             Key
+                      int        Sales Area identifier
+SACode       Y        Smallint   Division index
+                      DateTime   Business date of sale (adjusted for end of day not being
+DivIndex     Y                   midnight)
+                      Float      Gross Sales amount
+TransDate    Y        Float      VAT charged on these transactions
+                      Float      Quantity of each line sold
+Amount                Float      Value of any exclusive tax
+VAT                   Float      Value of any service charge
+Quantity              Float      Current tariff price at time of sale
+ExcTax                Float      Current cost price at time of sale
+Service               Money      FIFO cost price at time of sale
+Tariff                Float      Value of any discount given
+Cost                  Float      Value of any promotion given
+FIFOCost
+Discount
+Promotion
+
+                                                                                           20
+                                                        Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_GiftCardTransactions
+This table provides details of gift card transactions.
+
+Column Name                Primary Data Type            Description
+                           Key
+
+SiteId                     Y  int                       Aztec Id for this site
+
+AccountId                  Y  Bigint                    Account Id for this transaction
+
+SequenceNumber             Y  Bigint                    Sequence Number used for this card
+
+CardAccountNumber             VarChar (21) Number as swiped/entered
+
+OperationType                 VarChar (30) Text of the type of operation is refers to
+
+AmountSubmitted               Money                     Amount requested to/from the card
+
+AmountPaid                    Money                     Amount Paid to/from the card
+
+CardBalance                   Money                     Balance on the card following this transaction
+
+TransactionSucessful          Bit                       0 or 1
+
+TransactionDate               DateTime                  Business date of sale (adjusted for end of day not
+                                                        being midnight) of completion of the transaction
+
+PluginName                    VarChar (30) Name of the gift card provided as registered in Aztec
+
+TransactionType               VarChar (20) Whether a topup, sale, refund etc.
+
+eCouponCode                   VarChar (11) Code returned from an eCoupon
+
+eCouponPromotionText          VarChar (50) Text returned from the eCoupon
+
+AztecPromotionalProductId     Bigint                    Product code that was used by this card
+
+                                                                                                            21
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Financial Transaction Tables
+
+Rpt_FinancialTransactions
+This table provides details of business done transactions.
+
+Column Name  Primary Data Type  Description
+             Key
+SiteCode
+TransType    Y  int             Site identifier
+TransIndex
+TransDate    Y  Smallint        Transaction type code
+
+TransDet     Y  int             Transaction index code
+TransRef
+TransText    Y  DateTime        Business date of sale (adjusted for end of day not being
+Amount
+VAT                             midnight)
+
+             Y  Varchar (30) Transaction detail
+
+             Y  Varchar (30) Transaction reference
+
+             Y  Varchar (30) Transaction text
+
+                Float           Gross amount
+
+                Float           Vat amount
+
+This table joins to Rpt_FinancialTransactionsTypes on TransType and TransIndex. These
+tables are described in the following pages.
+
+                                                                                          22
+                                        Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_FinancialTransactionsTypes
+Financial transaction types.
+
+Column Name  Primary Data Type          Description
+             Key
+TransType
+TransIndex                      int     Transaction type code
+TransId
+TransDesc                       Bigint  Transaction index code
+IndDesc
+TransName                       Bigint  The ID of this transaction
+AcName
+ContraAC                        VarChar (50) Transaction description
+Deleted
+                                VarChar (50) Index description
+
+                                VarChar (75) Transaction name
+
+                                VarChar (60) Account name
+
+                                VarChar (60) Contra account name
+
+                                Bit     0 or 1
+
+The transaction types and transaction indexes are defined on the next page.
+
+                                                                             23
+                                                 Aztec Dimensions ­ Reporting Data Table Schema
+
+Transaction Types Definition
+
+Data Type             Transaction Transaction Index generated from
+                      Type
+
+Sales                 1       Division Index
+
+Misc Income           3       Misc Income Index
+
+Service Charge        5       Payment Method
+
+Tips                  6       Payment Method
+
+Discount              7       Discount ID
+
+Declarations          11      Payment Method
+
+Declaration Surplus   12      Payment Method
+
+Declaration Shortage  13      Payment Method
+
+Table Balance         15      1 = Opening, 2 = Closing
+
+Ledger Paid           21      Payment Method
+
+To Ledger             22      Payment Method
+
+Opening Ledger Balance 23     Payment Method
+
+Closing Ledger Balance 24     Payment Method
+
+Expenses              31      Misc Expenses Index
+
+Cash Banking          41      Payment Method
+
+Central Banking       42      Payment Method
+
+EFT Banking           43      Payment Method
+
+Change Received       44      Payment Method
+
+Banking Variance      45      Payment Method
+
+Cash Movement         47      1 = Previously Unbanked, 2 = Left on Site
+
+Tip Balance           50      1 = Opening tip balance, 2 = Closing tip balance
+
+Service Charge Balance 51     1 = Opening service balance, 2 = Closing service balance
+
+Tax                   99      1 = Inclusive tax on sales, 2 = tax on Expenses, 3 = Exclusive tax on
+                              sales
+
+Sales CF and BF       998     1 = Brought Forwards, 2 = Carried Forwards
+
+                                                                                24
+                                                     Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.TransAct
+This table provides information on the transaction.
+
+Column Name Primary Key Data Type                    Description
+                                                     Site identifier
+SiteCode    Y  int                                   Transaction type code
+                                                     Transaction index code
+TransType   Y  smallint                              Business date of sale (adjusted for end of day not being
+                                                     midnight)
+TransIndex  Y  int                                   Transaction detail
+                                                     Transaction reference
+TransDate   Y  datetime                              Transaction text
+                                                     Gross amount
+TransDet    Y  varchar (30)                          Vat amount
+               varchar (30)
+TransRef    Y  varchar (30)
+               float (53, 0)
+TransText   Y  float (53, 0)
+
+Amount
+
+VAT
+
+                                                                                                               25
+                                                         Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.TransTab
+This table provides details of the tabbed transactions.
+
+Column Name  Primary Key  Data Type                      Description
+TransType    Y            smallint                       Transaction type code
+TransIndex   Y            int                            Transaction index code
+TransDesc                 varchar (25)                   Transaction description
+IndDesc                   varchar (25)                   Index description
+TransName                 varchar (50)                   Transaction name
+AcCode                    varchar (50)                   Account Code
+AcName                    varchar (50)                   Account name
+CaCode                    varchar (25)                   Category code
+CaName                    varchar (25)                   Category name
+TTA1                      varchar (30)                   Analysis code
+TTA2                      varchar (30)                   Analysis code
+TTA3                      varchar (30)                   Analysis code
+TTA4                      varchar (30)                   Analysis code
+TTA5                      varchar (30)                   Analysis code
+TTA6                      varchar (30)                   Analysis code
+TTA7                      varchar (30)                   Analysis code
+TTA8                      varchar (30)                   Analysis code
+TTA9                      varchar (30)                   Analysis code
+TTA10                     varchar (30)                   Analysis code
+TTA11                     varchar (30)                   Analysis code
+TTA12                     varchar (30)                   Analysis code
+TTA13                     varchar (30)                   Analysis code
+TTA14                     varchar (30)                   Analysis code
+TTA15                     varchar (30)                   Analysis code
+
+                                                                                  26
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Stock Data Tables
+
+Rpt_StockHeader
+This table provides a list of stocktakes completed. One row per stocktake.
+
+Column Name     Primary  Data Type  Description
+                Key
+
+StockID         Y        Float      Unique stock identifier
+
+SiteCode                 Smallint   Site identifier
+
+Tid                      Smallint   Thread identifier
+
+HzID                     Smallint   Holding Zone identifier
+
+StkCode                  Smallint   AZTEC Stock code number
+
+ThreadName               VarChar (30) Stock thread name
+
+HZoneName                VarChar (30) Holding zone name
+
+DivName                  VarChar (20) Stock division name
+
+Sdate                    DateTime   Start date of stock
+
+Edate                    DateTime   End date of stock
+
+Stocktaker               VarChar (20) Stocktaker name
+
+Manager                  VarChar (20) Manager name
+
+StockType                VarChar (20) Type of stock
+
+AccDateTime              DateTime   Accepted date time
+
+RecalcDateTime           DateTime   Re-calculated date time
+
+Stage                    VarChar (20) Stock stage
+
+AccBy                    VarChar (20) User who accepted this stock
+
+StkKind                  VarChar (15) Stock kind
+
+StkNote                  Text       Stock note
+
+Latest                   VarChar (6) Latest stock flag
+
+                                                                    27
+                                                   Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_StockSummary
+This table provides the summary results for each stock take. One row per stocktake.
+
+Column Name      Primary Data Type  Description
+                 Key
+
+StockID          Y  Float           Unique stock identifier
+
+SiteCode            Smallint        Site identifier
+
+TradResult          Float           Traditional result
+
+RetResult           Float           Retail result
+
+GrossExpTakings     Float           Gross expected takings
+
+NetExpTakings       Float           Net expected takings
+
+GrossActTakings     Float           Gross actual takings
+
+NetActTakings       Float           Net actual takings
+
+LossGainRetail      Float           Loss gain at retail price
+
+LossGainCost        Float           Loss gain at cost price
+
+Wastage             Float           Wastage at retail price
+
+WasteCost           Float           Wastage at cost price
+
+CashVar             Float           Cash variance
+
+GrossCons           Float           Gross consumption
+
+CostSales           Float           Cost of sales
+
+ActGPAmount         Float           Actual GP amount
+
+TargetGPAmount      Float           Target GP amount
+
+Allowance           Float           Allowances
+
+OpenCost            Float           Opening cost
+
+PurchCost           Float           Purchase cost
+
+ActRedCost          Float           Actual reduction cost
+
+TheoRedCost         Float           Theoretical reduction cost
+
+CloseCost           Float           Closing cost
+
+RecVar              Float           Recipe variance
+
+CashVarNet          Float           Cash variance net of vat
+
+                                                                                     28
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_StockDetail
+This table provides the product stock details for each product included in a stocktake. One row per product.
+
+Column Name   Primary  Data Type  Description
+              Key
+StockID
+ProdCode      Y        Float      Unique stock identifier
+SiteCode
+PchUnit       Y        Float      Product identifier
+PchBaseUnits
+NomPrice               Smallint   Site identifier
+OpenQty
+OpenCost               VarChar (20) Purchase unit
+PurchQty
+PurchCost              Float      Number of base units
+MoveQty
+MoveCost               Float      Nominal price
+SoldQty
+ThRedQty               Float      Opening quantity
+ThRedCost
+ThCloseQty             Float      Opening cost
+ThCloseCost
+ActRedQty              Float      Purchase quantity
+ActRedCost
+AuditQty               Float      Purchase cost
+ActCloseQty
+ActClostCost           Float      Movement quantity
+WasteQty
+                       Float      Movement cost
+
+                       Float      Sales qty
+
+                       Float      Theoretical reduction quantity
+
+                       Float      Theoretical reduction cost
+
+                       Float      Theoretical closing quantity
+
+                       Float      Theoretical closing cost
+
+                       Float      Actual reduction quantity
+
+                       Float      Actual reduction cost
+
+                       Float      Audit quantity
+
+                       Float      Actual closing quantity
+
+                       Float      Actual closing cost
+
+                       Float      Wastage quantity
+
+                                                                  29
+PrepRedQty     Float                   Aztec Dimensions ­ Reporting Data Table Schema
+TaxAmount      Float
+ConsCostPrice  Float  Prepared reduction quantity
+                      Inclusive tax amount
+                      Consumption at cost price
+
+                      30
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_StockSales
+This table provides details of products sold during a stock period.
+
+Column Name  Primary  Data Type    Description
+             Key
+StockID                            Unique stock identifier
+ProdCode     Y        Float        Product identifier
+Portion                            Portion type Identifier
+ProdType     Y        Float        Sale type
+SiteCode                           Site identifier
+SaleQty      Y        Smallint     Quantity sold
+Income                             Gross income
+ActCost      Y        VarChar (2)  Actual cost
+TheoCost                           Theoretical cost
+VAT                   Smallint     Inclusive tax amount (VAT)
+
+                      Float
+
+                      Float
+
+                      Float
+
+                      Float
+
+                      Float
+
+                                                               31
+                                                         Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_TheoStock
+This table provides theoretical product info per stock.
+
+Column Name Primary Data Type  Description
+                        Key
+
+StockId       Y  Bigint        The unique Id for this stock
+
+ProdCode      Y  Bigint        Product code for this product
+
+StockUnit        VarChar (25) The text name of the unit
+
+BaseUnits        Float         The number of base units in each unit
+
+BaseNomPrice     Float         The selling price of each base unit
+
+OpenCost         Float         The opening cost per base unit
+
+PchCost          Float         The purchase cost per base unit
+
+ConsCost         Float         The consumption cost per base unit
+
+CloseCost        Float         The closing cost per base unit
+
+OpenQty          Float         The opening quantity in base units
+
+PchQty           Float         The purchase quantity in base units
+
+ConsQty          Float         The consumption quantity in base units
+
+CloseQty         Float         The closing quantity in base units
+
+WasteQty         Float         The waste quantity in base units
+
+                                                                       32
+                                              Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_TheoStockHdr
+This table provides a summary of each stock.
+
+Column Name Primary Data Type                 Description
+                        Key
+                                              The unique Id for this stock
+StockId     Y  Bigint                         Product code for this product
+                                              The id of this stock
+SiteCode       Bigint                         The stock period code
+                                              The name of the stock division
+Tid            Smallint                       The name of the stock thread
+                                              The start date of this stock
+SPC            Smallint                       The time of the start of this stock
+                                              The end date of this stock
+DivName        Varchar (20)                   The time of the end of this stock
+                                              The time the stock was accepted
+ThreadName     Varchar (30)                   The theoretical stock valuation date
+                                              The number of days in this stock period
+StartDate      DateTime
+
+StartTime      char (5)
+
+EndDate        DateTime
+
+EndTime        char (5)
+
+EDT            DateTime
+
+ValueDate      DateTime
+
+Days           Float
+
+                                                                                       33
+                                                           Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_StockOrders
+This table provides details of order placed.
+
+Column Name       Primary  Data Type          Description
+                  Key
+
+OrderNo           Y        VarChar (16) System generated order number
+
+SiteCode          Y        Smallint           Site identifier
+
+Supplier                   VarChar (20) Name of the supplier of this order
+
+Orderdate                  DateTime           Date this order was placed
+
+DeliveryDate               DateTime           Date of delivery of this order
+
+NextDeliveryDate           DateTime           Date of the next expected delivery for this supplier
+
+Status                     Smallint           Current status of this order
+
+LMDT                       DateTime           Last modified date & time of this record
+
+Deleted                    Bit
+
+                                                                                                    34
+                                              Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_StockOrdersDetail
+This table provides details of order placed.
+
+Column Name      Primary  Data Type           Description
+                 Key
+
+OrderNo          Y        VarChar (16) System generated order number
+
+SiteCode         Y        Smallint            Site identifier
+
+Line             Y        Int                 Sequential number of items in this order
+
+Product                   Float               Product code for this item
+
+PurchaseUnit              Char (10)           Text name of the unit this item has been order in
+
+ProdLine                  Smallint
+
+Supplier                  Char (20)           Name of the supplier of this order
+
+UnitCost                  Float               Cost of this product at the time of ordering
+
+Amount                    Float               Amount of product ordered
+
+Flavour                   Varchar (10) If used, the flavour recorded for this product
+
+FreeItem                  bit                 Identifies if this is a free item
+
+OriginalAmount            Float               Order quantity as originally placed
+
+FlavLine                  bit                 Identifies if this item uses flavours
+
+SuggestedAmount           Float               Suggested order amount
+
+Deleted                   Bit
+
+LMDT                      DateTime            Last modified date & time of this record
+
+                                                                                                 35
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+PchMain
+This table provides header records of deliveries. One row per delivery.
+
+Column Name    Primary  Data Type  Description
+               Key
+SiteCode       Y        Smallint   Site identifier
+SuppCode       Y        Float      Supplier identifier
+TransDate      Y        DateTime   Delivery date
+Dnote          Y        Char (15)  Delivery note number
+OrderNo                 Char (16)  Order number
+Status                  Char (15)  Status
+Amount                  Float      Net value of delivery
+Notes                   Char (78)  notes
+LMDate                  DateTime   Last modified date
+LMTime                  Char (5)   Last modified time
+B2B                     Bit        Identifies if this is a B2B generated del note
+AutoGenerated           Bit        Identifies if this del note was autogenerated as part of the
+                                   B2B process
+
+                                                                                                 36
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+PchDets
+This table provides details of each product received on a delivery.
+
+Column Name  Primary  Data Type  Description
+             Key
+SiteCode     Y        Smallint   Site identifier
+SuppCode     Y        Float      Supplier identifier
+TransDate    Y        DateTime   Delivery date
+Dnote        Y        Char (15)  Delivery note number
+Record       Y        Float      Line number
+ProdCode              Float      Product identifier
+PchName               Char (40)  Product purchase name
+Flavour               Char (15)  Flavour
+Quantity              Float      Quantity
+UnitName              Char (10)  Unit name
+BaseQty               Float      Quantity in base units
+BaseType              Char (10)  Base unit type
+Amount                Float      Net value
+
+                                                         37
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Base Data Tables
+
+Dim_Calendar
+This table provides details of the reporting periods as set.
+
+Column Name Primary           Data Type     Description
+                         Key
+                                            Business date of transaction (adjusted for end of day not
+TransDate   Y                 DateTime      being midnight)
+                                            Text of the day represented by this date
+WeekDay                       VarChar (10)  Day of week number
+DayNo                         Smallint      Date of the end of week for this week
+WeekEnd                       DateTime      Label of this accounting period
+Period                        VarChar (10)  Numeric representation of the accounting quarter
+Quarter                       Smallint      The financial year
+FinYear                       Smallint      Text description of the year
+YearDesc                      VarChar (10)  Text description of the Quarter
+QtrDesc                       VarChar (10)  Text description of the Period
+PeriodDesc                    VarChar (20)  Text description of the Week
+WeekDesc                      VarChar (15)  Text description of the Date
+DateDesc                      VarChar (15)  The accounting week number
+WeekNo                        Smallint      Text description of the Week
+WeekName                      VarChar (20)  Text ID of the Week
+WeekId                        VarChar (20)
+
+                                                                                                       38
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_Company
+This table provides details of the company hierarchy structure from company to each terminal (till).
+
+Column Name  Primary Data Type  Description
+             Key
+                                Unique terminal (till) identifier
+TerminalID   Y  Int             Secondary identifier for each terminal
+                                Sales area identifier (physical location of a group of terminals
+PosCode         Int             in a site)
+                                Site identifier
+SaCode          Int             Area identifier
+                                Company identifier
+SiteCode        Int             Site reference (Customers site identifier)
+AreaCode        Int             Terminal name
+CoCode          Int             Sales area name
+SiteRef         VarChar (10)    Site name
+POSName         VarChar (50)    Area name
+SaName          VarChar (20)    Company name
+SiteName        VarChar (20)    Deleted flag 0 or 1
+AreaName        VarChar (20)
+CoName          VarChar (20)
+Deleted         VarChar (1)
+
+                                                                                                  39
+                                            Aztec Dimensions ­ Reporting Data Table Schema
+
+SiteList
+This table provides details of each site.
+
+Column Name Primary           Data Type     Description
+                         Key
+                                            Site identifier
+SiteCode  Y                   Smallint      Site name
+                                            Area identifier
+SiteName                      VarChar (20)  Company identifier
+                                            Site reference
+AreaCode                      Smallint      Area name
+                                            Company name
+CoCode                        Smallint      Deleted 0 or 1
+
+SiteRef                       VarChar (10)
+
+AreaName                      VarChar (20)
+
+CoName                        VarChar (20)
+
+Deleted                       VarChar (1)
+
+                                                                40
+                                                           Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_ProductList
+This table provides details of each product.
+
+Column Name   Primary  Data Type              Description
+              Key
+
+ProdCode      Y        Bigint                 Unique product identifier
+
+ExtName                VarChar (50) Extended retail name
+
+SubCat                 VarChar (20) Sub-category
+
+Category               VarChar (20) Category
+
+SuperCatName           VarChar (20) Super category
+
+SubDivName             VarChar (20) Sub division
+
+DivName                VarChar (20) Division
+
+DivNameType            VarChar (20) Food, Wet or other
+
+SubCatCode             int                    Identifying code for this sub category
+
+CatCode                int                    Identifying code for this category
+
+SuperCatCode           int                    Identifying code for this super category
+
+SubDivCode             int                    Identifying code for this sub division
+
+DivCode                int                    Identifying code for this division
+
+DivCodeType            int                    Identifying code for division type
+
+ProdName               VarChar (20) Short retail name
+
+RetName                VarChar (40) Product description
+
+PchName                VarChar (40) Purchase & stock name
+
+ProdRef                Varchar (20) Product import/export ref
+
+ProdType               VarChar (20) Product type
+
+StkUnit                VarChar (10) Stock unit
+
+PchUnit                VarChar (10) Purchase unit
+
+SuppName               VarChar (20) Default supplier name
+
+BudCost                Money                  Budgeted cost price of this product
+
+                                                                                        41
+                            Aztec Dimensions ­ Reporting Data Table Schema
+
+Tax1ID        Smallint      The internal ID of this tax rule
+Tax1Name      Varchar (20)  The text name of this tax rule
+Tax1RateId    Smallint      Internal Id for this tax rule
+Tax1Rate      Money         Set rate for this tax rule
+Tax2ID        Smallint      The internal ID of this tax rule
+Tax2Name      Varchar (20)  The text name of this tax rule
+Tax2RateId    Smallint      Internal Id for this tax rule
+Tax2Rate      Money         Set rate for this tax rule
+Tax3ID        Smallint      The internal ID of this tax rule
+Tax3Name      Varchar (20)  The text name of this tax rule
+Tax3RateId    Smallint      Internal Id for this tax rule
+Tax3Rate      Money         Set rate for this tax rule
+Tax4ID        Smallint      The internal ID of this tax rule
+Tax4Name      Varchar (20)  The text name of this tax rule
+Tax4RateId    Smallint      Internal Id for this tax rule
+Tax4Rate      Money         Set rate for this tax rule
+GiftCard      Bit           Determines if this product is set to be a `Gift Card' when sold
+Deleted       Bit           Deleted flag
+Discontinued  Bit           Flags if this item has been marked as discontinued
+
+                                                                                             42
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+DivList
+This table provides details of the product divisions (major grouping).
+
+Column Name  Primary  Data Type  Description
+             Key
+
+DivCode      Y        int        Division identifier
+
+DivTCode              Smallint   Division type identifier (1, Wet, 2, Food, 3 other)
+
+DivName               VarChar (20) Division name
+
+DivType               VarChar (20) Division type
+
+                                                                                      43
+                                                            Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_SubCat
+This table provides details of the product sub categories.
+
+Column Name       Primary  Data Type  Description
+                  Key
+
+SubCatId          Y        int        The internal Id of this Sub Cat
+
+SubCat                     VarChar (20) Sub Category name
+
+CatId                      int        The internal Id of this Cat that the sub cat is included in
+
+CatName                    VarChar (20) Category name
+
+DivId                      Int        The internal Id of this division that the sub cat is included in
+
+DivName                    VarChar (20) Division name
+
+SCDescription              VarChar (250) Text description set against this sub cat
+
+AllowSitePricing           Bit        Determines if this sub cat is permitted to be included in site
+
+                                      price changes
+
+AllowSiteNaming            Bit        Determines if this sub cat is permitted to be included in site
+
+                                      product name changes
+
+CoverCount                 Bit        Determines if this sub cat included when sub cat covers is
+
+                                      used
+
+AgeRestriction             Bit        Determines if this sub cat will force an age check prompt on
+
+                                      the terminal
+
+MinimumAge                 Tinyint    If the above is set to Yes, then this is the age that the system
+                                      will prompt
+
+Deleted                    Bit        0 or 1
+
+                                                                                                        44
+                                                                 Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_OrderDestinations
+List of order destinations as defined in Aztec.
+
+Column Name      Primary Data Type                  Description
+                 Key
+
+DestinationCode Y         int                       Code the this destination
+
+DestinationName           VarChar (20) Name for this destination
+
+DestinationDesc           VarChar (250) Description as entered for this description
+
+Deleted                   Bit                       0 or 1
+
+PortionList
+This table provides details of the sales portions.
+
+Column Name      Primary  Data Type                 Description
+                 Key
+
+PortCode                  Smallint                  Portion type identifier
+
+PortName                  VarChar (16) Portion name
+
+Rpt_TariffPrices
+This table lists the standard selling price per item, per sales area.
+
+Column Name      Primary  Data Type                 Description
+                 Key
+
+SalesAreaCode             int                       Sales Area identifier
+
+ProductID                 Bigint                    The product identifier
+
+PortionTypeID             Bigint                    The portion ID
+
+TariffPrice               Money                     The tariff price set for this product
+
+Band                      VarChar (6) The band this this price come from
+
+EffDate                   DateTime                  The date this price is (was) effective from
+
+                                                                                                 45
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_PriceBands
+This table lists the standard selling prices as set per price matrix and price band.
+
+Column Name    Primary  Data Type  Description
+               Key
+
+SACode                  Smallint   Sales Area identifier
+
+SiteCode                Smallint   Site identifier
+
+matrixId                Smallint   The matrix that holds this data
+
+ProdCode                Float      The product identifier
+
+PortionTypeID           Smallint   The portion ID
+
+CurrentBand             VarChar (10) The current band for this product for this site
+
+FutureBand              VarChar (10) The future band for this product for this site
+
+Price                   Float      The price of the product
+
+StartDate               DateTime   Date this price was set to be effective from
+
+PriceLMDT               DateTime   Date and time this price was last modified
+
+PriceLMby               VarChar (25) Who last modified this price
+
+DateofChange            DateTime   Date the last change was made
+
+BandLMDT                DateTime   Date and time this band was last changed
+
+BandLMby                VarChar (25) Who last modified this band
+
+MatrixLMDT              DateTime   Date and time this matrix was last changed
+
+matrixLMby              VarChar (25) Who last modified this matrix
+
+Volume                  Float      If this product is a liquid defined product, then this records
+                                   the volume of the product
+
+                                                                                                   46
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_PriceBandsSupplement
+This table lists the supplement selling prices as set per matrix and price band.
+
+Column Name    Primary  Data Type  Description
+               Key
+
+SACode                  Smallint   Sales Area identifier
+
+SiteCode                Smallint   Site identifier
+
+matrixId                Smallint   The matrix that holds this data
+
+ProdCode                Float      The product identifier
+
+PortionTypeID           Smallint   The portion ID
+
+CurrentBand             VarChar (10) The current band for this product for this site
+
+FutureBand              VarChar (10) The future band for this product for this site
+
+Price                   Float      The price of the product
+
+StartDate               DateTime   Date this price was set to be effective from
+
+PriceLMDT               DateTime   Date and time this price was last modified
+
+PriceLMby               VarChar (25) Who last modified this price
+
+DateofChange            DateTime   Date the last change was made
+
+BandLMDT                DateTime   Date and time this band was last changed
+
+BandLMby                VarChar (25) Who last modified this band
+
+MatrixLMDT              DateTime   Date and time this matrix was last changed
+
+matrixLMby              VarChar (25) Who last modified this matrix
+
+Volume                  Float      If this product is a liquid defined product, then this records
+                                   the volume of the product
+
+                                                                                                   47
+                                                        Aztec Dimensions ­ Reporting Data Table Schema
+
+CorrList
+This table provides details of each correction method.
+
+Column Name  Primary  Data Type Description
+             Key
+
+CorrCode     Y        int       Correction method identifier
+
+CorrType              VarChar (20) Correction type
+
+CorrName              VarChar (25) Correction name
+
+Mode                  Smallint  Correction type mode (clear, void etc.)
+
+Rpt_CorrectionReason
+This table provides details of each correction reason.
+
+Column Name  Primary  Data Type Description
+             Key
+
+CorrReasonCode Y      int       Correction reason identifier
+
+CorrReason            VarChar (40) Correction reason name
+
+Deleted               Bit       0 or 1
+
+                                                                         48
+                                                         Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_RecipeCosts
+This table lists the breakdown of recipes.
+
+Column Name   Primary  Data Type            Description
+              Key
+
+ProdCode               Bigint               The product identifier
+
+Portion                Smallint             The portion ID
+
+ProdName               VarChar (20) The retail name of this recipe
+
+PortionName            VarChar (20) The text name of this portion
+
+ChildCode              Float                The `ProdCode' of the children of this recipe
+
+ChildName              VarChar (40) The retail name of the child portion used in this recipe
+
+RcpQty                 Float                The quantity of this ingredient used in this recipe
+
+UnitName               Varchar (20) The name of the unit used
+
+BaseUnitType           Varchar (10) Type of base unit used (volume, Weight, Item)
+
+BCP                    Float                The budgeted cost price of this recipe
+
+BaseUnits              Float                The number of base units included in this unit
+
+Cost                   Float                The cost of this recipe
+
+                                                                                                 49
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+PayList
+This table provides details of each payment method. (Tender types).
+
+Column Name  Primary  Data Type Description
+             Key
+
+PayCode      Y        Int                           Payment method identifier
+
+PayType               VarChar (25) Payment type
+
+PayName               VarChar (50) Payment name
+
+Surcharge             VarChar (50) Surcharge
+
+Currency              VarChar (50) Currency
+
+Rpt_Discounts
+This table provides details of each discount type.
+
+Column Name  Primary  Data Type Description
+             Key
+
+DiscCode     Y        Bigint                        Discount identifier
+
+DiscName              VarChar (50) Discount name
+
+Deleted               bit                           Deleted flag
+
+Rpt_Promotions
+This table provides details of each promotion.
+
+Column Name  Primary  Data Type                     Description
+             Key
+
+PromoID      Y        Bigint                        Promotion index
+
+PromoName             VarChar (50) Promotion name
+
+Description           VarChar (256) Text description of promotion
+
+                                                                               50
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_EventPromotion
+This table lists the Event promotion ID and the associated name.
+
+Column Name  Primary  Data Type                    Description
+             Key
+
+PromotionID           Bigint                       Promotion identifier
+
+Name                  VarChar (25) The name given to this promotion
+
+Rpt_Threads
+This table provides details of each stock thread.
+
+Column Name  Primary  Data Type Description
+             Key
+
+ThreadID     Y        Smallint                     Thread identifier
+
+DivName               VarChar (20) Stock division name
+
+ThreadName            VarChar (30) Thread name
+
+                                                                         51
+                                                       Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_PurchaseUnits
+This table provides details of each purchasable unit.
+
+Column Name   Primary  Data Type Description
+              Key
+
+ProdCode      Y        Bigint       Product identifier
+
+SuppCode      Y        Int          Internal code to identify the supplier
+
+SaleUnit      Y        VarChar (15) The unit of purchase for this product
+
+Flavour       Y        VarChar (15) Any defined flavour for this product
+
+ProdRef       Y        VarChar (25) The supplier reference for this unit
+
+BarCode                VarChar (25) The barcode attached to this unit/flavour combination
+
+UnitCost               Decimal      The purchase cost of this unit/flavour combination
+                       (10,6)
+
+DefaultUnit            Bit          Determines if this is the default unit of purchase for this
+
+                                    unit/flavour combination
+
+Rpt_UnitList
+
+This table provides details of each product unit. These are used to calculate the sales made to allow the stock to
+operate.
+
+Column Name   Primary  Data Type Description
+              Key
+
+UnitId        Y        Int          Unit identifier
+
+UnitName               VarChar (10) Text name of this unit
+
+BaseUnit               Float        The number of base units in this unit
+
+BaseType               VarChar (7) The type of unit (volume, weight, item)
+
+BaseTypeUnit           Char (5)     The text of each base unit type
+
+Deleted                Varchar (1)
+
+                                                                                                 52
+                                                                 Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_Employees
+This table provides details of each member of staff.
+
+Column Name        Primary Data Type                  Description
+                   Key
+
+EmployeeId         Bigint                             Employee unique identifier
+
+LastName           VarChar (20) Last name
+
+FirstName          VarChar (20) First name
+
+MiddleInitial      VarChar (1) Middle initial
+
+FullName           VarChar (45) First name plus last name
+
+ESL                VarChar (18) Dallas key or swipe card number
+
+EposUserName       VarChar (20) Name as seen on the EPOS
+
+DefaultRoleId      Int                                The ID of this employees default role
+
+DefaultRoleName    VarChar (20) Text name of the default role
+
+NINumber           VarChar (40) National insurance number
+
+PayrollNumber      VarChar (40) Payroll number
+
+StartDate          DateTime                           Hire date
+
+LeaveDate          DateTime                           Termination date
+
+ReinstatementDate  DateTime                           Date of re-instatement
+
+Terminated         Bit                                0 or 1
+
+TerminationCode    Int                                Code entered when employee terminated
+
+TerminationNote    VarChar                            Free text entry on termination
+                   (3000)
+
+ReinstatementCode  Int                                Code entered when employee re-instated
+
+ReinstatementNote  VarChar                            Free text entry on re-instatement
+                   (3000)
+
+EposUser           Bit                                Whether this employee uses the till
+
+DOB                DateTime                           Date of birth
+
+Address Line 1     VarChar (40) Line one of entered address
+
+                                                                                              53
+                                                         Aztec Dimensions ­ Reporting Data Table Schema
+
+Address Line 2  VarChar (40) Line two of entered address
+Address Line3
+PostCode        VarChar (40) Line three of entered address
+Telephone
+Mobile          VarChar (40) Post code
+Email
+LMDT            VarChar (40) Entered phone number
+
+                VarChar (40) Entered mobile phone number
+
+                VarChar (40) Entered Email address
+
+                DateTime                                 Last modified date and time
+
+dbo.PortionTable
+This table provides details of the portion of products.
+
+Column name     Primary Key Data Type Description
+ProdCode
+Portion         float (53, 0) Unique Product Code
+ChildCode
+ProdName        smallint                                 Portion ID
+ProdDesc
+ProdType        float (53, 0) The `ProdCode' of the children of this recipe
+RecUnit
+RecAmount       varchar (25) The retail name of this recipe
+Cost
+                varchar (40) Product Description
+
+                varchar (20) Type of product
+
+                varchar (20) Recorded size of the unit
+
+                float (53, 0) Recorded amount
+
+                float (53, 0) The cost of portion
+
+                                                                                      54
+                                                Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_PaymentList
+This is a payment table.
+
+Column name               Primary  Data Type Description
+                          Key
+
+PaymentId                          int  Unique payment ID
+
+PaymentName                        varchar (50) Payment Name
+
+PaymentDesc                        varchar (250) Payment description
+
+PaymentTypeId                      int  Unique payment Type ID
+
+PaymentTypeName                    varchar (30) Method of payment used
+
+AutoDeclare                        bit  If true this payment method is auto declared
+
+OpenCashDrawer                     bit  If true, then the cash drawer opens with this payment
+
+                                        method
+
+CurrencyName                       varchar (50) Type of currency paid
+IsQuickPay
+QuickPayId                         bit  Paid by quick pay
+QuickPayAmount
+LegacyPaymentType                  int  Unique quick pay ID
+IsMethodOfPayment
+                                   decimal (5, 2) Amount paid by Quick pay
+
+                                   varchar (2) Short payment type description
+
+                                   bit  Method of payment used
+
+                                                                                               55
+                                                         Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.SAList
+This table provides details with the site area code.
+
+Column name Primary         Data Type Description
+                       Key
+
+SaCode      Y               smallint     Unique Site and area code
+
+SiteCode                    smallint     Site code
+
+AreaCode                    smallint     Area code
+
+CoCode                      smallint     Company code
+
+SiteRef                     varchar (10) Site reference
+
+SaName                      varchar (20) Site area name
+
+FullSaName                  varchar (41) Full site area name
+
+SiteName                    varchar (20) Site name
+
+AreaName                    varchar (20) Area name
+
+CoName                      varchar (20) Company name
+
+Deleted                     varchar (1)
+
+                                                                    56
+                                                         Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Supplier
+This table provides details of the supplier.
+
+Column name Primary         Data Type Description
+                       Key
+
+SuppCode     Y              smallint           Unique supplier code
+
+SuppName                    varchar (20) Supplier Name
+
+AccNo                       varchar (20) Account number
+
+SuppRef                     varchar (20) Supplier reference
+
+dbo.TimeSlot
+This table provides details of the timeslots.
+
+Column name     Primary     Data Type Description
+                Key
+TimeSlot                    smallint           Unique timeslot ID
+HourSlot        Y
+HalfHour
+HourEnd                     smallint           Hourly ending timeslot
+SessionCode
+SessionName                 varchar (5) Half hourly ending timeslot
+
+                            varchar (5) Hour ending timeslot
+
+                            smallint           Session code for timeslot
+
+                            varchar (15) Session name for timeslot
+
+                                                                          57
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Validity
+This table provides details on the completeness of the site.
+
+Column name  Primary  Data Type Description
+             Key
+SiteCode
+SiteName              smallint        unique site code
+LastPos
+LastPC                varchar (25) Site name
+LastSign
+LastWage              datetime Date and time of last till read
+LastStk
+                      datetime Date and time of the last site pc read
+
+                      datetime Latest date manager has signed of finance figures
+
+                      datetime Latest date manager has signed of payroll figures
+
+                      datetime Latest date manager has completed a stock count
+
+dbo.VatTable
+This table provides VAT information.
+
+Column name  Primary  Data Type Description
+             Key
+VatCode               int             Unique VAT code
+VatName      Y
+VatRate
+Deleted               varchar (10) VAT Name
+
+                      float (53, 0) Vat Rate
+
+                      varchar (1)
+
+                                                                                  58
+                                                                   Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.PromoList
+This table provides details of the promotion.
+
+Column name  Primary Key                       Data Type           Description
+PromoID                                        bigint              Unique promotion ID
+PromoName                                      varchar (50)        Promotion Name
+Description                                    varchar (256)       Promotion description
+
+dbo.SubCat
+
+This table provides details of the sub- category of the Category.
+
+Column Name  Primary Key  Data Type                                Description
+SubCat                    varchar (20)                             Type of sub category
+Category                  varchar (20)                             Category name
+DivName                   varchar (20)                             Division name
+
+                                                                                          59
+Dbo.Rpt_RecipeCosts                                Aztec Dimensions ­ Reporting Data Table Schema
+
+This table provides details of the recipe costs.  Description
+                                                  Product code
+Column Name   Primary Key Data Type               Portion size
+ProdCode                           bigint         Product name
+Portion                            smallint       Portion name
+ProdName                           varchar (20)   The product code consumed by this recipe
+PortionName                        varchar (20)   The product name consumed by this recipe
+ChildCode                          float (53, 0)  Recipe quantity consumed
+ChildName                          varchar (40)   Not used
+RcpQty                             float (53, 0)  Base unit type ( e.g. ml/g)
+UnitName                           varchar (20)   Not used
+BaseUnitType                       varchar (10)   Not used
+BCP                                float (53, 0)  Cost price of products consumed by this recipe
+BaseUnits                          float (53, 0)
+Cost                               float (53, 0)
+
+                                                  60
+                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Dbo.RecipeDetail
+
+This table provides details of the recipe.
+
+Column Name Primary Key Data Type           Description
+
+ParentCode     bigint                       Product code
+
+PortionTypeID  int                          Portion size
+
+Portion        varchar (25) Portion name
+
+IngCode        bigint                       The product code consumed by this recipe
+
+IngName        varchar (25) The product name consumed by this recipe
+
+IngDesc        varchar (40) The product description consumed by this recipe
+
+LineType       varchar (25) Type of line (Recipe, Prep item etc.)
+
+ProdRef        varchar (25) Product reference
+
+IngSize        varchar (25) Not used
+
+CalcType       smallint                     Calculation type
+
+SuppName       varchar (25) Default Supplier name
+
+BCP            float (53, 0)                Not used
+
+PchSize        varchar (25) Not used
+
+PchUnits       float (53, 0)                Not used
+
+IngUnits       float (53, 0)                Not used
+
+Quantity       float (53, 0)                Recipe quantity consumed
+
+Cost           money (19, 4) Cost price of product consumed by this recipe
+
+                                                                                      61
+                                                 Aztec Dimensions ­ Reporting Data Table Schema
+
+Dbo.RecipeMain
+
+This table provides details of the main recipe.
+
+Column Name Primary         Data Type Description
+                       Key
+                            float (53, 0) Product code
+ProdCode                    varchar (25) Product name
+ProdName                    varchar (40) Product description
+ProdDesc                    varchar (25) Sub category of product
+SCat                        datetime Date of recipe creation
+DateCreated                 datetime Date of last modifation of recipe
+DateModified                varchar (25) Who the recipe was modified by
+ModBy                       varchar (25) What course is recipe is in
+Course                      varchar (3) Rollup price true or false
+Roll                        varchar (25) Which printer or screen it goes to
+PrStream                    varchar (3) Follow parent course, true or false
+Follow                      varchar (25) Tax rule 1
+TR1                         varchar (25) Tax rule 2
+TR2                         varchar (25) Tax rule 3
+TR3                         varchar (25) Tax rule 4
+TR4
+
+                                                                             62
+                                                          Aztec Dimensions ­ Reporting Data Table Schema
+
+Dbo.Rpt_ProductGroupHeader
+
+This table provides details of the product group header.
+
+Column Name       Primary          Data Type Description
+                  Key
+GroupIdentity                      int  Group ID
+GroupId           Y
+GroupName                          int  Unique group ID
+
+                                   varchar (20) Group name
+
+Dbo.Rpt_ProductGroupValues
+This table provides details of the product group values.
+
+Column Name Primary           Data Type Description
+                         Key
+
+ProdCode       Y              bigint    Unique Product code
+
+GroupId        Y              int       Unique Group ID
+
+GroupName                     varchar (20) Group name
+
+GroupValue                    varchar (25) Group value
+
+                                                             63
+                                                   Aztec Dimensions ­ Reporting Data Table Schema
+
+Dbo.Dim_CalendarPR
+This table provides details of pay roll calendar.
+
+Column Name  Primary  Data Type Description
+             Key
+
+TransDate    Y        datetime Business date
+
+WeekDay               varchar (10) Text of the day represented by this date
+
+DayNo                 smallint                     Day of week number
+
+WeekEnd               datetime Date of the end of week for this week
+
+Period                varchar (8) Label of this accounting period
+
+Quarter               smallint                     Numeric representation of the accounting quarter
+
+FinYear               smallint                     The financial year
+
+YearDesc              varchar (10) Text description of the year
+
+QtrDesc               varchar (10) Text description of the Quarter
+
+PeriodDesc            varchar (20) Text description of the Period
+
+WeekDesc              varchar (15) Text description of the Week
+
+DateDesc              varchar (15) Text description of the Date
+
+WeekNo                smallint                     The accounting week number
+
+WeekName              varchar (20) Text description of the Week
+
+WeekID                varchar (20) Text ID of the Week
+
+                                                                                                     64
+                                                          Aztec Dimensions ­ Reporting Data Table Schema
+
+Dbo.Dim_ReportStats
+
+Column Name     Primary               Data Type Description
+                Key
+UserId
+ReportName                            bigint    User unique ID
+ReportPath
+LastUsed                              varchar (100) Report Name
+TimesUsed
+                                      varchar (400) Location of report saved
+
+                                      datetime  Last report used
+
+                                      int       Last report used time
+
+Dbo.DimLog
+
+Provides details of dimensions logs.
+
+Column Name Primary           Data Type Description
+                         Key
+
+LogID        Y                varchar (15) Unique Log ID
+
+StartDT      Y                datetime          Start Date and time
+
+EndDT        Y                datetime          End date and time
+
+MsgType      Y                varchar (15) Message type (informational or error)
+
+DataType     Y                varchar (50) Which data type
+
+StartDate                     datetime          Start date of log
+
+EndDate                       datetime          End date of log
+
+NoDays                        smallint          Number of days
+
+Errors                        varchar (200) Error occurred or not
+
+                                                                                  65
+Aztec Dimensions ­ Reporting Data Table Schema
+
+                                                     66
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Analysis Codes Tables
+
+Rpt_AnalysisCompany
+This table provides the ability to you to include analysis codes set against each company.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+TerminalId       Y        int     Terminal identifier
+
+AC1                       VarChar (30) Holds the info entered
+
+AC2 (to AC(50))           VarChar (30) Holds the info entered
+
+Rpt_AnalysisDivision
+This table provides the ability to you to include analysis codes set against each division.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+DivCode          Y        int     Division ID
+
+AC1                       VarChar (30) Holds the info entered
+
+AC2 (to AC(50))           VarChar (30) Holds the info entered
+
+Rpt_AnalysisProduct
+This table provides the ability to you to include analysis codes set against each product.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+ProdCode         Y        Bigint  Product code
+
+AC1                       VarChar (30) Holds the info entered
+
+AC2 (to AC(50))           VarChar (30) Holds the info entered
+
+                                                                                             67
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_AnalysisPromotion
+This table provides the ability to you to include analysis codes set against each promotion.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+PromoID          Y        Bigint  Promotion ID
+
+AC1                       VarChar (30) Holds the info entered
+
+AC2 (to AC(50))           VarChar (30) Holds the info entered
+
+Rpt_AnalysisSalesArea
+This table provides the ability to you to include analysis codes set against each Sales Area.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+SACode           Y        Bigint  Sales area code
+
+AC1                       VarChar (30) Holds the info entered
+
+AC2 (to AC(50))           VarChar (30) Holds the info entered
+
+Rpt_AnalysisSession
+This table provides the ability to you to include analysis codes set against each reporting session in Aztec.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+Timeslot         Y        int     Session ID
+
+AC1                       VarChar (30) Holds the info entered
+
+AC2 (to AC(50))           VarChar (30) Holds the info entered
+
+                                                                                                               68
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Rpt_AnalysisSite
+This table provides the ability to you to include analysis codes set against each site.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+SiteCode         Y        int      Aztec Site code
+
+AC1                       VarChar (30) Holds the info entered
+
+AC2 (to AC(50))           VarChar (30) Holds the info entered
+
+Rpt_AnalysisSubCategory
+This table provides the ability to you to include analysis codes set against each sub category.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+SubCatId         Y        int      Aztec sub cat code
+
+AC1                       VarChar (30) Holds the info entered
+
+AC2 (to AC(50))           VarChar (30) Holds the info entered
+
+Rpt_AnalysisUnit
+This table provides the ability to you to include analysis codes set against each Unit.
+
+Column Name      Primary  Data Type Description
+                 Key
+
+UnitId           Y        int      Unit ID as read from Aztec
+                                   Holds the info entered
+AC1                       VarChar
+                          (30)     Holds the info entered
+AC2 (to AC(50))
+                          VarChar
+                          (30)
+
+                                                                                                 69
+                                                   Aztec Dimensions ­ Reporting Data Table Schema
+
+Line Check Tables
+
+Dbo.LineCheck
+This table is a method of checking stock details.
+
+Column Name  Primary Key  Data Type                Description
+PosCode      Y            float (53, 0)            Unique Pos ID
+TransDate    Y            datetime                 Transaction date
+TransTime    Y            varchar (5)              Transaction time
+ProdCode     Y            float (53, 0)            Product code
+EmpCode      Y            float (53, 0)            Employee code
+ProdName                  varchar (40)             Product name
+ProdSize                  varchar (25)             Product size
+ProdCost                  float (53, 0)            Product cost
+SEC                       float (53, 0)            Staff employee ID
+EmpName                   varchar (41)             Employee name
+SiteCode                  smallint                 Site code
+Variance                  float (53, 0)            Variance quantity declared
+Amount                    float (53, 0)            Quantity of the product counted
+
+                                                                                    70
+                                                        Aztec Dimensions ­ Reporting Data Table Schema
+
+Dbo.LineCheckDetail
+This table gives details of stock check
+
+Column Name Primary Key Data Type                       Description
+                                                        Unique side code
+SiteCode    Y                            smallint       Transaction date
+                                                        Transaction time
+TransDate   Y                            datetime       Thread identifier
+                                                        Base Stock
+TransTime   Y                            varchar (5)    Holding Zone identifier
+                                                        Line check ID
+ThreadId    Y                            smallint       Product code
+                                                        Holding zone name
+BaseStk     Y                            int            Number of days
+                                                        User ID
+HzId        Y                            int            Line check text
+                                                        Product name
+LCid        Y                            bigint         Product size
+                                                        The number of base units in each unit
+ProdCode    Y                            float (53, 0)  Product cost
+                                                        Open stock quantity
+HzName                                   varchar (30)   Purchase quantity
+                                                        Item sales quantity
+NoDays                                   int            Theoretical closing count
+                                                        Actual closing count
+UserID                                   varchar (20)   Actual reduction (Sales)
+                                                        Wastage quantity
+LCText                                   varchar (255)  Prepared reduction quantity
+                                                        Variance quantity declared
+ProdName                                 varchar (40)
+
+ProdSize                                 varchar (25)
+
+BaseUnits                                float (53, 0)
+
+ProdCost                                 float (53, 0)
+
+OpenStk                                  float (53, 0)
+
+Purch                                    float (53, 0)
+
+Sold                                     float (53, 0)
+
+ThClose                                  float (53, 0)
+
+ActClose                                 float (53, 0)
+
+ActRed                                   float (53, 0)
+
+Wastage                                  float (53, 0)
+
+PrepRedQty                               float (53, 0)
+
+Variance                                 float (53, 0)
+
+                                                                                               71
+                                                       Aztec Dimensions ­ Reporting Data Table Schema
+
+Dbo.LineCheckSum
+This table gives calculation of stock.
+
+Column Name  Primary Key                Data Type      Description
+SaCode       Y                          float (53, 0)  Sales area code
+TransDate    Y                          datetime       Transaction date
+TransTime    Y                          varchar (5)    Transaction time
+ProdCode     Y                          float (53, 0)  Product ID code
+EmpCode      Y                          float (53, 0)  Employee code
+ProdName                                varchar (40)   Product name
+ProdSize                                varchar (25)   Product size
+ProdCost                                float (53, 0)  Product cost
+SEC                                     float (53, 0)  Staff employee ID
+EmpName                                 varchar (41)   Employee name
+SiteCode                                smallint       Site code
+Variance                                float (53, 0)  Line check sum variance
+Amount                                  float (53, 0)  Total amount of line check sum
+
+                                                                                       72
+                                                        Aztec Dimensions ­ Reporting Data Table Schema
+
+Tag Tables
+
+dbo.Rpt_TagAreaHeader
+This table is provides details of the tag area header.
+
+Colum Name      Primary Key  Data Type                  Description
+TagIdentity     Y            int                        Tag identity
+TagId                        int                        Unique tag ID
+TagName                      varchar (20)               Tag name
+TagDesc                      varchar (250)              Tag description
+TagType                      tinyint                    Tag type
+SubSectionId                 int                        Sub section ID
+SubSectionName               varchar (20)               Sub section name
+SubSectionDesc               varchar (250)              Sub section description
+SectionId                    int                        Section ID
+SectionName                  varchar (20)               Section name
+SectionDesc                  varchar (250)              Section description
+SubGroupId                   int                        Section group id
+SubgroupName                 varchar (20)               Sub group name
+SubGroupDesc                 varchar (250)              Sub group description
+GroupId                      int                        Group id
+GroupName                    varchar (20)               Group name
+GroupDesc                    varchar (250)              Group description
+
+                                                                                 73
+                                                            Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_TagAreaHeader
+This table provides tag area header information.
+
+Name         Primary Key                     Data Type      Description
+                                             int            area unique id
+AreaId    Y                                  int            Tag unique id
+                                             varchar (20)   Tag name
+TagId     Y                                  varchar (250)  Tag description
+                                             varchar (25)   Tag value
+TagName
+
+TagDesc
+
+TagValue
+
+dbo.Rpt_TagProduct
+This table provides detail of tag products.
+
+Name         Primary Key                     Data Type      Description
+ProdCode                                     bigint         Product code
+Tag 1                                        varchar (25)   Column created for each tag
+Tag 2                                        varchar (25)   Column created for each tag
+
+                                                                                         74
+                                                        Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_TagProductHeader
+This table provides details on the tag product header.
+
+Name            Primary Key  Data Type                  Description
+TagIdentity     Y            int                        Tag ID
+TagId                        int                        Unique tag ID
+TagName                      varchar (20)               Tag name
+TagDesc                      varchar (250)              Tag description
+TagType                      tinyint                    Tag type
+SubSectionId                 int                        Sub section ID
+SubSectionName               varchar (20)               Sub section name
+SubSectionDesc               varchar (250)              Sub section description
+SectionId                    int                        Sub section ID
+SectionName                  varchar (20)               Section name
+SectionDesc                  varchar (250)              Section description
+SubGroupId                   int                        Sub group ID
+SubgroupName                 varchar (20)               Sub group name
+SubGroupDesc                 varchar (250)              Sub group description
+GroupId                      int                        Group ID
+GroupName                    varchar (20)               Group name
+GroupDesc                    varchar (250)              Group description
+
+                                                                                 75
+dbo.Rpt_TagProductValues                                Aztec Dimensions ­ Reporting Data Table Schema
+This table provides tag product values.
+                                                              Description
+Name         Primary Key                 Data Type            Unique product code
+ProdCode     Y                           bigint               Tag ID
+TagId        Y                           int                  Tag name
+TagName                                  varchar (20)         Tag description
+TagDesc                                  varchar (250)        Tag value
+TagValue                                 varchar (25)
+
+dbo.Rpt_TagSalesArea
+This table provides details of tag sales area. The below is a sample of what may be included.
+
+Name         Primary Key                 Data Type      Description
+SalesAreaId                              int            Sales area ID
+
+                                                                                               76
+                                                       Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_TagSalesAreaHeader
+This table provides details on tag sales area header.
+
+Name            Primary Key  Data Type                 Description
+TagIdentity     Y            int                       Tag ID
+TagId                        int                       Unique tag ID
+TagName                      varchar (20)              Tag name
+TagDesc                      varchar (250)             Tag description
+TagType                      tinyint                   Tag type
+SubSectionId                 int                       Sub section ID
+SubSectionName               varchar (20)              Sub section name
+SubSectionDesc               varchar (250)             Sub section description
+SectionId                    int                       Sub section ID
+SectionName                  varchar (20)              Section name
+SectionDesc                  varchar (250)             Section description
+SubGroupId                   int                       Sub group ID
+SubgroupName                 varchar (20)              Sub group name
+SubGroupDesc                 varchar (250)             Sub group description
+GroupId                      int                       Group ID
+GroupName                    varchar (20)              Group name
+GroupDesc                    varchar (250)             Group description
+
+                                                                                77
+                                                       Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_TagSalesAreaValues
+This table provides details on tag sales area values.
+
+Name         Primary Key  Data Type                    Description
+SalesAreaId  Y            int                          Unique Sales area ID
+TagId        Y            int                          Unique tag ID
+TagName                   varchar (20)                 Tag name
+TagDesc                   varchar (250)                Tag description
+TagValue                  varchar (25)                 Tag value
+
+                                                                             78
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_TagSite
+This table provides details on the tag sites. There are some examples in the table below.
+
+Name                 Primary  Data Type     Description
+                     Key
+SiteId                        int           Site ID
+Dimensions Database           varchar (25)  Column created for each tag
+House Float                   varchar (25)  Column created for each tag
+
+                                                                         79
+dbo.Rpt_TagSiteHeader                             Aztec Dimensions ­ Reporting Data Table Schema
+This table provides tag site header information.
+                                                           Description
+Name            Primary  Data Type
+                Key                                        Tag ID
+TagIdentity              int                               Unique tag ID
+TagId           Y        int                               Tag name
+TagName                  varchar (20)                      Tag description
+TagDesc                  varchar (250)                     Tag type
+TagType                  tinyint                           Sub section ID
+SubSectionId             int                               Sub section name
+SubSectionName           varchar (20)                      Sub section description
+SubSectionDesc           varchar (250)                     Sub section ID
+SectionId                int                               Section name
+SectionName              varchar (20)                      Section description
+SectionDesc              varchar (250)                     Sub group ID
+SubGroupId               int                               Sub group name
+SubgroupName             varchar (20)                      Sub group description
+SubGroupDesc             varchar (250)                     Group ID
+GroupId                  int                               Group name
+GroupName                varchar (20)                      Group description
+GroupDesc                varchar (250)
+
+                                                  80
+                                                     Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_TagSiteValues
+This table provides details on the tag site values.
+
+Name      Primary Key  Data Type                     Description
+SiteId    Y            int                           Unique site ID
+TagId     Y            int                           Unique tag ID
+TagName                varchar (20)                  Tag name
+TagDesc                varchar (250)                 Tag description
+TagValue               varchar (25)                  Tag value
+
+                                                                      81
+                                                           Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_TagTerminalHeader
+This table provides details with the tag terminal header.
+
+Name            Primary Key  Data Type                     Description
+TagIdentity     Y            int                           Tag ID
+TagId                        int                           Unique tag ID
+TagName                      varchar (20)                  Tag name
+TagDesc                      varchar (250)                 Tag description
+TagType                      tinyint                       Tag type
+SubSectionId                 int                           Sub section ID
+SubSectionName               varchar (20)                  Sub section name
+SubSectionDesc               varchar (250)                 Sub section description
+SectionId                    int                           Sub section ID
+SectionName                  varchar (20)                  Section name
+SectionDesc                  varchar (250)                 Section description
+SubGroupId                   int                           Sub group ID
+SubgroupName                 varchar (20)                  Sub group name
+SubGroupDesc                 varchar (250)                 Sub group description
+GroupId                      int                           Group ID
+GroupName                    varchar (20)                  Group name
+GroupDesc                    varchar (250)                 Group description
+
+                                                                                    82
+                                          Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_TagTerminalValues
+
+Name        Primary Key    Data Type      Description
+TerminalId  Y              int            Unique terminal ID
+TagId       Y              int            Unique tag ID
+TagName                    varchar (20)   Tag name
+TagDesc                    varchar (250)  Tag description
+TagValue                   varchar (25)   Tag value
+
+                                                              83
+                                 Aztec Dimensions ­ Reporting Data Table Schema
+
+Sales and Payment Tables
+
+dbo.Rpt_Payment
+
+Name      Primary Key Data Type  Description
+                                 Unique Transaction Date
+TransDate Y   datetime           Unique Terminal ID
+                                 Unique Secondary terminal ID
+TerminalId Y  int                Unique employee ID
+                                 Unique pay time ID
+PosCode Y     int                half hour time period
+                                 Payment code ID
+EmpCode Y     bigint             Show details of table number
+                                 Number of till entered covers
+PayTime Y     varchar (5)        Customer name
+                                 Payment count
+HalfHour Y    varchar (5)        Gross Amount of sale
+                                 Service charge amount
+PayCode Y     smallint           Tip amount
+                                 Amount of discount
+TableNo Y     smallint           Vat taken
+                                 Any excliusive tax applied
+Covers Y      smallint           Receipt unique number
+                                 Card number
+Customer Y    varchar (14)
+
+Quantity      float (53, 0)
+
+Amount        float (53, 0)
+
+Service       float (53, 0)
+
+Tip           float (53, 0)
+
+Discount      float (53, 0)
+
+VAT           float (53, 0)
+
+ExcTax        float (53, 0)
+
+ReceiptNo Y   varchar (21)
+
+CardNo        varchar (40)
+
+                                                                84
+                                                               Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Rpt_ProductSalesHalfHourly
+This table provides details on product sales every half hour.
+
+Name              Primary Key Data Type Description
+
+TransDate         Y  date      Transaction date
+
+TerminalID        Y  int       Unique terminal ID
+
+HalfHour          Y  varchar (5) half hour time period
+
+ProdCode          Y  bigint    Unique Product code
+
+PortionTypeId     Y  smallint  Unique portion ID
+
+EmpCode           Y  bigint    Employee code ID
+
+CorrCode          Y  int       Correction method ID
+
+CorrReasonCode Y     smallint  Reason code provided from till
+
+RefundMode        Y  bit       Determines if this row is a refund
+
+DiscCode          Y  smallint  Discount ID
+
+PromoCode         Y  bigint    Promotion ID
+
+EventCode         Y  bigint    Event ID
+
+DestinationCode Y    int       Destination ID
+
+Quantity             float (53, 0) Quantity sold
+
+Gross                money (19, 4) Gross sales amount in this half hour period
+
+IncTax               money (19, 4) Inclusive tax amount (VAT)
+
+ExcTax               money (19, 4) Exclusive tax amount
+
+Service              money (19, 4) Service charge
+
+Tariff               money (19, 4) Sales at tariff price
+
+Cost                 money (19, 4) Sales at latest cost price
+
+FIFOCost             money (19, 4) Cost calculated using FIFO
+
+Discount             money (19, 4) Discount amount
+
+Promotion            money (19, 4) Promotion amount
+
+QuantityPromoted     float (53, 0) Number of item promoted
+
+Volume               float (53, 0) Volume in milliliters of liquid sales
+
+                                                                                85
+                                                   Aztec Dimensions ­ Reporting Data Table Schema
+
+Bookings Tables
+
+dbo.DimView_Booking
+This table gives you information on the bookings.
+
+Name                      Primary Key Data Type Description
+
+Id                        int                      Booking ID
+
+SiteId                    int                      Site ID
+
+ContactName               varchar (20) Contact name
+
+ContactTelephoneNumber    varchar (20) Contact Telephone Number
+
+DateBookedFor             datetime                 Date Booked For
+
+TimeBookedFor             datetime                 Time Booked For
+
+ExternalBookingReference  varchar (20) External Booking Reference as entered
+
+NumberOfPeople            smallint                 Number Of People booked for
+
+BookingTypeId             int                      Booking Type ID
+
+PosUser                   bigint                   Employee ID
+
+PostingDateAndTime        datetime                 Posting Date And Time
+
+PostingBusinessDate       datetime                 Posting Business Date
+
+PosId                     int                      Terminal ID
+
+CurrentDepositBalance     money (19, 4) Current Deposit Balance
+
+Open                      bit                      Booking still open, true or false
+
+Deleted                   bit                      Deleted , true or false
+
+                                                                                      86
+                                                                Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.DimView_BookingDeposit
+This table gives you information on booking deposits.
+
+Name                 Primary Key Data Type Description
+
+Id                   int                               ID for booking deposit
+
+SiteId               int                               Site ID
+
+BookingId            int                               Booking ID
+
+Amount               money (19, 4) Deposit amount
+
+PosUser              bigint                            Employee ID
+
+PostingDateAndTime   datetime                          Posting Date And Time
+
+PostingBusinessDate  datetime                          Posting Business Date
+
+PosId                int                               Terminal ID
+
+PosSequenceNumber    smallint                          Pos Sequence number
+
+PosAccountGuido      bigint                            Account ID
+
+PosPaymentReference  varchar (50) Pos Payment Reference
+
+Deleted              bit                               Deleted, true or false
+
+LMDT                 datetime                          Last modified date & time of this record
+
+                                                                                                 87
+dbo.DimView_BookingRedemption                           Aztec Dimensions ­ Reporting Data Table Schema
+This table provides details on the booking redemption.
+                                                        Description
+Name                 Primary Key Data Type              ID for booking deposit
+                                                        Site ID
+Id                   int                                Booking ID
+                                                        Posting Date And Time
+SiteId               int                                Posting Business Date
+                                                        Employee ID
+BookingId            int                                Amount redeemed
+                                                        Amount forfeited
+PostingDateAndTime   datetime                           Terminal ID
+                                                        Pos sequence number
+PostingBusinessDate  datetime                           Account ID
+                                                        Deleted, true or false
+PosUser              bigint                             Last modified date & time of this record
+
+AmountRedeemed       money (19, 4)
+
+AmountForfeited      money (19, 4)
+
+PosId                int
+
+PosSequenceNumber    smallint
+
+PosAccountGuido      bigint
+
+Deleted              bit
+
+LMDT                 datetime
+
+                                                        88
+                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.DimView_BookingType
+This table gives information on the type of booking.
+
+Name                Primary Key Data Type Description
+
+Id                  int                               ID of booking type
+
+Name                varchar (20) Name of Booking type
+
+Description         varchar (250) Description of booking type
+
+PosButtonTextLine1  varchar (8) Till button line text 1
+
+PosButtonTextLine2  varchar (8) Till button line text 2
+
+PosButtonTextLine3  varchar (8) Till button line text 3
+
+Deleted             bit                               Deleted, true or false
+
+                                                                              89
+                                                             Aztec Dimensions ­ Reporting Data Table Schema
+
+Employee Tables
+
+dbo.EmpData
+This table gives information on employee details.
+
+Name       Primary Key Data Type Description
+
+SiteCode   Y     int                               What site code the employee works
+
+TransDate  Y     datetime                          Transaction date
+
+EmpCode    Y     bigint                            Employee code
+
+Income           money (19, 4) Employee income
+
+Orders           int                               Number of orders recorded
+
+Covers           int                               Number of covers recorded
+
+NoSales          int                               Number of No sales
+
+ClearAll         int                               Not used
+
+Tables           int                               No of tables served
+
+Reprints         int                               Re-prints of recipe
+
+Tips             money (19, 4) Amount of tips received by employee
+
+FltQty           smallint                          Fault quantity
+
+FltVal           money (19, 4) Fault value
+
+VoidQty          smallint                          Void quantity
+
+VoidVal          money (19, 4) Void value
+
+ClrQty           smallint                          Clear quantity
+
+ClrVal           money (19, 4) Clear value
+
+WstQty           smallint                          Waste quantity
+
+WstVal           money (19, 4) Waste value
+
+RevPayQty        smallint                          Reverse pay quantity
+
+RevPayVal        money (19, 4) Reverse pay value
+
+Hours            float (53, 0) Hours employee has worked
+
+                                                                                      90
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+Dbo.EmpError
+This table gives information on errors that the employee has made on transactions.
+
+Name       Primary Key Data Type  Description
+TransDate                         Transaction date
+EmpCode    Y  datetime            Employee code
+SiteCode                          Site code
+FltQty     Y  bigint              Fault quantity
+FltVal                            Fault value
+VoidQty    Y  int                 Void quantity
+VoidVal                           Void value
+ClrQty        int                 Clear quantity
+ClrVal                            Clear value
+WstQty        money (19, 4)       Waste quantity
+WstVal                            Waste value
+RevPayQty     int                 Reverse pay quantity
+RevPayVal                         Reverse pay value
+              money (19, 4)
+
+              int
+
+              money (19, 4)
+
+              int
+
+              money (19, 4)
+
+              int
+
+              money (19, 4)
+
+                                                        91
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.EmpHalfHourSales
+This table gives you information on employee sales each half hour.
+
+Name       Primary Key Data Type Description
+TransDate
+PosCode    Y  datetime  Transaction date
+HalfHour
+EmpCode    Y  int       Employee ID
+Income
+Orders     Y  varchar (5) half hour time period
+Covers
+NoSales    Y  bigint    Employee code
+ClearAll
+Tables        money (19, 4) Income each half hour
+Reprints
+Tips          int       Orders each half hour
+
+              int       Covers each half hour
+
+              int       Number of no sales each half hour
+
+              int       Not used
+
+              int       Which table income has come from each half hour
+
+              int       Recipe re prints each half hour
+
+              money (19, 4) Tips received each half hour
+
+                                                                         92
+                                                         Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.EmpHr
+Employee worked hour details.
+
+Name       Primary Key Data Type Description
+TransDate
+SiteCode   Y                   datetime  Transaction date and time
+EmpCode
+JobTitle   Y                   int       Site ID
+JobMode
+PayType    Y                   bigint    Employee ID
+PayRate
+SchedHr    Y                   varchar (20) Job title
+HrPaid
+Clocked    Y                   varchar (10) Job Mode
+SchPay
+ActPay     Y                   smallint  Pay method
+ClockPay
+           Y                   money (19, 4) Pay rate
+
+                               float (53, 0) Hour scheduled
+
+                               float (53, 0) Hour paid
+
+                               float (53, 0) Employee clocked in time
+
+                               float (53, 0) Scheduled pay
+
+                               float (53, 0) Actual pay
+
+                               float (53, 0) Clock pay
+
+                                                                       93
+                                                            Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.EmpSales
+This table gives you details on employee sales.
+
+Name       Primary Key Data Type                 Description
+TransDate
+SiteCode   Y  datetime                           Transaction date
+Session
+EmpCode    Y  int                                Site code
+Income
+Orders     Y  smallint                           Session number
+Covers
+NoSales    Y  bigint                             Employee ID
+ClearAll
+Tables        money (19, 4) Income received by employee sales
+Reprints
+Tips          int                                Number of orders
+
+              int                                Number of covers
+
+              int                                Number of sales
+
+              int                                Not used
+
+              int                                Number of sales made to table
+
+              int                                Number of re printed recipes by employee
+
+              money (19, 4) Amount of tips received by employee
+
+                                                                                           94
+                                                   Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.EmpWages
+Employee wages.
+
+Name             Primary Key Data Type  Description
+TransDate
+SiteCode         Y  datetime            Transaction date
+EmpCode
+JobID            Y  int                 Site code
+Rate
+PayRate          Y  bigint              Employee ID
+Hours
+                 Y  int                 Job ID
+
+                 Y  smallint            Pay rate ID
+
+                 Y  money (19, 4) Rate of pay
+
+                    float (53, 0) Hours worked by employee
+
+                                                            95
+                                                             Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.Employee
+Details of the employee.
+
+Name                      Primary Key Data Type              Description
+EmpCode                                        bigint        Employee code
+LastName                                       varchar (20)  Last name of employee
+FirstName                                      varchar (20)  First name of employee
+EmpPosition                                    varchar (20)  Employee position
+FullName                                       varchar (41)  Employee full name
+SiteCode                                       int           Site code employee works at
+NiNumber                                       varchar (40)  Employee NI number
+StartDate                                      datetime      Employee start date
+LeaveDate                                      datetime      Employee leave date
+CurrentEmp                                     varchar (1)   Currently employed
+DOB                                            datetime      Date of birth
+PayrollNumber                                  varchar (40)  Employee payroll number
+
+                                                                                          96
+                                                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.DimView_EmployeeSalesErrorsAndHours
+This table gives you information on employee sale errors and hours worked.
+
+Name       Primary Key Data Type Description
+SiteCode
+TransDate  int       Site code
+EmpCode
+Income     datetime  Transaction date
+Orders
+Covers     bigint    Employee code
+NoSales
+ClearAll   money (19, 4) Income received
+Tables
+Reprints   int       No of orders recorded by this by employee
+Tips
+FltQty     int       No of covers recorded by this by employee
+FltVal
+VoidQty    int       Number of no sales by employee
+VoidVal
+ClrQty     int       Not used
+ClrVal
+WstQty     int       Number of Sales on table number
+WstVal
+HrPaid     int       number of receipt reprints by this employee
+SchedHr
+Clocked    money (19, 4) Amount of tips received
+
+           int       Fault quantity
+
+           money (19, 4) Fault value
+
+           int       Void quantity
+
+           money (19, 4) Void value
+
+           int       Cleared quantity
+
+           money (19, 4) Cleared value
+
+           int       Waste quantity
+
+           money (19, 4) Waste value
+
+           float (53, 0) Confirmed Hours paid per employee
+
+           float (53, 0) Schedule hour per employee
+
+           float (53, 0) Clocked hours by employee
+
+                                                                  97
+                                                      Aztec Dimensions ­ Reporting Data Table Schema
+
+dbo.DimView_EmployeeSalesErrorsAndWages
+
+Name       Primary Key Data Type         Description
+SiteCode
+TransDate  int                           Site code
+EmpCode
+Income     datetime                      Transaction date
+Orders
+Covers     bigint                        Employee code
+NoSales
+ClearAll   money (19, 4) Income received
+Tables
+Reprints   int                           No of orders recorded by this by employee
+Tips
+FltQty     int                           No of covers recorded by this by employee
+FltVal
+VoidQty    int                           Number of no sales by employee
+VoidVal
+ClrQty     int                           Not used
+ClrVal
+WstQty     int                           Number of Sales on table number
+WstVal
+HrPaid     int                           number of receipt reprints by this Employee
+TotalPay
+           money (19, 4) Amount of tips received
+
+           int                           Fault quantity
+
+           money (19, 4) Fault value
+
+           int                           Void quantity
+
+           money (19, 4) Void value
+
+           int                           Cleared quantity
+
+           money (19, 4) Cleared value
+
+           int                           Waste quantity
+
+           money (19, 4) Waste value
+
+           float (53, 0)                 Confirmed Hour paid per employee
+
+           float (53, 0)                 Total pay
+
+                                                                                      98
+Analysis Tables                              Aztec Dimensions ­ Reporting Data Table Schema
+                                  Description
+dbo.Rpt_AnalysisTransactionTypes
+
+Name     Primary Key Data Type
+TransId
+AC1      Y  bigint
+AC2
+AC3         varchar (30)
+AC4
+AC5         varchar (30)
+AC6
+AC7         varchar (30)
+AC8
+AC9         varchar (30)
+AC10
+AC11        varchar (30)
+AC12
+AC13        varchar (30)
+AC14
+AC15        varchar (30)
+AC16
+AC17        varchar (30)
+AC18
+AC19        varchar (30)
+AC20
+AC21        varchar (30)
+AC22
+AC23        varchar (30)
+AC24
+AC25        varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+            varchar (30)
+
+                                  99
+                    Aztec Dimensions ­ Reporting Data Table Schema
+
+AC26  varchar (30)
+AC27  varchar (30)
+AC28  varchar (30)
+AC29  varchar (30)
+AC30  varchar (30)
+AC31  varchar (30)
+AC32  varchar (30)
+AC33  varchar (30)
+AC34  varchar (30)
+AC35  varchar (30)
+AC36  varchar (30)
+AC37  varchar (30)
+AC38  varchar (30)
+AC39  varchar (30)
+AC40  varchar (30)
+AC41  varchar (30)
+AC42  varchar (30)
+AC43  varchar (30)
+AC44  varchar (30)
+AC45  varchar (30)
+AC46  varchar (30)
+AC47  varchar (30)
+AC48  varchar (30)
+AC49  varchar (30)
+AC50  varchar (30)
+
+                    100
+dbo.Rpt_AnalysisPortion                 Aztec Dimensions ­ Reporting Data Table Schema
+                                       Description
+Name  Primary Key        Data Type
+Id    Y                  int                                                               101
+AC1                      varchar (30)
+AC2                      varchar (30)
+AC3                      varchar (30)
+AC4                      varchar (30)
+AC5                      varchar (30)
+AC6                      varchar (30)
+AC7                      varchar (30)
+AC8                      varchar (30)
+AC9                      varchar (30)
+AC10                     varchar (30)
+AC11                     varchar (30)
+AC12                     varchar (30)
+AC13                     varchar (30)
+AC14                     varchar (30)
+AC15                     varchar (30)
+AC16                     varchar (30)
+AC17                     varchar (30)
+AC18                     varchar (30)
+AC19                     varchar (30)
+AC20                     varchar (30)
+AC21                     varchar (30)
+AC22                     varchar (30)
+AC23                     varchar (30)
+AC24                     varchar (30)
+AC25                     varchar (30)
+                    Aztec Dimensions ­ Reporting Data Table Schema
+
+AC26  varchar (30)
+AC27  varchar (30)
+AC28  varchar (30)
+AC29  varchar (30)
+AC30  varchar (30)
+AC31  varchar (30)
+AC32  varchar (30)
+AC33  varchar (30)
+AC34  varchar (30)
+AC35  varchar (30)
+AC36  varchar (30)
+AC37  varchar (30)
+AC38  varchar (30)
+AC39  varchar (30)
+AC40  varchar (30)
+AC41  varchar (30)
+AC42  varchar (30)
+AC43  varchar (30)
+AC44  varchar (30)
+AC45  varchar (30)
+AC46  varchar (30)
+AC47  varchar (30)
+AC48  varchar (30)
+AC49  varchar (30)
+AC50  varchar (30)
+
+                    102
+dbo.Rpt_PortionAnalysis                                Aztec Dimensions ­ Reporting Data Table Schema
+This table show details of portion.
+                                                   Description
+Name      Primary Key                Data Type     Portion ID
+Id                                   int           Portion Code
+PortCode                             int           Sub category ID
+SubCatId                             int           Sub category
+SubCat                               varchar (20)  Portion name
+PortName                             varchar (16)
+
+                                                   103
+dbo.Rpt_PortionAnalysisDetail                    Aztec Dimensions ­ Reporting Data Table Schema
+                                             Description
+Name      Primary Key          Data Type     Portion Code
+                               int           Sub category ID
+PortCode                       int           Sub category
+                               varchar (20)  Portion name
+SubCatId                       varchar (16)  Portion ID
+                               bigint        Extra name
+SubCat                         varchar (40)
+                               varchar (30)                                                         104
+PortName                       varchar (30)
+                               varchar (30)
+ProdCode                       varchar (30)
+                               varchar (30)
+ExtName                        varchar (30)
+                               varchar (30)
+AC1                            varchar (30)
+                               varchar (30)
+AC2                            varchar (30)
+                               varchar (30)
+AC3                            varchar (30)
+                               varchar (30)
+AC4                            varchar (30)
+                               varchar (30)
+AC5                            varchar (30)
+                               varchar (30)
+AC6                            varchar (30)
+                               varchar (30)
+AC7                            varchar (30)
+                               varchar (30)
+AC8                            varchar (30)
+
+AC9
+
+AC10
+
+AC11
+
+AC12
+
+AC13
+
+AC14
+
+AC15
+
+AC16
+
+AC17
+
+AC18
+
+AC19
+
+AC20
+
+AC21
+
+AC22
+                    Aztec Dimensions ­ Reporting Data Table Schema
+
+AC23  varchar (30)
+AC24  varchar (30)
+AC25  varchar (30)
+AC26  varchar (30)
+AC27  varchar (30)
+AC28  varchar (30)
+AC29  varchar (30)
+AC30  varchar (30)
+AC31  varchar (30)
+AC32  varchar (30)
+AC33  varchar (30)
+AC34  varchar (30)
+AC35  varchar (30)
+AC36  varchar (30)
+AC37  varchar (30)
+AC38  varchar (30)
+AC39  varchar (30)
+AC40  varchar (30)
+AC41  varchar (30)
+AC42  varchar (30)
+AC43  varchar (30)
+AC44  varchar (30)
+AC45  varchar (30)
+AC46  varchar (30)
+AC47  varchar (30)
+AC48  varchar (30)
+AC49  varchar (30)
+AC50  varchar (30)
+
+                    105
+

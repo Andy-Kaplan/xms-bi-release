@@ -1,0 +1,123 @@
+================================================================================
+  Neighbours - Eastleigh: Survey Dashboard Deployment
+  Target: UAT microservice report database (xms-mssql-ne-uat / report)
+  Organisation: Neighbours - Eastleigh
+  OrganisationId: 3EBF26FE-E14A-40ED-A355-9A411B1273B4
+  MI Database: 20251202_XMS_3EBF26FE-E14A-40ED-A355-9A411B1273B4
+  Created: 2026-03-12
+================================================================================
+
+DEPLOY ORDER
+------------
+  04_vis_config_and_biconfig.sql      (FIRST — BiConfig + card type auth + dataset wiring)
+  01_survey_overview_lifestyle.sql    (items/filters into existing empty grids)
+  02_challenging_environment.sql      (new grids + items/filters)
+  03_church_building.sql              (new grids + items/filters)
+
+  Scripts 01-03 are independent of each other but all depend on 04.
+
+
+WHAT EACH SCRIPT DOES
+---------------------
+  04  BiConfig                    1 row   (org had no BiConfig — BI layer could not resolve MI database)
+      VisualisationConfig        11 rows  (card types 1,3,4,5,6,7,8,12,13,14,15 — types 2,9,10,11 already on UAT)
+      VisualisationDataSetMap    57 rows  (all dataset maps from DEV for this org — UAT had 0)
+
+  01  OrganisationDashboardConfig  2 UPDATEs  (SortOrder 0 -> 1 for Survey Overview, 0 -> 2 for Lifestyle Provision)
+      DashboardGridItem            7 rows  (4 Survey Overview + 3 Lifestyle Provision)
+      DashboardGridFilter          3 rows  (1 Survey Overview + 2 Lifestyle Provision)
+
+  02  DashboardGrid                2 rows  (Challenging Issues + Environment)
+      DashboardGridItem            5 rows  (3 Challenging Issues + 2 Environment)
+      DashboardGridFilter          2 rows  (Challenging Issues only — Environment has none)
+      OrganisationDashboardConfig  2 rows  (SortOrder 3 + 4)
+
+  03  DashboardGrid                2 rows  (Church Members + Building Use)
+      DashboardGridItem            8 rows  (4 Church Members + 4 Building Use)
+      DashboardGridFilter          2 rows  (Building Use only — Church Members has none)
+      OrganisationDashboardConfig  2 rows  (SortOrder 5 + 6)
+
+
+TOTAL ROWS
+----------
+  BiConfig:                      1
+  DashboardGrid:                 4  (+ 2 existing reused)
+  DashboardGridItem:            20
+  DashboardGridFilter:           7
+  OrganisationDashboardConfig:   4 new + 2 updated = 6
+  VisualisationConfig:          11
+  VisualisationDataSetMap:      57
+                               ----
+  Total:                       104 rows (100 inserts + 2 updates + 2 existing grids reused)
+
+
+DASHBOARDS AFTER DEPLOYMENT
+---------------------------
+  SortOrder  Name                   Grid Source   Items  Filters
+  ---------  ---------------------  -----------   -----  -------
+  1          Survey Overview        Existing UAT    4      1 (SurveyFilter)
+  2          Lifestyle Provision    Existing UAT    3      2 (SurveyFilter, SurveyFilterAge)
+  3          Challenging Issues     New              3      2 (SurveyFilterAge, SurveyFilter)
+  4          Environment            New              2      0
+  5          Church Members         New              4      0
+  6          Building Use           New              4      2 (SurveyFilter, SurveyFilterAge)
+
+
+PRE-EXISTING UAT STATE
+----------------------
+  - Survey Overview grid (E4026650-...) and Lifestyle Provision grid (B2B48671-...)
+    already exist with 0 items and 0 filters. Scripts reuse these grids.
+  - OrganisationDashboardConfig has 2 rows (both SortOrder=0). Script 01 updates
+    them to SortOrder 1 and 2 to match DEV ordering.
+  - VisualisationConfig has 7 rows (types 2,3,9,10,11,16,17). Type 3 is soft-deleted;
+    script 04 adds a fresh active row. Types 16,17 (StaticBoxCard, MarkdownCard)
+    are not touched.
+  - VisualisationDataSetMap has 0 rows for this org. All 57 are new inserts.
+  - BiConfig has no entry for this org. Script 04 creates it.
+
+
+DATASETS USED BY DASHBOARD
+---------------------------
+  Survey Overview:
+    SurveyCompletion, SurveyGenderByRespondentTotal, SurveyAgeByRespondentTotal,
+    SurveyAgeByGender, SurveyFilter
+
+  Lifestyle Provision:
+    SurveyLifestyleRadar, SurveyRespondentByLifestyle,
+    SurveyLifestyleProvisionThoughtsnonChurch, SurveyFilter, SurveyFilterAge
+
+  Challenging Issues:
+    SurveyChallengingRadar, SurveyRespondentByChallenge,
+    SurveyChallengeThoughtsnonChurch, SurveyFilterAge, SurveyFilter
+
+  Environment:
+    SurveyEnvironmentRadar, SurveyRespondentByEnvironment
+
+  Church Members:
+    SurveyMembersDistance, SurveyMembersTravel, SurveyMemberActivities,
+    SurveyDistanceTransport
+
+  Building Use:
+    SurveyBuildingUse (x2 — PieChart + BarChart), SurveyVisitorMessage,
+    SurveyImprovementsNeeded, SurveyFilter, SurveyFilterAge
+
+
+NOTE: NON-SURVEY DATASETS IN VIS CONFIG
+----------------------------------------
+  Script 04 mirrors the full DEV VisualisationConfig/DataSetMap for this org.
+  This includes POS/Sales datasets that were configured on the DEV survey org:
+    DiscountsRevCentreDayPart, ForecastDailyRevenue, OrderRevCentreDayPart,
+    ProductMargins, ProductMarginsChannel, SalesKPIGrouped, DiscountPerc,
+    GrossATV, GrossDiscount, NetSales, TaxTotal, TotalOrders, ProdMarg,
+    ForecastProductQuantity, ATVChannelDayPart, ATVRevCentreDayPart,
+    OrdersChannelDayPart
+
+  These are not used by any of the 6 survey dashboards but are wired at the
+  VisualisationConfig level. They can be removed from script 04 if a clean
+  survey-only config is preferred.
+
+
+ROLLBACK
+--------
+  All 4 scripts are wrapped in TRY/CATCH with ROLLBACK on error.
+  Each script is atomic — partial execution within a script is not possible.
