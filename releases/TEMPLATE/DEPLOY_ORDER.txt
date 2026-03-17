@@ -1,0 +1,31 @@
+# Release v{X.Y} — Deployment Order
+# Execute scripts in the order listed below.
+# Lines starting with # are comments.
+
+# ============================================================
+# MANAGED INSTANCE — Core Database (run once)
+# ============================================================
+# Connect to: core database on target MI environment
+
+01_{script_name}.sql
+02_{script_name}.sql
+
+# ============================================================
+# MANAGED INSTANCE — Per-Organisation (run per active org)
+# ============================================================
+# Use cursor wrapper scripts, or run manually per org.
+
+03_per_org_{script_name}.sql
+
+# ============================================================
+# MICROSERVICE — Report Database (run once)
+# ============================================================
+# Connect to: report database on target microservice environment
+# (Azure SQL Database, NOT Managed Instance)
+
+ms_01_{script_name}.sql
+
+# ============================================================
+# POST-DEPLOY VERIFICATION
+# ============================================================
+# Complete the validation checklist in RELEASE_NOTES.md
