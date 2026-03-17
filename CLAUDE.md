@@ -91,6 +91,10 @@ Never use bare `INSERT` statements for control table records — they will fail 
 
 **GUID columns:** Several control tables (`StagingControl`, `EntityMappings`, `DeploymentObjects`) have an `id` column typed `uniqueidentifier DEFAULT NEWID()`. When providing explicit GUIDs in MERGE/INSERT statements, values must contain **hex characters only** (`0-9, A-F`) in the format `XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX`. Characters outside the hex range (`G-Z`) cause `Msg 8169: Conversion failed when converting from a character string to uniqueidentifier`. Prefer omitting the `id` column and relying on `DEFAULT NEWID()` where the MERGE key doesn't require it.
 
+### Release Preparation
+
+When preparing a release from ClaudeDevelopment scripts, follow `docs/release-guide.md`. Delta scripts go in `releases/v{X.Y}/`, not in `ClaudeDevelopment/Deploy/`. The `ClaudeDevelopment/Deploy/` folder predates the release guide and should not be used for new releases. Update `QUERY_STATUS.md` entries to "deployed" for any promoted scripts.
+
 ## Architecture Summary
 
 **Multi-organisation model**: One core database (control plane) + one database per organisation (`{prefix}_XMS_{GUID}`).
@@ -184,6 +188,8 @@ Categories: Sales/POS (~22), Products (~7), Inventory (~14 `Inv*`), Forecasting 
 |---|---|---|
 | `TEST_ORGS_Create_Script.sql` | ~50 | Test organisation setup |
 | `Retired/` | — | Retired/deprecated files |
+| `releases/TEMPLATE/` | — | Release folder skeleton (RELEASE_NOTES.md, DEPLOY_ORDER.txt) |
+| `releases/v{X.Y}/` | varies | Per-release delta scripts + notes (created per release) |
 
 ## Detailed Reference Docs
 
@@ -200,6 +206,7 @@ For deep technical detail, read these files in `docs/`:
 | [`docs/integration-mappings.html`](docs/integration-mappings.html) | Interactive integration mapping reference (tabbed: Overview, NCRAloha, MarketMan, Growyze, SurveyHero, TROAP, Coverage Matrix). All 60 entity mappings with column-level detail, DL tables, staging pipelines. **Static snapshot** — must be updated when mappings change. |
 | [`docs/index.html`](docs/index.html) | Interactive HTML consolidation of all markdown docs with sidebar nav, search, accordions, tabs, flow diagrams |
 | [`docs/microservice-report-database.md`](docs/microservice-report-database.md) | Complete reference for the Azure SQL `report` database on the microservice server — dashboard config, visualisation wiring, palette system, three-tier override hierarchy, audit schema, FK map, stored procedures. **Source:** UAT (`xms-mssql-ne-uat`). |
+| [`docs/release-guide.md`](docs/release-guide.md) | Release process: hybrid model (master files + delta folders), git workflow, core vs integration releases, environment progression (Dev→Test→UAT→Prod), rollback strategy, per-org deployment automation, Claude Code session rules |
 
 ### Document Sync: Data Vault Entity Changes
 
@@ -239,6 +246,7 @@ When presentation tables or visualisation queries change (e.g. changes to `8_Pre
 | Debug staging/loading | `docs/data-pipeline.md` §3-4 + `8_Deployment_Objects_Records.sql` |
 | Work with the suggestion engine | `docs/presentation-and-visualisation.md` §6 + `7_Dynamic Suggestion Tables.sql` |
 | Understand the microservice report DB | `docs/microservice-report-database.md` — dashboard config, vis wiring, palettes, SPs, audit |
+| Prepare or execute a release | `docs/release-guide.md` — full release process, git workflow, environment progression, rollback |
 
 ## Key Conventions
 
