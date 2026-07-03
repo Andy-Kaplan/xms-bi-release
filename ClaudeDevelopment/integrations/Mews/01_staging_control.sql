@@ -251,3 +251,123 @@ WHEN NOT MATCHED THEN
             N'["HUB_ID", "REVC_NAME", "REVC_ID", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "MICROSERVICE_NAME", "MICROSERVICE_ID"]',
             GETDATE(), GETDATE());
 GO
+
+-- Step 9: Mews Customer Order
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Customer Order')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_CUSTORDER',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_CUSTORDER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CUSTORDER]; WITH inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), ord AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_ORDERS] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ), itm AS ( SELECT invoiceId, COUNT(*) AS ITEM_COUNT FROM ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICE_ITEMS] ) d WHERE d.rn = 1 GROUP BY invoiceId ) SELECT * INTO [stage].[MEWS_CUSTORDER] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, inv.id) AS HEADER_ID, CAST(inv.total AS DECIMAL(18,2)) AS GRAND_TOTAL, CAST(inv.subtotal AS DECIMAL(18,2)) AS GROSS_SALES, CAST(inv.tax AS DECIMAL(18,2)) AS TAX_TOTAL, CAST(COALESCE(NULLIF(inv.discountAmount, ''''), ''0'') AS DECIMAL(18,2)) AS DISCOUNT_GROSS, CAST(inv.subtotal AS DECIMAL(18,2)) - CAST(COALESCE(NULLIF(inv.discountAmount, ''''), ''0'') AS DECIMAL(18,2)) AS NET_SALES, TRY_CAST(ord.covers AS INT) AS GUEST_COUNT, itm.ITEM_COUNT AS ITEM_COUNT, 1 AS ORDER_COUNT, TRY_CONVERT(DATETIME2, ord.createdAt, 127) AS OPEN_TIME, TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS CLOSE_TIME, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS ORDER_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS TRADING_DATE, NULL AS TABLE_NO, ord.notes AS ORDER_INFO, ord.bookingId AS EXTERNAL_REFERENCE, ord.state AS ORDER_STATUS, CASE WHEN inv.cancelled = ''1'' THEN ''CANCELLED'' ELSE ''PAID'' END AS PAYMENT_STATUS, reg.outletId AS LOCATION_KEY FROM inv LEFT JOIN ord ON ord.id = inv.orderId AND ord.rn = 1 LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 LEFT JOIN itm ON itm.invoiceId = inv.id WHERE inv.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' ) AS source_query;',
+        tier             = 1,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Stages invoices joined to orders and registers as customer orders. Invoice is the financial source; order supplies covers/state; register resolves outlet.',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["HEADER_ID", "GRAND_TOTAL", "GROSS_SALES", "TAX_TOTAL", "DISCOUNT_GROSS", "NET_SALES", "GUEST_COUNT", "ITEM_COUNT", "ORDER_COUNT", "OPEN_TIME", "CLOSE_TIME", "ORDER_DATE", "TRADING_DATE", "TABLE_NO", "ORDER_INFO", "EXTERNAL_REFERENCE", "ORDER_STATUS", "PAYMENT_STATUS", "LOCATION_KEY"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Customer Order', N'MEWS_CUSTORDER',
+            N'IF OBJECT_ID(''stage.MEWS_CUSTORDER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CUSTORDER]; WITH inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), ord AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_ORDERS] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ), itm AS ( SELECT invoiceId, COUNT(*) AS ITEM_COUNT FROM ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICE_ITEMS] ) d WHERE d.rn = 1 GROUP BY invoiceId ) SELECT * INTO [stage].[MEWS_CUSTORDER] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, inv.id) AS HEADER_ID, CAST(inv.total AS DECIMAL(18,2)) AS GRAND_TOTAL, CAST(inv.subtotal AS DECIMAL(18,2)) AS GROSS_SALES, CAST(inv.tax AS DECIMAL(18,2)) AS TAX_TOTAL, CAST(COALESCE(NULLIF(inv.discountAmount, ''''), ''0'') AS DECIMAL(18,2)) AS DISCOUNT_GROSS, CAST(inv.subtotal AS DECIMAL(18,2)) - CAST(COALESCE(NULLIF(inv.discountAmount, ''''), ''0'') AS DECIMAL(18,2)) AS NET_SALES, TRY_CAST(ord.covers AS INT) AS GUEST_COUNT, itm.ITEM_COUNT AS ITEM_COUNT, 1 AS ORDER_COUNT, TRY_CONVERT(DATETIME2, ord.createdAt, 127) AS OPEN_TIME, TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS CLOSE_TIME, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS ORDER_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS TRADING_DATE, NULL AS TABLE_NO, ord.notes AS ORDER_INFO, ord.bookingId AS EXTERNAL_REFERENCE, ord.state AS ORDER_STATUS, CASE WHEN inv.cancelled = ''1'' THEN ''CANCELLED'' ELSE ''PAID'' END AS PAYMENT_STATUS, reg.outletId AS LOCATION_KEY FROM inv LEFT JOIN ord ON ord.id = inv.orderId AND ord.rn = 1 LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 LEFT JOIN itm ON itm.invoiceId = inv.id WHERE inv.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' ) AS source_query;',
+            1, N'Staging', 0,
+            N'Stages invoices joined to orders and registers as customer orders. Invoice is the financial source; order supplies covers/state; register resolves outlet.',
+            NULL, 3, 30,
+            N'["HEADER_ID", "GRAND_TOTAL", "GROSS_SALES", "TAX_TOTAL", "DISCOUNT_GROSS", "NET_SALES", "GUEST_COUNT", "ITEM_COUNT", "ORDER_COUNT", "OPEN_TIME", "CLOSE_TIME", "ORDER_DATE", "TRADING_DATE", "TABLE_NO", "ORDER_INFO", "EXTERNAL_REFERENCE", "ORDER_STATUS", "PAYMENT_STATUS", "LOCATION_KEY"]',
+            GETDATE(), GETDATE());
+GO
+
+-- Step 10: Mews Line Item
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Line Item')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_LINEITEM',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_LINEITEM'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_LINEITEM]; WITH ii AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICE_ITEMS] ), inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ) SELECT * INTO [stage].[MEWS_LINEITEM] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, ii.invoiceId, ii.id, ''PROD'') AS SRC_KEY, CONCAT_WS(''-'', reg.outletId, ii.invoiceId) AS HEADER_ID, ''PROD'' AS LINEITEM_TYPE, CAST(ii.total AS DECIMAL(18,2)) AS GROSS_VALUE, CAST(ii.tax AS DECIMAL(18,2)) AS TAX_VALUE, CAST(ii.subtotal AS DECIMAL(18,2)) AS NET_VALUE, CAST(ii.quantity AS DECIMAL(18,4)) AS QUANTITY, CASE WHEN ii.isVoid = ''1'' OR ii.isComp = ''1'' THEN 1 ELSE 0 END AS VOID_FLAG, TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS LINEITEM_TIMESTAMP, CAST(TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS DATE) AS ITEM_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS ORDER_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS TRADING_DATE, ii.id AS LINE_ID, ROW_NUMBER() OVER (PARTITION BY ii.invoiceId ORDER BY ii.id) AS LINE_ORDER, COALESCE(ii.productVariantId, CONCAT(ii.productId, ''-DEFAULT'')) AS PRODUCT_KEY FROM ii INNER JOIN inv ON inv.id = ii.invoiceId AND inv.rn = 1 LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 WHERE ii.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' ) AS source_query;',
+        tier             = 1,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Stages invoice items as PROD line items. PRODUCT_KEY = COALESCE(variantId, productId-DEFAULT) resolving 100% of lines to a BOTTOM product member. LINEITEM_TIMESTAMP from item createdAt (must never be NULL).',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER", "PRODUCT_KEY"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Line Item', N'MEWS_LINEITEM',
+            N'IF OBJECT_ID(''stage.MEWS_LINEITEM'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_LINEITEM]; WITH ii AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICE_ITEMS] ), inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ) SELECT * INTO [stage].[MEWS_LINEITEM] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, ii.invoiceId, ii.id, ''PROD'') AS SRC_KEY, CONCAT_WS(''-'', reg.outletId, ii.invoiceId) AS HEADER_ID, ''PROD'' AS LINEITEM_TYPE, CAST(ii.total AS DECIMAL(18,2)) AS GROSS_VALUE, CAST(ii.tax AS DECIMAL(18,2)) AS TAX_VALUE, CAST(ii.subtotal AS DECIMAL(18,2)) AS NET_VALUE, CAST(ii.quantity AS DECIMAL(18,4)) AS QUANTITY, CASE WHEN ii.isVoid = ''1'' OR ii.isComp = ''1'' THEN 1 ELSE 0 END AS VOID_FLAG, TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS LINEITEM_TIMESTAMP, CAST(TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS DATE) AS ITEM_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS ORDER_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS TRADING_DATE, ii.id AS LINE_ID, ROW_NUMBER() OVER (PARTITION BY ii.invoiceId ORDER BY ii.id) AS LINE_ORDER, COALESCE(ii.productVariantId, CONCAT(ii.productId, ''-DEFAULT'')) AS PRODUCT_KEY FROM ii INNER JOIN inv ON inv.id = ii.invoiceId AND inv.rn = 1 LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 WHERE ii.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' ) AS source_query;',
+            1, N'Staging', 0,
+            N'Stages invoice items as PROD line items. PRODUCT_KEY = COALESCE(variantId, productId-DEFAULT) resolving 100% of lines to a BOTTOM product member. LINEITEM_TIMESTAMP from item createdAt (must never be NULL).',
+            NULL, 3, 30,
+            N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER", "PRODUCT_KEY"]',
+            GETDATE(), GETDATE());
+GO
+
+-- Step 11: Mews Line Item Tax
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Line Item Tax')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_LINEITEM_TAX',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_LINEITEM_TAX'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_LINEITEM_TAX]; WITH ii AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICE_ITEMS] ), inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ), tx AS ( SELECT TOP 1 id FROM ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_TAXES] ) t WHERE t.rn = 1 ORDER BY id ) SELECT * INTO [stage].[MEWS_LINEITEM_TAX] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, ii.invoiceId, ii.id, ''TAX'') AS SRC_KEY, CONCAT_WS(''-'', reg.outletId, ii.invoiceId) AS HEADER_ID, ''TAX'' AS LINEITEM_TYPE, CAST(ii.tax AS DECIMAL(18,2)) AS GROSS_VALUE, CAST(ii.tax AS DECIMAL(18,2)) AS TAX_VALUE, CAST(0 AS DECIMAL(18,2)) AS NET_VALUE, CAST(1 AS DECIMAL(18,4)) AS QUANTITY, CASE WHEN ii.isVoid = ''1'' OR ii.isComp = ''1'' THEN 1 ELSE 0 END AS VOID_FLAG, TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS LINEITEM_TIMESTAMP, CAST(TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS DATE) AS ITEM_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS ORDER_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS TRADING_DATE, ii.id AS LINE_ID, ROW_NUMBER() OVER (PARTITION BY ii.invoiceId ORDER BY ii.id) AS LINE_ORDER, tx.id AS TAX_KEY FROM ii INNER JOIN inv ON inv.id = ii.invoiceId AND inv.rn = 1 LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 CROSS JOIN tx WHERE ii.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' AND CAST(ii.tax AS DECIMAL(18,2)) <> 0 ) AS source_query;',
+        tier             = 1,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Stages TAX-type line items from invoice item tax amounts. SINGLE-TAX ASSUMPTION: items carry no tax id; all TAX lines link to the sole tax profile via CROSS JOIN. Verification guards against >1 active tax.',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER", "TAX_KEY"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Line Item Tax', N'MEWS_LINEITEM_TAX',
+            N'IF OBJECT_ID(''stage.MEWS_LINEITEM_TAX'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_LINEITEM_TAX]; WITH ii AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICE_ITEMS] ), inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ), tx AS ( SELECT TOP 1 id FROM ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_TAXES] ) t WHERE t.rn = 1 ORDER BY id ) SELECT * INTO [stage].[MEWS_LINEITEM_TAX] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, ii.invoiceId, ii.id, ''TAX'') AS SRC_KEY, CONCAT_WS(''-'', reg.outletId, ii.invoiceId) AS HEADER_ID, ''TAX'' AS LINEITEM_TYPE, CAST(ii.tax AS DECIMAL(18,2)) AS GROSS_VALUE, CAST(ii.tax AS DECIMAL(18,2)) AS TAX_VALUE, CAST(0 AS DECIMAL(18,2)) AS NET_VALUE, CAST(1 AS DECIMAL(18,4)) AS QUANTITY, CASE WHEN ii.isVoid = ''1'' OR ii.isComp = ''1'' THEN 1 ELSE 0 END AS VOID_FLAG, TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS LINEITEM_TIMESTAMP, CAST(TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS DATE) AS ITEM_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS ORDER_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS TRADING_DATE, ii.id AS LINE_ID, ROW_NUMBER() OVER (PARTITION BY ii.invoiceId ORDER BY ii.id) AS LINE_ORDER, tx.id AS TAX_KEY FROM ii INNER JOIN inv ON inv.id = ii.invoiceId AND inv.rn = 1 LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 CROSS JOIN tx WHERE ii.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' AND CAST(ii.tax AS DECIMAL(18,2)) <> 0 ) AS source_query;',
+            1, N'Staging', 0,
+            N'Stages TAX-type line items from invoice item tax amounts. SINGLE-TAX ASSUMPTION: items carry no tax id; all TAX lines link to the sole tax profile via CROSS JOIN. Verification guards against >1 active tax.',
+            NULL, 3, 30,
+            N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER", "TAX_KEY"]',
+            GETDATE(), GETDATE());
+GO
+
+-- Step 12: Mews Line Item Discount
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Line Item Discount')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_LINEITEM_DISCOUNT',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_LINEITEM_DISCOUNT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_LINEITEM_DISCOUNT]; WITH ii AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICE_ITEMS] ), inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ) SELECT * INTO [stage].[MEWS_LINEITEM_DISCOUNT] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, ii.invoiceId, ii.id, ''DISCOUNT'') AS SRC_KEY, CONCAT_WS(''-'', reg.outletId, ii.invoiceId) AS HEADER_ID, ''DISCOUNT'' AS LINEITEM_TYPE, -1 * COALESCE(TRY_CAST(NULLIF(ii.discountAmount, '''') AS DECIMAL(18,2)), TRY_CAST(NULLIF(ii.discount, '''') AS DECIMAL(18,2)), 0) AS GROSS_VALUE, CAST(0 AS DECIMAL(18,2)) AS TAX_VALUE, -1 * COALESCE(TRY_CAST(NULLIF(ii.discountAmount, '''') AS DECIMAL(18,2)), TRY_CAST(NULLIF(ii.discount, '''') AS DECIMAL(18,2)), 0) AS NET_VALUE, CAST(1 AS DECIMAL(18,4)) AS QUANTITY, CASE WHEN ii.isVoid = ''1'' OR ii.isComp = ''1'' THEN 1 ELSE 0 END AS VOID_FLAG, TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS LINEITEM_TIMESTAMP, CAST(TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS DATE) AS ITEM_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS ORDER_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS TRADING_DATE, ii.id AS LINE_ID, ROW_NUMBER() OVER (PARTITION BY ii.invoiceId ORDER BY ii.id) AS LINE_ORDER, inv.promoCodeId AS DISCOUNT_KEY FROM ii INNER JOIN inv ON inv.id = ii.invoiceId AND inv.rn = 1 LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 WHERE ii.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' AND COALESCE(TRY_CAST(NULLIF(ii.discountAmount, '''') AS DECIMAL(18,2)), TRY_CAST(NULLIF(ii.discount, '''') AS DECIMAL(18,2)), 0) <> 0 ) AS source_query;',
+        tier             = 1,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Stages DISCOUNT-type line items (negative values) from invoice item discounts. DISCOUNT_KEY = invoice promoCodeId, may be NULL for ad-hoc discounts; the DISCOUNT_LINEITEM link stages separately with NULL keys filtered.',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER", "DISCOUNT_KEY"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Line Item Discount', N'MEWS_LINEITEM_DISCOUNT',
+            N'IF OBJECT_ID(''stage.MEWS_LINEITEM_DISCOUNT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_LINEITEM_DISCOUNT]; WITH ii AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICE_ITEMS] ), inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ) SELECT * INTO [stage].[MEWS_LINEITEM_DISCOUNT] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, ii.invoiceId, ii.id, ''DISCOUNT'') AS SRC_KEY, CONCAT_WS(''-'', reg.outletId, ii.invoiceId) AS HEADER_ID, ''DISCOUNT'' AS LINEITEM_TYPE, -1 * COALESCE(TRY_CAST(NULLIF(ii.discountAmount, '''') AS DECIMAL(18,2)), TRY_CAST(NULLIF(ii.discount, '''') AS DECIMAL(18,2)), 0) AS GROSS_VALUE, CAST(0 AS DECIMAL(18,2)) AS TAX_VALUE, -1 * COALESCE(TRY_CAST(NULLIF(ii.discountAmount, '''') AS DECIMAL(18,2)), TRY_CAST(NULLIF(ii.discount, '''') AS DECIMAL(18,2)), 0) AS NET_VALUE, CAST(1 AS DECIMAL(18,4)) AS QUANTITY, CASE WHEN ii.isVoid = ''1'' OR ii.isComp = ''1'' THEN 1 ELSE 0 END AS VOID_FLAG, TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS LINEITEM_TIMESTAMP, CAST(TRY_CONVERT(DATETIME2, ii.createdAt, 127) AS DATE) AS ITEM_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS ORDER_DATE, CAST(TRY_CONVERT(DATETIME2, inv.createdAt, 127) AS DATE) AS TRADING_DATE, ii.id AS LINE_ID, ROW_NUMBER() OVER (PARTITION BY ii.invoiceId ORDER BY ii.id) AS LINE_ORDER, inv.promoCodeId AS DISCOUNT_KEY FROM ii INNER JOIN inv ON inv.id = ii.invoiceId AND inv.rn = 1 LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 WHERE ii.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' AND COALESCE(TRY_CAST(NULLIF(ii.discountAmount, '''') AS DECIMAL(18,2)), TRY_CAST(NULLIF(ii.discount, '''') AS DECIMAL(18,2)), 0) <> 0 ) AS source_query;',
+            1, N'Staging', 0,
+            N'Stages DISCOUNT-type line items (negative values) from invoice item discounts. DISCOUNT_KEY = invoice promoCodeId, may be NULL for ad-hoc discounts; the DISCOUNT_LINEITEM link stages separately with NULL keys filtered.',
+            NULL, 3, 30,
+            N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER", "DISCOUNT_KEY"]',
+            GETDATE(), GETDATE());
+GO
