@@ -1371,3 +1371,71 @@ Also fixes FilterDefinitions JSON and ParameterMappings JSON in all 7 vis query 
 - InvVarianceCategory: Returns 0-value rows (all filtered by WHERE Value > 0) — correct "no data" behaviour. ✓
 
 **Status:** Created 2026-03-17. Not yet deployed.
+
+---
+
+## Mews (int_mews001)
+
+All scripts in `integrations/Mews/`. Created 2026-07-03. Design/plan: `docs/superpowers/specs/2026-07-03-mews-dv-mapping-design.md` + `docs/superpowers/plans/2026-07-03-mews-dv-mapping.md`. Org: `20260413_XMS_B4E2F7A8-3C91-4D6E-9F05-8A1D2B5E7C43` (DEV).
+
+### 81. `integrations/Mews/01_staging_control.sql`
+
+**Purpose:** 17 StagingControl MERGE records for `int_mews001` — 8 tier-1 dimension steps (Location, Product [3-tier: type/product/variant+synthetic `{productId}-DEFAULT`], Modifier, Tax, Tender, Discount, Channel, Revenue Center), 4 tier-1 transactional steps (Customer Order, Line Item, Line Item Tax, Line Item Discount), 3 tier-1 CRM steps (Customer, Address, Contact), and 2 tier-2 link staging steps (Order Revenue Center Link, Discount Line Link).
+
+**Status:** created — not deployed.
+
+---
+
+### 82. `integrations/Mews/02_entity_mappings.sql`
+
+**Purpose:** 25 EntityMappings MERGE records — 15 hub rows (#1–#15: LOCATION, PRODUCT, MOD, TAX, TENDER, DISCOUNT, CHANNEL, REVCENTER, CUSTORDER, 3× LINEITEM sources, INDIVIDUAL, ADDRESS, CONTACT) + 10 link rows (#16–#25: CUSTORDER_LOCATION, CUSTORDER_LINEITEM ×3 sources, LINEITEM_PRODUCT, LINEITEM_TAX, DISCOUNT_LINEITEM, CUSTORDER_REVCENTER, ADDRESS_INDIVIDUAL, CONTACT_INDIVIDUAL). The 10 link rows collapse into 8 distinct `LNK_*` tables at load time.
+
+**Status:** created — not deployed.
+
+---
+
+### 83. `integrations/Mews/03_upload_load_steps.sql`
+
+**Purpose:** `EXEC [core].[UploadEntityMappings] @intSchema = N'int_mews001'` — translates the 25 EntityMappings rows into 25 StagingControl `step_type = 'Load'` rows. Developer-executed (EXEC not permitted via MCP); run after 01 + 02.
+
+**Status:** created — not deployed.
+
+---
+
+### 84. `integrations/Mews/04_verification.sql`
+
+**Purpose:** Read-only, 5-section verification script (control-plane / stage / data-quality / DV / presentation), one `check_name, expected, actual, status` row per check. Section A run via MCP against `core` on 2026-07-03 (see below); Sections B–E are Task 7's post-deploy job.
+
+**Corrected expected-count baselines (2026-07-03 live data, supersede the task-6 brief's literals):**
+
+| Table/check | Expected | Note |
+|---|---|---|
+| MEWS_LOCATION | 2 | |
+| MEWS_PRODUCT | 389 (TOP 12 / MIDDLE_1 98 / BOTTOM 279) | |
+| MEWS_MOD | 0 | no modifier data landed yet |
+| MEWS_TAX | 1 | single-tax assumption depends on this staying 1 |
+| MEWS_TENDER | 6 | |
+| MEWS_DISCOUNT | 2 | inactive members deliberately included (orphan-link fix) |
+| MEWS_CHANNEL | **1**, not 2 | area "Rooms" confirmed inactive; filter stands — this is the corrected value |
+| MEWS_REVCENTER | 0 | inactive members deliberately included (orphan-link fix) |
+| MEWS_CUSTORDER | 19 | |
+| MEWS_LINEITEM | 22 (5 with VOID_FLAG=1) | |
+| MEWS_LINEITEM_TAX | **DL-derived, not the literal 17** | compare to `CAST(tax AS DECIMAL(18,2)) <> 0` count on DL_INVOICE_ITEMS/DL_INVOICES |
+| MEWS_LINEITEM_DISCOUNT | 0 | no non-null promoCodeId observed yet |
+| MEWS_CUSTOMER | 364 | |
+| MEWS_ADDRESS | **0 — genuine source gap, not a failure** | check passes on equality with the DL-side derivation (both 0 today) |
+| MEWS_CONTACT | 257 (185 EMAIL + 72 PHONE) | |
+| both `_LNK` staging tables | 0 | |
+| HUB_LINEITEM (DV) | derived = MEWS_LINEITEM + MEWS_LINEITEM_TAX + MEWS_LINEITEM_DISCOUNT (39 today) | never hardcode — derive |
+| LNK_CUSTORDER_LINEITEM | = HUB_LINEITEM count | |
+| LNK_LINEITEM_PRODUCT | 22 | |
+| LNK_LINEITEM_TAX | 17 | |
+| LNK_CUSTORDER_LOCATION | 19 | |
+| LNK_CONTACT_INDIVIDUAL | 257 | |
+| LNK_ADDRESS_INDIVIDUAL | 0 | |
+
+**Count-drift rule:** if the Mews fetcher has landed more data by the time Task 7 runs, re-derive expected counts from the DL side rather than trusting these literals — the script already does this for LINEITEM_TAX and ADDRESS per the brief; the rest are point-in-time literals that may need bumping.
+
+**Section A MCP result (2026-07-03, pre-deploy, `mcp__xms-bi-dev__query` against `core`):** `staging_steps` actual 0 (expected 17, FAIL), `load_steps_generated` actual 0 (expected 25, FAIL), `entity_mappings` actual 0 (expected 25, FAIL). Correct pre-deploy observation — 01/02/03 have not been deployed yet, so `int_mews001.StagingControl`/`EntityMappings` are provisioned but empty.
+
+**Status:** created — not deployed. Section A MCP-verified (pre-deploy state confirmed 2026-07-03); Sections B–E await Task 7 post-deploy run.
