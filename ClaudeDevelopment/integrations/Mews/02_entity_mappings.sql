@@ -388,3 +388,261 @@ WHEN NOT MATCHED THEN
             NULL, NULL, NULL, 0,
             GETDATE(), GETDATE(), 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   Link entity mappings (#16-#25)
+
+     #16 CUSTORDER_LOCATION  from MEWS_CUSTORDER
+     #17 CUSTORDER_LINEITEM  from MEWS_LINEITEM
+     #18 CUSTORDER_LINEITEM  from MEWS_LINEITEM_TAX
+     #19 CUSTORDER_LINEITEM  from MEWS_LINEITEM_DISCOUNT
+     #20 LINEITEM_PRODUCT    from MEWS_LINEITEM
+     #21 LINEITEM_TAX        from MEWS_LINEITEM_TAX
+     #22 DISCOUNT_LINEITEM   from MEWS_DISCOUNT_LINEITEM_LNK
+     #23 CUSTORDER_REVCENTER from MEWS_CUSTORDER_REVCENTER_LNK
+     #24 ADDRESS_INDIVIDUAL  from MEWS_ADDRESS
+     #25 CONTACT_INDIVIDUAL  from MEWS_CONTACT
+
+   Spec: .superpowers/sdd/task-5-brief.md (+ plan-preamble.md for shared
+   constraints)
+   ---------------------------------------------------------------------------- */
+
+-- #16: CUSTORDER_LOCATION from MEWS_CUSTORDER
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'CUSTORDER_LOCATION', N'MEWS_CUSTORDER')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "HEADER_ID", "hash": 1}, {"name": "LOCATION_KEY", "hash": 1}]',
+        entity_columns      = N'["CUSTORDER_HUB_ID", "LOCATION_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'CUSTORDER_LOCATION', N'MEWS_CUSTORDER',
+            N'[{"name": "HEADER_ID", "hash": 1}, {"name": "LOCATION_KEY", "hash": 1}]',
+            N'["CUSTORDER_HUB_ID", "LOCATION_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #17: CUSTORDER_LINEITEM from MEWS_LINEITEM
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
+        entity_columns      = N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM',
+            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
+            N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #18: CUSTORDER_LINEITEM from MEWS_LINEITEM_TAX
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_TAX')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
+        entity_columns      = N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_TAX',
+            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
+            N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #19: CUSTORDER_LINEITEM from MEWS_LINEITEM_DISCOUNT
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_DISCOUNT')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
+        entity_columns      = N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_DISCOUNT',
+            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
+            N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #20: LINEITEM_PRODUCT from MEWS_LINEITEM
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'LINEITEM_PRODUCT', N'MEWS_LINEITEM')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "PRODUCT_KEY", "hash": 1}]',
+        entity_columns      = N'["LINEITEM_HUB_ID", "PRODUCT_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'LINEITEM_PRODUCT', N'MEWS_LINEITEM',
+            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "PRODUCT_KEY", "hash": 1}]',
+            N'["LINEITEM_HUB_ID", "PRODUCT_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #21: LINEITEM_TAX from MEWS_LINEITEM_TAX
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'LINEITEM_TAX', N'MEWS_LINEITEM_TAX')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "TAX_KEY", "hash": 1}]',
+        entity_columns      = N'["LINEITEM_HUB_ID", "TAX_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'LINEITEM_TAX', N'MEWS_LINEITEM_TAX',
+            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "TAX_KEY", "hash": 1}]',
+            N'["LINEITEM_HUB_ID", "TAX_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #22: DISCOUNT_LINEITEM from MEWS_DISCOUNT_LINEITEM_LNK
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'DISCOUNT_LINEITEM', N'MEWS_DISCOUNT_LINEITEM_LNK')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "DISCOUNT_KEY", "hash": 1}, {"name": "SRC_KEY", "hash": 1}]',
+        entity_columns      = N'["DISCOUNT_HUB_ID", "LINEITEM_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'DISCOUNT_LINEITEM', N'MEWS_DISCOUNT_LINEITEM_LNK',
+            N'[{"name": "DISCOUNT_KEY", "hash": 1}, {"name": "SRC_KEY", "hash": 1}]',
+            N'["DISCOUNT_HUB_ID", "LINEITEM_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #23: CUSTORDER_REVCENTER from MEWS_CUSTORDER_REVCENTER_LNK
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'CUSTORDER_REVCENTER', N'MEWS_CUSTORDER_REVCENTER_LNK')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "HEADER_ID", "hash": 1}, {"name": "REVC_KEY", "hash": 1}]',
+        entity_columns      = N'["CUSTORDER_HUB_ID", "REVCENTER_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'CUSTORDER_REVCENTER', N'MEWS_CUSTORDER_REVCENTER_LNK',
+            N'[{"name": "HEADER_ID", "hash": 1}, {"name": "REVC_KEY", "hash": 1}]',
+            N'["CUSTORDER_HUB_ID", "REVCENTER_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #24: ADDRESS_INDIVIDUAL from MEWS_ADDRESS
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'ADDRESS_INDIVIDUAL', N'MEWS_ADDRESS')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "CUSTOMER_KEY", "hash": 1}]',
+        entity_columns      = N'["ADDRESS_HUB_ID", "INDIVIDUAL_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'ADDRESS_INDIVIDUAL', N'MEWS_ADDRESS',
+            N'[{"name": "HUB_ID", "hash": 1}, {"name": "CUSTOMER_KEY", "hash": 1}]',
+            N'["ADDRESS_HUB_ID", "INDIVIDUAL_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
+
+-- #25: CONTACT_INDIVIDUAL from MEWS_CONTACT
+MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
+USING (VALUES (N'CONTACT_INDIVIDUAL', N'MEWS_CONTACT')) AS src (entity_name, source_table)
+ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
+WHEN MATCHED THEN
+    UPDATE SET
+        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "CUSTOMER_KEY", "hash": 1}]',
+        entity_columns      = N'["CONTACT_HUB_ID", "INDIVIDUAL_HUB_ID"]',
+        type2_columns       = NULL,
+        cdc_exclude_columns = NULL,
+        date_filter_column  = NULL,
+        track_deletions     = 0,
+        updated_at          = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (entity_name, source_table, source_columns, entity_columns,
+            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
+            created_at, updated_at, is_active)
+    VALUES (N'CONTACT_INDIVIDUAL', N'MEWS_CONTACT',
+            N'[{"name": "HUB_ID", "hash": 1}, {"name": "CUSTOMER_KEY", "hash": 1}]',
+            N'["CONTACT_HUB_ID", "INDIVIDUAL_HUB_ID"]',
+            NULL, NULL, NULL, 0,
+            GETDATE(), GETDATE(), 1);
+GO
