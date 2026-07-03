@@ -141,13 +141,24 @@ SELECT 'stage_MEWS_LINEITEM_void', '5',
 FROM [stage].[MEWS_LINEITEM] WHERE VOID_FLAG = 1;
 
 -- LINEITEM_TAX: compare to the DL-side derivation mirroring step 11's own
--- filter (non-cancelled invoice items with non-zero tax), NOT the literal 17
--- - this is the explicit exception called out in the corrected baselines.
-WITH dl AS (
+-- filter (deduped non-cancelled invoice items with non-zero tax), NOT the
+-- literal 17 - this is the explicit exception called out in the corrected
+-- baselines. Both DL tables are deduped via rn = 1 exactly as step 11 does,
+-- so a re-fetch (duplicate rows per id) cannot inflate the expected count.
+WITH ii AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn
+    FROM [int_mews001].[DL_INVOICE_ITEMS]
+),
+inv AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn
+    FROM [int_mews001].[DL_INVOICES]
+),
+dl AS (
     SELECT COUNT(*) AS n
-    FROM [int_mews001].[DL_INVOICE_ITEMS] ii
-    INNER JOIN [int_mews001].[DL_INVOICES] inv ON inv.id = ii.invoiceId
-    WHERE COALESCE(inv.cancelled, '0') <> '1'
+    FROM ii
+    INNER JOIN inv ON inv.id = ii.invoiceId AND inv.rn = 1
+    WHERE ii.rn = 1
+      AND COALESCE(inv.cancelled, '0') <> '1'
       AND CAST(ii.tax AS DECIMAL(18,2)) <> 0
 ),
 st AS (
@@ -173,11 +184,18 @@ FROM [stage].[MEWS_CUSTOMER];
 -- ADDRESS: genuine source gap, not a failure. No Mews customer currently has
 -- any address component populated. The check PASSES on equality with the
 -- DL-side derivation (both sides are 0 today; if Mews starts returning
--- address data both sides will move together).
-WITH dl AS (
-    SELECT COUNT(*) AS n
+-- address data both sides will move together). DL_CUSTOMERS is deduped via
+-- rn = 1 exactly as step 14 does, mirroring its filter so a re-fetch cannot
+-- inflate the expected count.
+WITH deduped AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn
     FROM [int_mews001].[DL_CUSTOMERS]
-    WHERE COALESCE(NULLIF(address1, ''), NULLIF(address2, ''),
+),
+dl AS (
+    SELECT COUNT(*) AS n
+    FROM deduped
+    WHERE rn = 1
+      AND COALESCE(NULLIF(address1, ''), NULLIF(address2, ''),
                     NULLIF(city, ''), NULLIF(postalCode, '')) IS NOT NULL
 ),
 st AS (
@@ -393,6 +411,62 @@ SELECT 'sat_SAT_INDIVIDUAL_current' AS check_name,
             THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [datavault].[SAT_INDIVIDUAL] WHERE CURRENT_FLAG = 1;
 
+SELECT 'sat_SAT_MOD_current' AS check_name,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_MOD]) AS VARCHAR(10)) AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_MOD])
+            THEN 'PASS' ELSE 'FAIL' END AS status
+FROM [datavault].[SAT_MOD] WHERE CURRENT_FLAG = 1;
+
+SELECT 'sat_SAT_TAX_current' AS check_name,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_TAX]) AS VARCHAR(10)) AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_TAX])
+            THEN 'PASS' ELSE 'FAIL' END AS status
+FROM [datavault].[SAT_TAX] WHERE CURRENT_FLAG = 1;
+
+SELECT 'sat_SAT_TENDER_current' AS check_name,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_TENDER]) AS VARCHAR(10)) AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_TENDER])
+            THEN 'PASS' ELSE 'FAIL' END AS status
+FROM [datavault].[SAT_TENDER] WHERE CURRENT_FLAG = 1;
+
+SELECT 'sat_SAT_DISCOUNT_current' AS check_name,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_DISCOUNT]) AS VARCHAR(10)) AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_DISCOUNT])
+            THEN 'PASS' ELSE 'FAIL' END AS status
+FROM [datavault].[SAT_DISCOUNT] WHERE CURRENT_FLAG = 1;
+
+SELECT 'sat_SAT_CHANNEL_current' AS check_name,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_CHANNEL]) AS VARCHAR(10)) AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_CHANNEL])
+            THEN 'PASS' ELSE 'FAIL' END AS status
+FROM [datavault].[SAT_CHANNEL] WHERE CURRENT_FLAG = 1;
+
+SELECT 'sat_SAT_REVCENTER_current' AS check_name,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_REVCENTER]) AS VARCHAR(10)) AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_REVCENTER])
+            THEN 'PASS' ELSE 'FAIL' END AS status
+FROM [datavault].[SAT_REVCENTER] WHERE CURRENT_FLAG = 1;
+
+SELECT 'sat_SAT_ADDRESS_current' AS check_name,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_ADDRESS]) AS VARCHAR(10)) AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_ADDRESS])
+            THEN 'PASS' ELSE 'FAIL' END AS status
+FROM [datavault].[SAT_ADDRESS] WHERE CURRENT_FLAG = 1;
+
+SELECT 'sat_SAT_CONTACT_current' AS check_name,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_CONTACT]) AS VARCHAR(10)) AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_CONTACT])
+            THEN 'PASS' ELSE 'FAIL' END AS status
+FROM [datavault].[SAT_CONTACT] WHERE CURRENT_FLAG = 1;
+
 -- Link counts. LNK_CUSTORDER_LINEITEM is derived to equal HUB_LINEITEM
 -- (every line item, tax line, and discount line links back to its order).
 WITH hub_lineitem AS (SELECT COUNT(*) AS n FROM [datavault].[HUB_LINEITEM])
@@ -573,10 +647,12 @@ FROM [presentation].[D_LOCATION];
 
 -- Ephemeral load-window parameters: NULL is the expected resting state,
 -- meaning the last load cycle completed cleanly for this org. Non-NULL means
--- a load is in progress or failed mid-run.
+-- a load is in progress or failed mid-run. Absent rows are an equally valid
+-- resting state, so the SUM is COALESCEd to 0 rather than left to evaluate
+-- to NULL (which would otherwise fall through to the FAIL branch).
 SELECT 'load_window_params_clear' AS check_name, 'NULL,NULL' AS expected,
        COALESCE(STRING_AGG(CONCAT(ParameterKey, '=', COALESCE(ParameterValue, 'NULL')), ', '), '(no rows)') AS actual,
-       CASE WHEN SUM(CASE WHEN ParameterValue IS NOT NULL THEN 1 ELSE 0 END) = 0
+       CASE WHEN COALESCE(SUM(CASE WHEN ParameterValue IS NOT NULL THEN 1 ELSE 0 END), 0) = 0
             THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [core].[GlobalParameters]
 WHERE ParameterKey IN ('LINEITEM_START', 'LINEITEM_END');
