@@ -44,6 +44,17 @@ Join-chain integrity verified: every invoice resolves registerId → outletId; z
 6. **Invoice remains the CUSTORDER source** joined to Order for operational metadata (April decision, unchanged).
 7. **Single-tax assumption for LINEITEM_TAX** — see §4.3.
 
+## 2a. Plan-phase amendments (2026-07-03, later same day)
+
+Writing the implementation plan (`docs/superpowers/plans/2026-07-03-mews-dv-mapping.md`) against platform mechanics refined this spec:
+
+1. **Link mappings source Tier-1 staging tables directly** (Growyze/NCRAloha precedent: both key columns `hash:1` in EntityMappings). The separate Tier-2 link staging layer in §4.3 is replaced by two small NULL-filtering steps (`MEWS_CUSTORDER_REVCENTER_LNK`, `MEWS_DISCOUNT_LINEITEM_LNK`) — `exclude_conditions` is unused platform-wide, so staging must guarantee non-null link keys. **Counts become 17 staging steps (15 Tier 1 + 2 Tier 2) and 25 mappings (15 hub + 10 link).**
+2. **PRODUCT is ONE mapping row, not four** — the staging table carries all hierarchy levels and the platform maps per (entity, source_table), same as Growyze's 3-level INVITEM. Ditto MOD (1 row) and LINEITEM (3 rows — one per staging table, not per type).
+3. **ADDRESS and CONTACT get their own staging steps** (`MEWS_ADDRESS`, `MEWS_CONTACT`) — a mapping cannot fan one customer row into two contact rows, and EntityMappings is keyed on (entity_name, source_table).
+4. **Load steps are generated, not hand-written:** new deliverable `03_upload_load_steps.sql` runs `EXEC [core].[UploadEntityMappings] @intSchema = N'int_mews001'` to translate mappings into `step_type='Load'` StagingControl rows. This is the piece Growyze's dev scripts lacked (why its data never reached the DV).
+5. **Further landed-schema deltas:** `DL_PAYMENT_METHODS` has only `id/name/active` and `active` is NULL on all rows (tolerant filter `COALESCE(active,'1') <> '0'`); `DL_TAXES` has `rate` (already a multiplier, `0.2`) not `ratePercent`, and no `isActive`; **variants carry no selector/sku/barcode** — display names synthesized as `{product name} @ {price}` (flag to fetcher team: the flattener is not capturing variant names).
+6. Verification script renumbered to `04_verification.sql`; `DEPLOY.txt` added.
+
 ## 3. Product hierarchy
 
 Same business key cannot sit at two hierarchy levels under one hub (LEVEL_NAME/BOTTOM_LEVEL are SAT attributes; SCD Type 2 keeps one current row per HUB_ID). So the bottom-layer copy of each product gets a **synthetic key**:
