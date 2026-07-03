@@ -169,11 +169,11 @@ ON tgt.step_name = src.step_name
 WHEN MATCHED THEN
     UPDATE SET
         staging_table    = N'MEWS_DISCOUNT',
-        query_sql        = N'IF OBJECT_ID(''stage.MEWS_DISCOUNT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_DISCOUNT]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_PROMO_CODES] ) SELECT * INTO [stage].[MEWS_DISCOUNT] FROM ( SELECT id AS HUB_ID, COALESCE(NULLIF(description, ''''), code) AS DISCOUNT_NAME, id AS DISCOUNT_ID, discountType AS VALUE_TYPE, CAST(amount AS DECIMAL(18,2)) AS [VALUE], 0 AS IS_WASTE, NULL AS PARENT_ID, ''BOTTOM'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, NULL AS MICROSERVICE_NAME, NULL AS MICROSERVICE_ID FROM deduped WHERE rn = 1 AND COALESCE(active, ''1'') <> ''0'' ) AS source_query;',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_DISCOUNT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_DISCOUNT]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_PROMO_CODES] ) SELECT * INTO [stage].[MEWS_DISCOUNT] FROM ( SELECT id AS HUB_ID, COALESCE(NULLIF(description, ''''), code) AS DISCOUNT_NAME, id AS DISCOUNT_ID, discountType AS VALUE_TYPE, CAST(amount AS DECIMAL(18,2)) AS [VALUE], 0 AS IS_WASTE, NULL AS PARENT_ID, ''BOTTOM'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, NULL AS MICROSERVICE_NAME, NULL AS MICROSERVICE_ID FROM deduped WHERE rn = 1 ) AS source_query;',
         tier             = 1,
         step_type        = N'Staging',
         exclude          = 0,
-        description      = N'Stages Mews promo codes as discount dimension',
+        description      = N'Stages Mews promo codes as discount dimension. Inactive members included deliberately - links may reference them (orphan-link prevention).',
         depends_on_steps = NULL,
         retry_count      = 3,
         timeout_minutes  = 30,
@@ -184,9 +184,9 @@ WHEN NOT MATCHED THEN
             description, depends_on_steps, retry_count, timeout_minutes,
             staging_columns, created_at, updated_at)
     VALUES (N'Mews Discount', N'MEWS_DISCOUNT',
-            N'IF OBJECT_ID(''stage.MEWS_DISCOUNT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_DISCOUNT]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_PROMO_CODES] ) SELECT * INTO [stage].[MEWS_DISCOUNT] FROM ( SELECT id AS HUB_ID, COALESCE(NULLIF(description, ''''), code) AS DISCOUNT_NAME, id AS DISCOUNT_ID, discountType AS VALUE_TYPE, CAST(amount AS DECIMAL(18,2)) AS [VALUE], 0 AS IS_WASTE, NULL AS PARENT_ID, ''BOTTOM'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, NULL AS MICROSERVICE_NAME, NULL AS MICROSERVICE_ID FROM deduped WHERE rn = 1 AND COALESCE(active, ''1'') <> ''0'' ) AS source_query;',
+            N'IF OBJECT_ID(''stage.MEWS_DISCOUNT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_DISCOUNT]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_PROMO_CODES] ) SELECT * INTO [stage].[MEWS_DISCOUNT] FROM ( SELECT id AS HUB_ID, COALESCE(NULLIF(description, ''''), code) AS DISCOUNT_NAME, id AS DISCOUNT_ID, discountType AS VALUE_TYPE, CAST(amount AS DECIMAL(18,2)) AS [VALUE], 0 AS IS_WASTE, NULL AS PARENT_ID, ''BOTTOM'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, NULL AS MICROSERVICE_NAME, NULL AS MICROSERVICE_ID FROM deduped WHERE rn = 1 ) AS source_query;',
             1, N'Staging', 0,
-            N'Stages Mews promo codes as discount dimension',
+            N'Stages Mews promo codes as discount dimension. Inactive members included deliberately - links may reference them (orphan-link prevention).',
             NULL, 3, 30,
             N'["HUB_ID", "DISCOUNT_NAME", "DISCOUNT_ID", "VALUE_TYPE", "VALUE", "IS_WASTE", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "MICROSERVICE_NAME", "MICROSERVICE_ID"]',
             GETDATE(), GETDATE());
@@ -229,11 +229,11 @@ ON tgt.step_name = src.step_name
 WHEN MATCHED THEN
     UPDATE SET
         staging_table    = N'MEWS_REVCENTER',
-        query_sql        = N'IF OBJECT_ID(''stage.MEWS_REVCENTER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_REVCENTER]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REVENUE_CENTERS] ) SELECT * INTO [stage].[MEWS_REVCENTER] FROM ( SELECT id AS HUB_ID, name AS REVC_NAME, id AS REVC_ID, NULL AS PARENT_ID, ''BOTTOM'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, NULL AS MICROSERVICE_NAME, NULL AS MICROSERVICE_ID FROM deduped WHERE rn = 1 AND COALESCE(isActive, ''1'') <> ''0'' ) AS source_query;',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_REVCENTER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_REVCENTER]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REVENUE_CENTERS] ) SELECT * INTO [stage].[MEWS_REVCENTER] FROM ( SELECT id AS HUB_ID, name AS REVC_NAME, id AS REVC_ID, NULL AS PARENT_ID, ''BOTTOM'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, NULL AS MICROSERVICE_NAME, NULL AS MICROSERVICE_ID FROM deduped WHERE rn = 1 ) AS source_query;',
         tier             = 1,
         step_type        = N'Staging',
         exclude          = 0,
-        description      = N'Stages Mews revenue centers; empty until revenue center data lands',
+        description      = N'Stages Mews revenue centers; empty until revenue center data lands. Inactive members included deliberately - links may reference them (orphan-link prevention).',
         depends_on_steps = NULL,
         retry_count      = 3,
         timeout_minutes  = 30,
@@ -244,9 +244,9 @@ WHEN NOT MATCHED THEN
             description, depends_on_steps, retry_count, timeout_minutes,
             staging_columns, created_at, updated_at)
     VALUES (N'Mews Revenue Center', N'MEWS_REVCENTER',
-            N'IF OBJECT_ID(''stage.MEWS_REVCENTER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_REVCENTER]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REVENUE_CENTERS] ) SELECT * INTO [stage].[MEWS_REVCENTER] FROM ( SELECT id AS HUB_ID, name AS REVC_NAME, id AS REVC_ID, NULL AS PARENT_ID, ''BOTTOM'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, NULL AS MICROSERVICE_NAME, NULL AS MICROSERVICE_ID FROM deduped WHERE rn = 1 AND COALESCE(isActive, ''1'') <> ''0'' ) AS source_query;',
+            N'IF OBJECT_ID(''stage.MEWS_REVCENTER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_REVCENTER]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REVENUE_CENTERS] ) SELECT * INTO [stage].[MEWS_REVCENTER] FROM ( SELECT id AS HUB_ID, name AS REVC_NAME, id AS REVC_ID, NULL AS PARENT_ID, ''BOTTOM'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, NULL AS MICROSERVICE_NAME, NULL AS MICROSERVICE_ID FROM deduped WHERE rn = 1 ) AS source_query;',
             1, N'Staging', 0,
-            N'Stages Mews revenue centers; empty until revenue center data lands',
+            N'Stages Mews revenue centers; empty until revenue center data lands. Inactive members included deliberately - links may reference them (orphan-link prevention).',
             NULL, 3, 30,
             N'["HUB_ID", "REVC_NAME", "REVC_ID", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "MICROSERVICE_NAME", "MICROSERVICE_ID"]',
             GETDATE(), GETDATE());
