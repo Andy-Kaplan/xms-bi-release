@@ -1,0 +1,14 @@
+Mews001 DV Mapping - Deploy Order (DEV)
+Target: core database (01-03), then org DB load (04 checks)
+
+1. 01_staging_control.sql      -- SSMS vs core. Expect: 17 rows in core.int_mews001.StagingControl (step_type='Staging')
+2. 02_entity_mappings.sql      -- SSMS vs core. Expect: 25 rows in core.int_mews001.EntityMappings
+3. 03_upload_load_steps.sql    -- SSMS vs core. Expect: 25 Load rows added to StagingControl
+4. Run the load for org 19 (Three Rocks Hotel):
+     USE [20260413_XMS_B4E2F7A8-3C91-4D6E-9F05-8A1D2B5E7C43];
+     EXEC [core].[sp_DataVaultLoad] @SchemaList = N'int_mews001';
+5. 04_verification.sql sections B-E -- SSMS vs org DB (or hand to Claude for MCP verification)
+Rollback: UPDATE core.int_mews001.StagingControl SET exclude = 1;
+          UPDATE core.int_mews001.EntityMappings SET is_active = 0;
+          (config-only change - no DDL to reverse; stage tables are DROP/SELECT INTO)
+All scripts are idempotent MERGE upserts - safe to re-run.
