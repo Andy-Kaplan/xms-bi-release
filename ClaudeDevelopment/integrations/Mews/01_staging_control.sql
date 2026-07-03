@@ -371,3 +371,153 @@ WHEN NOT MATCHED THEN
             N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER", "DISCOUNT_KEY"]',
             GETDATE(), GETDATE());
 GO
+
+-- Step 13: Mews Customer
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Customer')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_CUSTOMER',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_CUSTOMER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CUSTOMER]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_CUSTOMER] FROM ( SELECT id AS HUB_ID, fullName AS FORENAME, NULL AS SURNAME, NULL AS MIDDLE_NAMES, NULL AS TITLE, NULL AS GENDER, dateOfBirth AS DOB FROM deduped WHERE rn = 1 ) AS source_query;',
+        tier             = 1,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Stages Mews guest profiles as individuals. Mews has a single fullName field mapped to FORENAME.',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["HUB_ID", "FORENAME", "SURNAME", "MIDDLE_NAMES", "TITLE", "GENDER", "DOB"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Customer', N'MEWS_CUSTOMER',
+            N'IF OBJECT_ID(''stage.MEWS_CUSTOMER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CUSTOMER]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_CUSTOMER] FROM ( SELECT id AS HUB_ID, fullName AS FORENAME, NULL AS SURNAME, NULL AS MIDDLE_NAMES, NULL AS TITLE, NULL AS GENDER, dateOfBirth AS DOB FROM deduped WHERE rn = 1 ) AS source_query;',
+            1, N'Staging', 0,
+            N'Stages Mews guest profiles as individuals. Mews has a single fullName field mapped to FORENAME.',
+            NULL, 3, 30,
+            N'["HUB_ID", "FORENAME", "SURNAME", "MIDDLE_NAMES", "TITLE", "GENDER", "DOB"]',
+            GETDATE(), GETDATE());
+GO
+
+-- Step 14: Mews Address
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Address')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_ADDRESS',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_ADDRESS'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_ADDRESS]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_ADDRESS] FROM ( SELECT CONCAT(id, ''-HOME'') AS HUB_ID, CONCAT_WS('', '', NULLIF(address1, ''''), NULLIF(address2, '''')) AS ADDRESS, postalCode AS POSTCODE, state AS REGION, country AS COUNTRY, city AS TOWN, id AS CUSTOMER_KEY FROM deduped WHERE rn = 1 AND COALESCE(NULLIF(address1, ''''), NULLIF(address2, ''''), NULLIF(city, ''''), NULLIF(postalCode, '''')) IS NOT NULL ) AS source_query;',
+        tier             = 1,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Stages customer home addresses (key {customerId}-HOME); customers with no address component are excluded',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["HUB_ID", "ADDRESS", "POSTCODE", "REGION", "COUNTRY", "TOWN", "CUSTOMER_KEY"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Address', N'MEWS_ADDRESS',
+            N'IF OBJECT_ID(''stage.MEWS_ADDRESS'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_ADDRESS]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_ADDRESS] FROM ( SELECT CONCAT(id, ''-HOME'') AS HUB_ID, CONCAT_WS('', '', NULLIF(address1, ''''), NULLIF(address2, '''')) AS ADDRESS, postalCode AS POSTCODE, state AS REGION, country AS COUNTRY, city AS TOWN, id AS CUSTOMER_KEY FROM deduped WHERE rn = 1 AND COALESCE(NULLIF(address1, ''''), NULLIF(address2, ''''), NULLIF(city, ''''), NULLIF(postalCode, '''')) IS NOT NULL ) AS source_query;',
+            1, N'Staging', 0,
+            N'Stages customer home addresses (key {customerId}-HOME); customers with no address component are excluded',
+            NULL, 3, 30,
+            N'["HUB_ID", "ADDRESS", "POSTCODE", "REGION", "COUNTRY", "TOWN", "CUSTOMER_KEY"]',
+            GETDATE(), GETDATE());
+GO
+
+-- Step 15: Mews Contact
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Contact')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_CONTACT',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_CONTACT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CONTACT]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_CONTACT] FROM ( SELECT CONCAT(id, ''-EMAIL'') AS HUB_ID, email AS CONTACT, ''EMAIL'' AS CONTACT_TYPE, id AS CUSTOMER_KEY FROM deduped WHERE rn = 1 AND NULLIF(email, '''') IS NOT NULL UNION ALL SELECT CONCAT(id, ''-PHONE''), COALESCE(NULLIF(phone, ''''), NULLIF(mobile, '''')), ''PHONE'', id FROM deduped WHERE rn = 1 AND COALESCE(NULLIF(phone, ''''), NULLIF(mobile, '''')) IS NOT NULL ) AS source_query;',
+        tier             = 1,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Stages customer email and phone contacts, one row per contact (keys {customerId}-EMAIL / {customerId}-PHONE)',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["HUB_ID", "CONTACT", "CONTACT_TYPE", "CUSTOMER_KEY"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Contact', N'MEWS_CONTACT',
+            N'IF OBJECT_ID(''stage.MEWS_CONTACT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CONTACT]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_CONTACT] FROM ( SELECT CONCAT(id, ''-EMAIL'') AS HUB_ID, email AS CONTACT, ''EMAIL'' AS CONTACT_TYPE, id AS CUSTOMER_KEY FROM deduped WHERE rn = 1 AND NULLIF(email, '''') IS NOT NULL UNION ALL SELECT CONCAT(id, ''-PHONE''), COALESCE(NULLIF(phone, ''''), NULLIF(mobile, '''')), ''PHONE'', id FROM deduped WHERE rn = 1 AND COALESCE(NULLIF(phone, ''''), NULLIF(mobile, '''')) IS NOT NULL ) AS source_query;',
+            1, N'Staging', 0,
+            N'Stages customer email and phone contacts, one row per contact (keys {customerId}-EMAIL / {customerId}-PHONE)',
+            NULL, 3, 30,
+            N'["HUB_ID", "CONTACT", "CONTACT_TYPE", "CUSTOMER_KEY"]',
+            GETDATE(), GETDATE());
+GO
+
+-- Step 16: Mews Order Revenue Center Link
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Order Revenue Center Link')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_CUSTORDER_REVCENTER_LNK',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_CUSTORDER_REVCENTER_LNK'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CUSTORDER_REVCENTER_LNK]; WITH inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ) SELECT * INTO [stage].[MEWS_CUSTORDER_REVCENTER_LNK] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, inv.id) AS HEADER_ID, inv.revenueCenterId AS REVC_KEY FROM inv LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 WHERE inv.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' AND inv.revenueCenterId IS NOT NULL ) AS source_query;',
+        tier             = 2,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Link staging: order-to-revenue-center pairs, NULL revenue center keys filtered out. Empty until Mews populates revenueCenterId.',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["HEADER_ID", "REVC_KEY"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Order Revenue Center Link', N'MEWS_CUSTORDER_REVCENTER_LNK',
+            N'IF OBJECT_ID(''stage.MEWS_CUSTORDER_REVCENTER_LNK'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CUSTORDER_REVCENTER_LNK]; WITH inv AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_INVOICES] ), reg AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_REGISTERS] ) SELECT * INTO [stage].[MEWS_CUSTORDER_REVCENTER_LNK] FROM ( SELECT CONCAT_WS(''-'', reg.outletId, inv.id) AS HEADER_ID, inv.revenueCenterId AS REVC_KEY FROM inv LEFT JOIN reg ON reg.id = inv.registerId AND reg.rn = 1 WHERE inv.rn = 1 AND COALESCE(inv.cancelled, ''0'') <> ''1'' AND inv.revenueCenterId IS NOT NULL ) AS source_query;',
+            2, N'Staging', 0,
+            N'Link staging: order-to-revenue-center pairs, NULL revenue center keys filtered out. Empty until Mews populates revenueCenterId.',
+            NULL, 3, 30,
+            N'["HEADER_ID", "REVC_KEY"]',
+            GETDATE(), GETDATE());
+GO
+
+-- Step 17: Mews Discount Line Link
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Discount Line Link')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_DISCOUNT_LINEITEM_LNK',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_DISCOUNT_LINEITEM_LNK'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_DISCOUNT_LINEITEM_LNK]; SELECT * INTO [stage].[MEWS_DISCOUNT_LINEITEM_LNK] FROM ( SELECT li.SRC_KEY, li.DISCOUNT_KEY FROM [stage].[MEWS_LINEITEM_DISCOUNT] li WHERE li.DISCOUNT_KEY IS NOT NULL ) AS source_query;',
+        tier             = 2,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Link staging: discount-to-line pairs from MEWS_LINEITEM_DISCOUNT with NULL promo keys filtered out',
+        depends_on_steps = N'Mews Line Item Discount',
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["SRC_KEY", "DISCOUNT_KEY"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Discount Line Link', N'MEWS_DISCOUNT_LINEITEM_LNK',
+            N'IF OBJECT_ID(''stage.MEWS_DISCOUNT_LINEITEM_LNK'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_DISCOUNT_LINEITEM_LNK]; SELECT * INTO [stage].[MEWS_DISCOUNT_LINEITEM_LNK] FROM ( SELECT li.SRC_KEY, li.DISCOUNT_KEY FROM [stage].[MEWS_LINEITEM_DISCOUNT] li WHERE li.DISCOUNT_KEY IS NOT NULL ) AS source_query;',
+            2, N'Staging', 0,
+            N'Link staging: discount-to-line pairs from MEWS_LINEITEM_DISCOUNT with NULL promo keys filtered out',
+            N'Mews Line Item Discount', 3, 30,
+            N'["SRC_KEY", "DISCOUNT_KEY"]',
+            GETDATE(), GETDATE());
+GO
