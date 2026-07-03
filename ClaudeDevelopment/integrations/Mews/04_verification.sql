@@ -23,7 +23,8 @@
    Tasks 1-5 (see task-1..5-report.md), NOT the task-6-brief.md literals -
    two values were corrected after Task 6 briefing was written:
      - MEWS_CHANNEL: 2 -> 1 (area "Rooms" confirmed inactive; filter stands)
-     - MEWS_LINEITEM_TAX: compare to DL-side derivation, not the literal 17
+     - MEWS_LINEITEM_TAX (stage) and LNK_LINEITEM_TAX (DV): compare to
+       DL-side derivation, not the literal 17
    Where the source system may have landed more data since, checks compare
    against a DL-side derivation instead of a hardcoded literal (flagged per
    check below).
@@ -482,10 +483,35 @@ SELECT 'lnk_LNK_LINEITEM_PRODUCT' AS check_name, '22' AS expected,
        CASE WHEN COUNT(*) = 22 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [datavault].[LNK_LINEITEM_PRODUCT];
 
-SELECT 'lnk_LNK_LINEITEM_TAX' AS check_name, '17' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 17 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[LNK_LINEITEM_TAX];
+-- LNK_LINEITEM_TAX: compare to the DL-side derivation mirroring step 11's own
+-- filter (deduped non-cancelled invoice items with non-zero tax), NOT the
+-- literal 17 - this is the explicit exception called out in the corrected
+-- baselines. Both DL tables are deduped via rn = 1 exactly as step 11 does,
+-- so a re-fetch (duplicate rows per id) cannot inflate the expected count.
+WITH ii AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn
+    FROM [int_mews001].[DL_INVOICE_ITEMS]
+),
+inv AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn
+    FROM [int_mews001].[DL_INVOICES]
+),
+dl AS (
+    SELECT COUNT(*) AS n
+    FROM ii
+    INNER JOIN inv ON inv.id = ii.invoiceId AND inv.rn = 1
+    WHERE ii.rn = 1
+      AND COALESCE(inv.cancelled, '0') <> '1'
+      AND CAST(ii.tax AS DECIMAL(18,2)) <> 0
+),
+lnk AS (
+    SELECT COUNT(*) AS n FROM [datavault].[LNK_LINEITEM_TAX]
+)
+SELECT 'lnk_LNK_LINEITEM_TAX' AS check_name,
+       CAST(dl.n AS VARCHAR(10)) AS expected,
+       CAST(lnk.n AS VARCHAR(10)) AS actual,
+       CASE WHEN dl.n = lnk.n THEN 'PASS' ELSE 'FAIL' END AS status
+FROM dl CROSS JOIN lnk;
 
 SELECT 'lnk_LNK_CUSTORDER_LOCATION' AS check_name, '19' AS expected,
        CAST(COUNT(*) AS VARCHAR(10)) AS actual,
