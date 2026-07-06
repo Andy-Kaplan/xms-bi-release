@@ -1,5 +1,12 @@
 # Prod Validation Runbook — v1.0 Baseline
 
+> **STATUS: EXECUTED AND SIGNED OFF 2026-07-06.** All 39 scripts deployed to
+> `xms-mssqlman-ne-prod`; 91 = 30/30 PASS; 92 = 5 orgs provisioned; 93 = 60/60
+> PASS; 94 cleanup complete (0 VALTEST DBs remain). Defects found and their
+> status: `releases/v1.0-baseline/BASELINE_NOTES.md` §"2026-07-06 Prod
+> deployment record". This document remains the template for future
+> environment bring-ups.
+
 **Ruling (2026-07-06):** the Prod Managed Instance itself is the validation
 environment. The baseline cannot be validation-deployed to Dev/Test/UAT because
 `1__DBInit.sql` creates a database named `core`, which already exists on those

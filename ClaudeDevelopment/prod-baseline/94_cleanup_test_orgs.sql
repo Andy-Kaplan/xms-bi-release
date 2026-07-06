@@ -42,8 +42,10 @@ BEGIN
         PRINT '=== Removing ' + @OrgName + ' ===';
         IF DB_ID(@DbName) IS NOT NULL
         BEGIN
-            SET @sql = N'ALTER DATABASE ' + QUOTENAME(@DbName) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; '
-                     + N'DROP DATABASE ' + QUOTENAME(@DbName) + N';';
+            -- No SET SINGLE_USER first: Managed Instance does not support that
+            -- ALTER DATABASE form (Msg 5008); DROP DATABASE alone kills
+            -- connections on MI.
+            SET @sql = N'DROP DATABASE ' + QUOTENAME(@DbName) + N';';
             EXEC (@sql);
             PRINT '  dropped database ' + @DbName;
         END

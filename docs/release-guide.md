@@ -313,6 +313,38 @@ Same delta scripts. First environment visible to stakeholders. Complete the vali
 
 Same delta scripts. Lightweight sign-off checklist (can grow into formal approval as the team scales).
 
+### Execution Method: PowerShell Runners (preferred)
+
+Release scripts are executed against MI environments with **PowerShell runner
+scripts** built on `Invoke-Sqlcmd` (SqlServer module), not by hand in SSMS.
+This is the house method — proven by the v1.0 Prod baseline deployment
+(2026-07-06) — and future sessions should follow it. Reference implementation:
+`ClaudeDevelopment/prod-baseline/90_deploy_baseline.ps1`; full worked example:
+`ClaudeDevelopment/prod-baseline/VALIDATION_RUNBOOK.md`.
+
+The pattern:
+
+- **Connections from env vars** — `XMS_BI_MANAGED_{DEV|TEST|UAT|PROD}_SERVER/_USER/_PASSWORD`
+  (User scope; interactive setup helper: `prod-baseline/95_set_prod_env.ps1`).
+  Never hardcode credentials in scripts. Public MI endpoints need port `,3342`.
+- **Explicit ordered step list** in the runner (file + target database per step)
+  mirroring `DEPLOY_ORDER.txt` — the runner *is* the executable deploy order.
+- **`-WhatIf` preflight** — verifies env vars, connectivity, file inventory and
+  target-state assumptions without executing any SQL. Always run it first.
+- **Typed confirmation** before touching the target (`-Force` to skip when the
+  operator has already confirmed out-of-band).
+- **Halt on first error + `-StartAt <step>` resume** — combined with idempotent
+  scripts, a failed run is fixed and resumed, never restarted blind.
+- **Per-run log file** with timestamps and PRINT output captured.
+- **Validation as PASS/FAIL SELECT scripts** run through the same connection
+  after deployment (see `91_validate_core_deployment.sql` /
+  `93_validate_test_orgs.sql` for the expected-vs-actual result-set pattern).
+
+**MI gotchas learned in production:** `ALTER DATABASE ... SET SINGLE_USER` is
+not supported on Managed Instance (Msg 5008) — `DROP DATABASE` alone suffices;
+SMO 22.x requires string-args `ServerConnection`, not a `System.Data.SqlClient`
+connection object (see `prod-baseline/00_common.ps1`).
+
 ### Validation Checklist (per environment)
 
 - [ ] All delta scripts executed without error

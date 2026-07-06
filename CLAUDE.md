@@ -12,6 +12,10 @@ The markdown files in `docs/` are the primary context source for Claude Code whe
 
 Development scripts that modify data belong in `ClaudeDevelopment/` — they are authored by Claude but executed by the developer.
 
+## Deployments via PowerShell Runners
+
+State-changing SQL is executed against MI environments through **PowerShell runner scripts** (`Invoke-Sqlcmd` + `XMS_BI_MANAGED_{DEV|TEST|UAT|PROD}_*` env vars), not through MCP and not by hand in SSMS. This is the established house method — see `docs/release-guide.md` §6 "Execution Method: PowerShell Runners" for the full pattern and `ClaudeDevelopment/prod-baseline/90_deploy_baseline.ps1` for the reference implementation (used for the v1.0 Prod deployment, 2026-07-06). Key elements: `-WhatIf` preflight, typed confirmation, halt-on-error with `-StartAt` resume, per-run log, PASS/FAIL validation SELECT scripts run through the same connection. Claude may execute these runners **only with the user's explicit go-ahead per deployment stage**, and the scripts must be committed/reviewable before execution.
+
 ## SQL File Editing Rules
 
 **Claude must only create or edit `.sql` files inside the `ClaudeDevelopment/` folder.**
