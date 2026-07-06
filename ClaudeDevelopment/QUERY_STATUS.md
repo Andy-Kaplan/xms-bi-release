@@ -2061,3 +2061,39 @@ All scripts in `integrations/Mews/`. Created 2026-07-03. Design/plan: `docs/supe
 **Purpose:** GDPR removal of the Mews CRM lane. Section A (vs `core`): deletes the 5 CRM EntityMappings rows (INDIVIDUAL, ADDRESS, CONTACT, ADDRESS_INDIVIDUAL, CONTACT_INDIVIDUAL), the 3 CRM staging steps, and the 5 generated Load steps. Section B (vs org DB): drops `stage.MEWS_CUSTOMER/MEWS_ADDRESS/MEWS_CONTACT`, clears the CRM `load.*`/`load.CDC_*` tables, and purges Mews-sourced rows (`SRC = 'int_mews001'`) from the CRM hubs/satellites/links loaded on 2026-07-03 (365 names, 258 contacts, 258 link rows). Idempotent; deliberately not flag-reversible. **Must run before 03** or the CRM load steps regenerate. Landing-layer `DL_CUSTOMERS` still holds raw PII — flagged to the fetcher team (remove customers endpoint from the fetch config).
 
 **Status:** created 2026-07-03 — not deployed.
+
+---
+
+## Prod v1.0 Baseline Validation Kit (2026-07-06)
+
+Scripts 86-90 in `prod-baseline/` support the first Production deployment, per the 2026-07-06 ruling that the Prod MI itself is the validation environment (the baseline cannot be validation-deployed to Dev/Test/UAT — `1__DBInit.sql` creates a `core` DB that already exists there). Full procedure: `prod-baseline/VALIDATION_RUNBOOK.md`.
+
+### 86. `prod-baseline/90_deploy_baseline.ps1`
+
+**Purpose:** PowerShell runner that executes the 39 `releases/v1.0-baseline/` scripts in DEPLOY_ORDER (TBTBookingMetrics held) against `-Environment DEV|TEST|UAT|PROD` using `XMS_BI_MANAGED_{ENV}_*` env vars. Preflight (`-WhatIf`), typed confirmation, halt-on-error with `-StartAt` resume, per-run log.
+
+**Status:** tested 2026-07-06 — `-WhatIf` preflight ran clean against UAT (39 files found, connection OK, existing-core warning fired). Deploy path not yet executed (awaits Prod MI + `XMS_BI_MANAGED_PROD_*` env vars).
+
+### 87. `prod-baseline/91_validate_core_deployment.sql`
+
+**Purpose:** 30 PASS/FAIL checks on the deployed core DB: 15 core tables, 43 programmable objects, control-table row counts (146/60/42/44/425), MargeBrut absent, 5 integrations, TBT absent, per-integration STAGE_DDL / Staging / Load / EntityMappings counts.
+
+**Status:** logic MCP-tested against UAT 2026-07-06 — 26/30 PASS; the 4 FAILs are exactly the intentional Prod-vs-UAT deltas (VQ 434 vs 425, MargeBrut 9 vs 0, integrations 6 vs 5, TBT present). On a correct Prod deploy all 30 must PASS.
+
+### 88. `prod-baseline/92_provision_test_orgs.sql`
+
+**Purpose:** Creates 5 `BaselineTest_*` orgs (prefix `VALTEST`), one per integration, via `AddOrganisation` + `MapOrganisationToIntegration` — exercises the full provisioning chain (client DB, schemas, DV tables, deployed objects, presentation tables, integration schema + DL tables). Idempotent (skips existing).
+
+**Status:** created 2026-07-06 — not executed (Prod only).
+
+### 89. `prod-baseline/93_validate_test_orgs.sql`
+
+**Purpose:** Per-org schema parity vs the UAT reference profile captured 2026-07-06: datavault 115 (35 HUB/35 SAT/40 LNK/5 SAT_LNK), load 88, core 16, presentation 43 (all LIVE defs — fresh orgs get all 43; older UAT orgs show fewer), stage 0 (lazy), 31 procs, 5 fns, DL tables 21/34/13/41/48 per integration. SELECT-only dynamic SQL.
+
+**Status:** created 2026-07-06 — not executed (needs BaselineTest_* orgs).
+
+### 90. `prod-baseline/94_cleanup_test_orgs.sql`
+
+**Purpose:** Removes the validation orgs (no RemoveOrganisation SP exists): drops `VALTEST_XMS_*` databases, deletes OrganisationIntegrations + Organisations rows. Triple-guarded name filters, `@DryRun = 1` default.
+
+**Status:** created 2026-07-06 — not executed.
