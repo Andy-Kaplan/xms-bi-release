@@ -15,7 +15,7 @@ Step  File                                                Database  Notes
  11   8_Deployment_Objects_Records.sql                    core      57 deployable objects
  12   8_PresentationControl.sql                           core      42 presentation build steps
  13   8_PresentationTables.sql                            core      44 presentation table DDLs
- 14   8_VisualisationQueries.sql                          core      425 visualisation queries
+ 14   8_VisualisationQueries.sql                          core      434 visualisation queries (incl. 9 MargeBrut demo cards - see decision points)
 
  15   NCRAloha/NCRAloha001_INIT.sql                       core      Register integration + endpoint config
  16   NCRAloha/NCRAloha001_DDL.sql                        core      21 DL table DDLs
@@ -59,4 +59,4 @@ The trg_OrganisationIntegrations_AfterInsert trigger auto-creates the client DB 
 DECISION POINTS (review before Prod cutover):
 - TBTBookingMetrics001: include in Prod day-one or hold? Small scope (1 entity, 2 staging steps).
 - Folder casing: Marketman001 and TROaP001 use UAT casing. Rename to MarketMan / TROAP if preferred.
-- 425 visualisation queries is ~4x the old repo. Spot-check that all are intentional Prod cards.
+- 434 visualisation queries is ~4x the old repo. Spot-check done 2026-07-06: only additions since May are 9 MargeBrut demo cards (mocked data) - include in Prod day-one or hold?

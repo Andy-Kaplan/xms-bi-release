@@ -10,8 +10,25 @@ deployment and the starting point for all subsequent delta releases.
 |---|---|
 | Source environment | UAT (`xms-mssqlman-ne-uat`) |
 | Generation tool | `ClaudeDevelopment/prod-baseline/run_all.ps1` |
-| Generation date | 2026-05-19 16:45 (re-run any time the scripts are re-executed) |
+| Generation date | 2026-07-06 15:17 (previous: 2026-05-19 16:45) |
 | Snapshot scope | UAT state at generation time. No unreleased ClaudeDevelopment work is included. |
+
+## 2026-07-06 regeneration — drift vs 2026-05-19 snapshot
+
+Verified with `git diff --ignore-cr-at-eol`: the **only content drift** in seven
+weeks is **9 new `MargeBrut*` visualisation queries** (425 → 434) — the mocked
+Marge Brut dashboard added to UAT Oak & Vine on 2026-06-08. No records were
+removed or modified anywhere else; all other file changes are regeneration
+timestamps and a one-time line-ending normalisation.
+
+Corrections to the table below found during regeneration (counts were stale in
+the 2026-05-19 notes, not real drift — the committed files already matched UAT):
+DeploymentObjects is **60** (not 57; includes the 6 TUBR `sp_Api_*` SPs and
+`StaticBoxCard`), Growyze staging steps are **39** (not 38).
+
+**Additional decision point:** the 9 `MargeBrut*` queries are demo cards fed by
+mocked Oct-2025 data on UAT Oak & Vine. Decide whether they belong in Prod
+day-one (harmless without report-DB wiring, but they are demo artefacts).
 
 ## Surprises vs the previous repo state
 

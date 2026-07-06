@@ -110,9 +110,19 @@ function Connect-UatSmo {
     [CmdletBinding()]
     param([string]$Database = 'core')
 
-    $connStr = Get-UatConnectionString -Database $Database
-    $sqlConn = New-Object System.Data.SqlClient.SqlConnection $connStr
-    $serverConn = New-Object Microsoft.SqlServer.Management.Common.ServerConnection $sqlConn
+    # Pass server/login/password strings rather than a SqlConnection object:
+    # SMO 22.x (SqlServer module) is built on Microsoft.Data.SqlClient, so the
+    # ServerConnection(System.Data.SqlClient.SqlConnection) overload no longer
+    # binds - PowerShell silently falls back to the string overload via
+    # ToString(), producing "Failed to connect to server
+    # System.Data.SqlClient.SqlConnection". The string-args overload exists on
+    # every SMO version.
+    $srv = $script:UatServer
+    if ($srv -notmatch ',\d+$' -and $srv -match '\.public\.') { $srv = "$srv,3342" }
+    $serverConn = New-Object Microsoft.SqlServer.Management.Common.ServerConnection($srv, $script:UatUser, $script:UatPassword)
+    $serverConn.DatabaseName = $Database
+    if ($serverConn.PSObject.Properties['EncryptConnection'])      { $serverConn.EncryptConnection = $true }
+    if ($serverConn.PSObject.Properties['TrustServerCertificate']) { $serverConn.TrustServerCertificate = $true }
     $server = New-Object Microsoft.SqlServer.Management.Smo.Server $serverConn
     # Force connection so SMO uses the supplied credentials
     $null = $server.ConnectionContext.ExecuteScalar("SELECT 1")

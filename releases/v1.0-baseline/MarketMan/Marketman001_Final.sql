@@ -1,5 +1,5 @@
 ﻿-- ============================================
--- Marketman001 FINAL - regenerated from UAT 2026-06-02 10:45:23
+-- Marketman001 FINAL - regenerated from UAT 2026-07-06 15:17:46
 -- Uploads entity mappings to the data vault load engine
 -- ============================================
 USE [core]

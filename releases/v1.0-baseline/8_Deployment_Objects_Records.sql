@@ -1,7 +1,7 @@
 ﻿-- ============================================
 -- Deployment Objects Export
 -- Source: UAT (xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net)
--- Generated: 2026-06-02 10:45:20
+-- Generated: 2026-07-06 15:17:43
 -- Total Records: 60
 -- Natural Key: ObjectName, ObjectType
 -- ============================================
