@@ -1,0 +1,32 @@
+# Release v1.0 — Deployment Order
+# Execute scripts in the order listed below.
+# Lines starting with # are comments.
+
+# ============================================================
+# MANAGED INSTANCE — Core Database (run once)
+# ============================================================
+# Connect to: core database on target MI environment
+
+01_growyze_orphan_staging_fix.sql
+02_growyze_upload_entity_mappings.sql
+03_core_f_lineitem_15min_hub_validation.sql
+
+# ============================================================
+# MANAGED INSTANCE — Per-Organisation (none required)
+# ============================================================
+# All changes in this release are control-table updates that
+# propagate at the next staging / DV load / presentation rebuild.
+# No sp_DeployObjects or sp_GenerateDataVaultTables run needed.
+
+# ============================================================
+# MICROSERVICE — Report Database (none required)
+# ============================================================
+# No microservice report DB changes in this release.
+
+# ============================================================
+# POST-DEPLOY VERIFICATION
+# ============================================================
+# 1. Trigger or wait for the next scheduled Growyze staging + DV + presentation
+#    rebuild on Dirty Sixth UAT (20260327_XMS_7B50D717-124C-4902-ADD2-439A9310326A).
+# 2. Run the verification queries embedded in each script's footer.
+# 3. Complete the validation checklist in RELEASE_NOTES.md.
