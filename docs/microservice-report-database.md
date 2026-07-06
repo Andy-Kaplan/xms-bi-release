@@ -3,6 +3,7 @@
 > **Source:** UAT environment (`xms-mssql-ne-uat`, Azure SQL Database)
 > **Database:** `report`
 > **Audited:** 2026-03-11 via MCP read-only inspection
+> **Partial update:** 2026-05-18 — dashboard-groups schema is now load-bearing (§5.3, §11). Row counts elsewhere in this doc are from the March audit and are stale (e.g. `OrganisationDashboardConfig` is now ~85 rows / 18 orgs, not 14 / 8). A full re-audit is pending.
 > **Purpose:** Dashboard configuration store for the XMS front-end application
 
 ## 1. Overview
@@ -13,7 +14,7 @@ The `report` database is the **microservice-side configuration store** that driv
 - **Which datasets** are wired to which card types per organisation
 - **Dashboard layouts** — grid definitions, item placement, responsive breakpoints
 - **Colour palettes** — system defaults + organisation/staff overrides
-- **Dashboard navigation** — groups, naming, icons, sort order (partially implemented)
+- **Dashboard navigation** — groups, naming, icons, sort order. **As of 2026-05-18 the front end navigates dashboards through `DashboardGroup_Load` rather than the flat config list, so a `*DashboardConfig` row that is not joined to a visible group via the matching `*GroupMapping` table will not render.**
 
 The database bridges the microservice layer and the BI Managed Instance through two key tokens:
 1. **`DbPrefix`** (in `BiConfig`) — resolves to the MI database name: `{DbPrefix}_XMS_{OrganisationId}`
@@ -76,17 +77,17 @@ Three schemas:
 | | `DashboardGrid` | 7 | Grid layout containers |
 | | `DashboardGridItem` | 61 | Cards placed on grids |
 | | `DashboardGridFilter` | 28 | Filter widgets on grids |
-| | `DashboardConfig` | 0 | Platform-default dashboard naming (unused) |
-| | `DashboardGroup` | 0 | Navigation group hierarchy (unused) |
-| | `DashboardGroupMapping` | 0 | Group-to-config junction (unused) |
+| | `DashboardConfig` | 0 | Platform-default dashboard naming (still unused) |
+| | `DashboardGroup` | varies | **Navigation group hierarchy — now load-bearing for visibility (see §5.3)** |
+| | `DashboardGroupMapping` | 0 | Group ↔ platform-default `DashboardConfig` junction (still unused — `DashboardConfig` is empty) |
 | | `DashboardPalette` | 11 | System colour palettes |
 | | `DashboardPaletteColour` | 90 | Colours within palettes |
-| | `OrganisationDashboardConfig` | 14 | Org-scoped dashboard naming/assignment |
-| | `OrganisationDashboardGroupMapping` | 0 | Org group-to-config junction (unused) |
+| | `OrganisationDashboardConfig` | 14 → ~85 | Org-scoped dashboard naming/assignment — must be joined to a `DashboardGroup` via `OrganisationDashboardGroupMapping` to render |
+| | `OrganisationDashboardGroupMapping` | 0 → varies | **Org group ↔ config junction — required for org dashboard visibility** |
 | | `OrganisationDashboardPalette` | 1 | Org palette override (seed data) |
 | | `OrganisationDashboardPaletteColour` | 1 | Org palette colour override (seed data) |
-| | `StaffDashboardConfig` | 0 | Staff-scoped dashboard config (unused) |
-| | `StaffDashboardGroupMapping` | 0 | Staff group-to-config junction (unused) |
+| | `StaffDashboardConfig` | 0 | Staff-scoped dashboard config (DEV has rows; UAT still empty) |
+| | `StaffDashboardGroupMapping` | 0 → varies | **Staff group ↔ config junction — required for staff dashboard visibility** |
 | | `StaffDashboardPalette` | 1 | Staff palette override (seed data) |
 | | `StaffDashboardPaletteColour` | 1 | Staff palette colour override (seed data) |
 | **Audit** | *(20 tables)* | — | Mirror of each dbo table except AppVersion |
@@ -345,23 +346,27 @@ The database implements a three-level override system for dashboard configuratio
 ```
 Level 1 — Platform Default (currently unused)
     DashboardConfig           → names/icons for dashboard grids
-    DashboardGroupMapping     → maps groups to configs
+    DashboardGroupMapping     → maps groups to platform-default configs
     DashboardPalette          → 11 system palettes (90 colours)
 
 Level 2 — Organisation Override (active)
-    OrganisationDashboardConfig          → 14 rows, 8 orgs, 7 grids
-    OrganisationDashboardGroupMapping    → empty (groups not yet used)
+    OrganisationDashboardConfig          → 14 → ~85 rows, 18 orgs (count as of 2026-05-18)
+    OrganisationDashboardGroupMapping    → REQUIRED for dashboard visibility (see §5.3)
     OrganisationDashboardPalette         → 1 seed row ("trocs")
     OrganisationDashboardPaletteColour   → 1 seed colour (#F4A0C3)
 
-Level 3 — Staff Override (unused, schema ready)
-    StaffDashboardConfig                 → empty
-    StaffDashboardGroupMapping           → empty
+Level 3 — Staff Override (live on DEV, empty on UAT)
+    StaffDashboardConfig                 → 11 rows on DEV, 0 on UAT
+    StaffDashboardGroupMapping           → REQUIRED for staff dashboard visibility (see §5.3)
     StaffDashboardPalette                → 1 seed row ("trocs_staff")
     StaffDashboardPaletteColour          → 1 seed colour (#F4A0C3)
 ```
 
-**Resolution logic (from `DashboardGrid_Load` SP):** A grid is accessible to a caller if any of the three config tables has a non-deleted row pointing to that `DashboardGridId` matching the caller's org/staff identity. The grid itself has no org/staff columns — access isolation is entirely managed by the config layer.
+**Resolution logic (two layers, both gating):**
+1. **Group visibility (`DashboardGroup_Load` SP):** A `DashboardGroup` is visible to a caller if `(OrganisationId IS NULL AND StaffId IS NULL)` (platform-wide), `(OrganisationId = caller AND StaffId IS NULL)` (org-wide), or both match (staff-personal). Dashboards are returned only via the matching `*GroupMapping` join.
+2. **Grid access (`DashboardGrid_Load` SP):** A grid is accessible if any of the three config tables has a non-deleted row pointing to that `DashboardGridId` matching the caller's org/staff identity. The grid itself has no org/staff columns — access isolation is entirely managed by the config layer.
+
+A dashboard must satisfy **both** layers to render: its `*Config` row must exist (Layer 2) **and** it must be joined to a visible group via the matching `*GroupMapping` (Layer 1).
 
 ### 5.1 OrganisationDashboardConfig
 
@@ -391,22 +396,39 @@ Level 3 — Staff Override (unused, schema ready)
 
 Same as `OrganisationDashboardConfig` plus a `StaffId` (`uniqueidentifier`, NOT NULL) column. Currently empty.
 
-### 5.3 DashboardGroup (Navigation Hierarchy)
+### 5.3 DashboardGroup (Navigation Hierarchy) — load-bearing as of 2026-05-18
 
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
-| `DashboardGroupId` | `uniqueidentifier` | NOT NULL | PK |
-| `TransactionId` | `bigint` | NOT NULL | |
+| `DashboardGroupId` | `uniqueidentifier` | NOT NULL | PK, DEFAULT `NEWSEQUENTIALID()` |
+| `TransactionId` | `bigint` | NOT NULL | IDENTITY |
 | `ParentDashboardGroupId` | `uniqueidentifier` | YES | Self-FK for tree nesting |
 | `Name` | `nvarchar(256)` | NOT NULL | Group label |
 | `OrganisationId` | `uniqueidentifier` | YES | NULL = platform-wide |
-| `StaffId` | `uniqueidentifier` | YES | NULL = org-wide |
-| `SortOrder` | `int` | NOT NULL | |
+| `StaffId` | `uniqueidentifier` | YES | NULL = org-wide (only valid alongside an `OrganisationId`) |
+| `SortOrder` | `int` | NOT NULL | DEFAULT 0 |
 | `IsDeleted` | `bit` | NOT NULL | DEFAULT 0 |
-| `DateCreated` | `datetime2` | NOT NULL | |
-| `DateUpdated` | `datetime2` | NOT NULL | |
+| `DateCreated` | `datetime2` | NOT NULL | DEFAULT `SYSUTCDATETIME()` |
+| `DateUpdated` | `datetime2` | NOT NULL | DEFAULT `SYSUTCDATETIME()` |
 
-Currently empty. The `DashboardGroup_Load` SP implements visibility scoping: a group is visible if (a) `OrganisationId IS NULL AND StaffId IS NULL` (global), (b) `OrganisationId = caller` (org-wide), or (c) both match (staff-personal).
+**Visibility scoping (`DashboardGroup_Load`):** a group is returned to a `(@OrganisationId, @StaffId)` call when **one** of:
+- `OrganisationId IS NULL AND StaffId IS NULL` — platform-wide
+- `OrganisationId = caller AND StaffId IS NULL` — org-wide
+- `OrganisationId = caller AND StaffId = caller` — staff-personal
+
+`DashboardGroup_Load` returns **four result sets**: visible groups, then three mapping sets joining the visible groups to `DashboardConfig` / `OrganisationDashboardConfig` / `StaffDashboardConfig` respectively. **A dashboard config row that is not joined to a visible group does not appear in the result and will not render in the UI.**
+
+**Critical operational consequence:** when provisioning a new organisation (or after promoting dashboards from one environment to another), an `OrganisationDashboardConfig` row alone is insufficient — a corresponding `DashboardGroup` + `OrganisationDashboardGroupMapping` pair must also exist. The minimum-viable provisioning shape is one root-level group per org (with `OrganisationId` set, `StaffId` NULL) containing every dashboard for that org. See `ClaudeDevelopment/microservice-report/01_populate_uat_dashboard_groups.sql` for the reference idempotent population pattern.
+
+**Three mapping tables (all composite-PK junctions, all required for the matching `*Config` tier to render):**
+
+| Mapping table | Joins `DashboardGroup` to | Required when |
+|---|---|---|
+| `DashboardGroupMapping` | `DashboardConfig` | Using platform-default dashboards (currently no rows) |
+| `OrganisationDashboardGroupMapping` | `OrganisationDashboardConfig` | Using org-scoped dashboards (most common) |
+| `StaffDashboardGroupMapping` | `StaffDashboardConfig` | Using staff-personal dashboards |
+
+Each mapping table has the same column shape: `(DashboardGroupId, {Config}Id, TransactionId IDENTITY, IsDeleted, DateCreated, DateUpdated)`. Composite PK on the two GUID columns. CRUD goes via `*_UpdateEntity` (no `_AddEntity` — upsert semantics).
 
 ---
 
@@ -604,11 +626,19 @@ AppVersion (standalone — no relationships)
 
 ## 11. Data Flow: How a Dashboard Renders
 
+> **Update (2026-05-18):** Step 1 now goes through `DashboardGroup_Load`, not the flat `OrganisationDashboardConfig_Load`. The legacy SP still exists but the front end has switched to the group-driven navigation. Dashboards must be reachable from a visible group to appear in the UI.
+
 ```
 1. User opens dashboard
    │
-   ├─► OrganisationDashboardConfig_Load(@OrgId)
-   │   Returns: list of dashboards (Name, IconName, DashboardGridId) for this org
+   ├─► DashboardGroup_Load(@OrgId, @StaffId)
+   │   Returns 4 result sets:
+   │     (a) Visible groups (platform-wide + org-wide + staff-personal that match the caller)
+   │     (b) DashboardConfig rows joined via DashboardGroupMapping
+   │     (c) OrganisationDashboardConfig rows joined via OrganisationDashboardGroupMapping
+   │     (d) StaffDashboardConfig rows joined via StaffDashboardGroupMapping
+   │   The UI builds the navigation tree from (a) and lists dashboards under each group from (b)/(c)/(d).
+   │   Config rows NOT joined to a visible group are silently omitted.
    │
    ├─► DashboardPalettes_Load() + OrganisationDashboardPalettes_Load(@OrgId)
    │   Returns: system palettes + any org overrides
@@ -640,6 +670,7 @@ AppVersion (standalone — no relationships)
 
 | Issue | Details |
 |---|---|
+| **Dashboards silently invisible without a group (2026-05-18)** | Since the front end now drives navigation via `DashboardGroup_Load`, an `OrganisationDashboardConfig` row that has no matching `OrganisationDashboardGroupMapping` row simply does not appear in the UI — there is no error or warning. Provisioning routines and environment promotions must create the group + mapping pair, not just the config row. |
 | Missing BiConfig for SurveyHero org | `3EBF26FE-...` has VisualisationConfig + OrganisationDashboardConfig but no BiConfig — cannot resolve MI database |
 | `VisualisationId` 14 gap | `FilterList` intentionally excluded from VisualisationProcedure (handled separately) |
 | `core.StaticBoxCard` not in MI release scripts | VisualisationId 16 exists in UAT microservice but not yet deployed to MI release scripts |
