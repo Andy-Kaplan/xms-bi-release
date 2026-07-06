@@ -1,6 +1,10 @@
 # Claude Code auto-memory (session-specific, not release artefacts)
 memory/
 
+# Obsidian vault workspace (local editor state, not release artefacts)
+.obsidian/
+*.canvas
+
 # SSMS and SQL tool temp/backup files
 *.bak
 *.tmp
