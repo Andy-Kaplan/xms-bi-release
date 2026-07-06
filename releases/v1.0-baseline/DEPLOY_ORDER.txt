@@ -12,10 +12,10 @@ Step  File                                                Database  Notes
   8   7_IntegrationTrigger.sql                            core      trg_OrganisationIntegrations_AfterInsert
   9   7_Dynamic Suggestion Tables.sql                     core      4 suggestion engine tables
  10   8_DataVaultEntities.sql                             core      146 DV entity definitions
- 11   8_Deployment_Objects_Records.sql                    core      57 deployable objects
+ 11   8_Deployment_Objects_Records.sql                    core      60 deployable objects
  12   8_PresentationControl.sql                           core      42 presentation build steps
  13   8_PresentationTables.sql                            core      44 presentation table DDLs
- 14   8_VisualisationQueries.sql                          core      434 visualisation queries (incl. 9 MargeBrut demo cards - see decision points)
+ 14   8_VisualisationQueries.sql                          core      425 visualisation queries (9 MargeBrut demo cards excluded per 2026-07-06 ruling)
 
  15   NCRAloha/NCRAloha001_INIT.sql                       core      Register integration + endpoint config
  16   NCRAloha/NCRAloha001_DDL.sql                        core      21 DL table DDLs
@@ -31,7 +31,7 @@ Step  File                                                Database  Notes
 
  25   Growyze/Growyze001_INIT.sql                         core
  26   Growyze/Growyze001_DDL.sql                          core      13 DL table DDLs
- 27   Growyze/Growyze001_Staging.sql                      core      38 staging steps (NEW - not in old repo)
+ 27   Growyze/Growyze001_Staging.sql                      core      39 staging steps (NEW - not in old repo)
  28   Growyze/Growyze001_Mapping.sql                      core      23 entity mappings (NEW - not in old repo)
  29   Growyze/Growyze001_Final.sql                        core
 
@@ -47,16 +47,15 @@ Step  File                                                Database  Notes
  38   TROAP/TROaP001_Mapping.sql                          core      22 entity mappings (NEW - not in old repo)
  39   TROAP/TROaP001_Final.sql                            core
 
- 40   TBTBookingMetrics/TBTBookingMetrics001_INIT.sql     core      NEW 6th integration discovered on UAT
- 41   TBTBookingMetrics/TBTBookingMetrics001_DDL.sql      core      1 DL table DDL
- 42   TBTBookingMetrics/TBTBookingMetrics001_Staging.sql  core      2 staging steps
- 43   TBTBookingMetrics/TBTBookingMetrics001_Mapping.sql  core      1 entity mapping
- 44   TBTBookingMetrics/TBTBookingMetrics001_Final.sql    core
+ --   TBTBookingMetrics/*                                 core      ON HOLD per 2026-07-06 ruling - do NOT run day-one.
+                                                                    5 scripts kept in the folder; deploy later as a delta if wanted.
 
 Post-baseline: provision Prod organisations via core.AddOrganisation + core.MapOrganisationToIntegration.
 The trg_OrganisationIntegrations_AfterInsert trigger auto-creates the client DB and integration schemas.
 
-DECISION POINTS (review before Prod cutover):
-- TBTBookingMetrics001: include in Prod day-one or hold? Small scope (1 entity, 2 staging steps).
-- Folder casing: Marketman001 and TROaP001 use UAT casing. Rename to MarketMan / TROAP if preferred.
-- 434 visualisation queries is ~4x the old repo. Spot-check done 2026-07-06: only additions since May are 9 MargeBrut demo cards (mocked data) - include in Prod day-one or hold?
+DECISION POINTS - ALL RESOLVED 2026-07-06:
+- TBTBookingMetrics001: HOLD - not deployed day-one (removed from the numbered steps above; scripts kept for a later delta).
+- Folder casing: KEEP UAT casing (Marketman001 / TROaP001) so Prod stays byte-identical to UAT.
+- Visualisation queries: 9 MargeBrut* demo cards (mocked Oct-2025 data) EXCLUDED via the extraction filter
+  in 02_extract_control_data.ps1. The remaining 425 are byte-identical to the reviewed 2026-05-19 snapshot -
+  no other UAT drift in seven weeks.

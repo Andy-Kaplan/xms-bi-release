@@ -26,9 +26,13 @@ the 2026-05-19 notes, not real drift — the committed files already matched UAT
 DeploymentObjects is **60** (not 57; includes the 6 TUBR `sp_Api_*` SPs and
 `StaticBoxCard`), Growyze staging steps are **39** (not 38).
 
-**Additional decision point:** the 9 `MargeBrut*` queries are demo cards fed by
-mocked Oct-2025 data on UAT Oak & Vine. Decide whether they belong in Prod
-day-one (harmless without report-DB wiring, but they are demo artefacts).
+**Rulings (2026-07-06)** — all open decision points resolved:
+
+| Decision | Ruling |
+|---|---|
+| 9 `MargeBrut*` demo queries | **Excluded** via extraction filter in `02_extract_control_data.ps1` (`DataSetName NOT LIKE 'MargeBrut%'`). Baseline ships 425 queries, byte-identical to the reviewed 2026-05-19 snapshot. |
+| TBTBookingMetrics001 | **On hold** — not deployed day-one. Scripts remain in the folder for a later delta release. |
+| Integration name casing | **Keep UAT casing** (`Marketman001`, `TROaP001`) so Prod stays byte-identical to UAT. |
 
 ## Surprises vs the previous repo state
 
