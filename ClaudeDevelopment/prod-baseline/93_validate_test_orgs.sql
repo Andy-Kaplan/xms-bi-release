@@ -5,11 +5,14 @@
 -- after 92_provision_test_orgs.sql. SELECT-only (dynamic SQL reads sys
 -- catalog views in each BaselineTest_* client DB).
 --
--- Expected values are the UAT reference profile captured 2026-07-06 from an
--- ACTIVE UAT client DB + the core control tables:
---   datavault: 115 tables (35 HUB / 35 SAT / 40 LNK / 5 SAT_LNK)
---   load:       88 tables
---   core:       16 tables | procedures: 31 | functions: 5
+-- Expected values are the FRESH-PROVISIONING profile (validated on Prod
+-- 2026-07-06; every delta vs an older UAT org is explained - see
+-- BASELINE_NOTES.md):
+--   datavault: 118 tables (36 HUB / 36 SAT / 40 LNK / 6 SAT_LNK) - includes
+--     BOOKINGREPORT + SAT_LNK_INVITEM_STOCKORDER, which post-date older orgs
+--   load:       76 tables (load.CDC_* tables are created lazily by
+--     sp_GenerateCDC at load time - fresh orgs have none)
+--   core:       16 tables | procedures: 37 (31 + 6 TUBR sp_Api_*) | functions: 5
 --   presentation: 43 tables (all LIVE PresentationTables defs; NOTE - older
 --     UAT orgs show fewer because DeployPresentationTables was never re-run
 --     after new tables went LIVE. A FRESH org must have all 43.)
@@ -60,17 +63,17 @@ BEGIN
         INSERT INTO #results (OrgName, Metric, Expected, Actual)
         SELECT @org, m.metric, m.expected, m.actual
         FROM (
-            SELECT ''datavault tables'' AS metric, 115 AS expected,
+            SELECT ''datavault tables'' AS metric, 118 AS expected,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''datavault'') AS actual
-            UNION ALL SELECT ''datavault HUB tables'', 35,
+            UNION ALL SELECT ''datavault HUB tables'', 36,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''datavault'' AND t.name LIKE ''HUB[_]%'')
-            UNION ALL SELECT ''datavault SAT tables'', 35,
+            UNION ALL SELECT ''datavault SAT tables'', 36,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''datavault'' AND t.name LIKE ''SAT[_]%'' AND t.name NOT LIKE ''SAT[_]LNK%'')
             UNION ALL SELECT ''datavault LNK tables'', 40,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''datavault'' AND t.name LIKE ''LNK[_]%'')
-            UNION ALL SELECT ''datavault SAT_LNK tables'', 5,
+            UNION ALL SELECT ''datavault SAT_LNK tables'', 6,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''datavault'' AND t.name LIKE ''SAT[_]LNK%'')
-            UNION ALL SELECT ''load tables'', 88,
+            UNION ALL SELECT ''load tables'', 76,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''load'')
             UNION ALL SELECT ''core tables'', 16,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''core'')
@@ -78,7 +81,7 @@ BEGIN
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''presentation'')
             UNION ALL SELECT ''stage tables (lazy - 0 pre-load)'', 0,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.tables t JOIN ' + QUOTENAME(@DbName) + N'.sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = ''stage'')
-            UNION ALL SELECT ''procedures'', 31,
+            UNION ALL SELECT ''procedures'', 37,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.procedures)
             UNION ALL SELECT ''functions'', 5,
                    (SELECT COUNT(*) FROM ' + QUOTENAME(@DbName) + N'.sys.objects WHERE type IN (''FN'',''IF'',''TF''))

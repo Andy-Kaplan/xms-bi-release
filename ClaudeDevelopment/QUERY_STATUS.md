@@ -2072,28 +2072,34 @@ Scripts 86-90 in `prod-baseline/` support the first Production deployment, per t
 
 **Purpose:** PowerShell runner that executes the 39 `releases/v1.0-baseline/` scripts in DEPLOY_ORDER (TBTBookingMetrics held) against `-Environment DEV|TEST|UAT|PROD` using `XMS_BI_MANAGED_{ENV}_*` env vars. Preflight (`-WhatIf`), typed confirmation, halt-on-error with `-StartAt` resume, per-run log.
 
-**Status:** tested 2026-07-06 — `-WhatIf` preflight ran clean against UAT (39 files found, connection OK, existing-core warning fired). Deploy path not yet executed (awaits Prod MI + `XMS_BI_MANAGED_PROD_*` env vars).
+**Status:** EXECUTED against Prod 2026-07-06 — all 39 steps deployed (halted once at step 26 on the GlobalParameters width defect, fixed via 96 + patched SP, resumed clean). Logs: `deploy_PROD_*.log`.
 
 ### 87. `prod-baseline/91_validate_core_deployment.sql`
 
 **Purpose:** 30 PASS/FAIL checks on the deployed core DB: 15 core tables, 43 programmable objects, control-table row counts (146/60/42/44/425), MargeBrut absent, 5 integrations, TBT absent, per-integration STAGE_DDL / Staging / Load / EntityMappings counts.
 
-**Status:** logic MCP-tested against UAT 2026-07-06 — 26/30 PASS; the 4 FAILs are exactly the intentional Prod-vs-UAT deltas (VQ 434 vs 425, MargeBrut 9 vs 0, integrations 6 vs 5, TBT present). On a correct Prod deploy all 30 must PASS.
+**Status:** EXECUTED against Prod 2026-07-06 — **30/30 PASS**. (Earlier UAT logic test: 26/30 with exactly the 4 intentional deltas failing, as designed.)
 
 ### 88. `prod-baseline/92_provision_test_orgs.sql`
 
 **Purpose:** Creates 5 `BaselineTest_*` orgs (prefix `VALTEST`), one per integration, via `AddOrganisation` + `MapOrganisationToIntegration` — exercises the full provisioning chain (client DB, schemas, DV tables, deployed objects, presentation tables, integration schema + DL tables). Idempotent (skips existing).
 
-**Status:** created 2026-07-06 — not executed (Prod only).
+**Status:** EXECUTED against Prod 2026-07-06 — 5 orgs provisioned, all ACTIVE with integrations mapped. Note: RuleOverrides logs ERROR per org (stray duplicate ALTER in its DeploymentObjects record — benign, end state verified correct; see BASELINE_NOTES defect 3).
 
 ### 89. `prod-baseline/93_validate_test_orgs.sql`
 
 **Purpose:** Per-org schema parity vs the UAT reference profile captured 2026-07-06: datavault 115 (35 HUB/35 SAT/40 LNK/5 SAT_LNK), load 88, core 16, presentation 43 (all LIVE defs — fresh orgs get all 43; older UAT orgs show fewer), stage 0 (lazy), 31 procs, 5 fns, DL tables 21/34/13/41/48 per integration. SELECT-only dynamic SQL.
 
-**Status:** created 2026-07-06 — not executed (needs BaselineTest_* orgs).
+**Status:** EXECUTED against Prod 2026-07-06 — **60/60 PASS** after re-baselining expectations to the fresh-provisioning profile (datavault 118, load 76, procs 37; the original profile came from a stale older UAT org — every delta was verified by name-level object diff).
 
 ### 90. `prod-baseline/94_cleanup_test_orgs.sql`
 
 **Purpose:** Removes the validation orgs (no RemoveOrganisation SP exists): drops `VALTEST_XMS_*` databases, deletes OrganisationIntegrations + Organisations rows. Triple-guarded name filters, `@DryRun = 1` default.
 
 **Status:** created 2026-07-06 — not executed.
+
+### 91. `prod-baseline/95_set_prod_env.ps1` / `96_fix_globalparameters_widths.sql`
+
+**Purpose:** 95: interactive setup of `XMS_BI_MANAGED_PROD_*` env vars (secure prompt + connection test). 96: widens `int_*.GlobalParameters` columns to UAT-actual shape (ParameterKey 200, ParameterValue MAX, Category 100, Description 1000, CreatedBy/ModifiedBy 200); widen-only, idempotent.
+
+**Status:** 95 run by developer 2026-07-06. 96 EXECUTED against Prod 2026-07-06 (18 columns altered across 3 schemas) — **still to run on UAT**, together with the sp_CreateIntegrationTables width patch, or the next baseline regen reintroduces the defect.

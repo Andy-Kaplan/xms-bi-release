@@ -34,6 +34,43 @@ DeploymentObjects is **60** (not 57; includes the 6 TUBR `sp_Api_*` SPs and
 | TBTBookingMetrics001 | **On hold** — not deployed day-one. Scripts remain in the folder for a later delta release. |
 | Integration name casing | **Keep UAT casing** (`Marketman001`, `TROaP001`) so Prod stays byte-identical to UAT. |
 
+## 2026-07-06 Prod deployment record
+
+The baseline was deployed to the Prod MI (`xms-mssqlman-ne-prod`) the same day,
+using the Prod-as-validation route (`ClaudeDevelopment/prod-baseline/VALIDATION_RUNBOOK.md`).
+Outcome: **all 39 scripts deployed; core validation 30/30 PASS; five
+BaselineTest orgs provisioned; per-org parity 60/60 PASS.**
+
+Three defects surfaced during the run:
+
+1. **GlobalParameters column widths (FIXED).** `sp_CreateIntegrationTables`
+   created `int_*.GlobalParameters` narrower than the UAT tables actually are
+   (`ParameterValue` 4000 vs MAX etc.) — the Growyze `DL_DISHES` DDL truncated
+   (Msg 2628) at step 26. Fixed on Prod via
+   `96_fix_globalparameters_widths.sql` + SP patched in
+   `5_CreateIntegrationTables.sql`. **Outstanding:** apply both to UAT (its
+   `int_ncraloha001.ParameterValue` is still 4000, and its stored SP still has
+   the old widths — the next baseline regen would reintroduce them).
+2. **DDL scripts not fully re-runnable (open, low priority).** The SMO
+   extraction guards `CREATE TABLE` with `IF NOT EXISTS` but emits DEFAULT
+   constraint ALTERs unconditionally — re-running `2_CoreTableCreateScripts.sql`
+   or `7_Dynamic Suggestion Tables.sql` on an existing DB fails with Msg 1781.
+   First runs are unaffected. Fix in `01_extract_core_ddl.ps1` (guard the
+   constraint ALTERs) when convenient.
+3. **RuleOverrides DeploymentObjects record (open, benign).** Its
+   CreationScript ends with a stray
+   `ALTER TABLE [core].[RuleExecutionState] ADD DEFAULT ... FOR UpdatedDate` —
+   duplicating RuleExecutionState's own default, so sp_DeployObjects logs
+   RuleOverrides as ERROR in every org while actually leaving a fully correct
+   end state (table + its 3 defaults created; verified on Prod). Same noise
+   exists on UAT. Fix: remove the stray ALTER from the DeploymentObjects
+   record (UAT + master files) so provisioning logs run clean.
+
+Fresh-org provisioning profile (per-org parity reference, replaces any
+older-org-based numbers): datavault 118 (36 HUB / 36 SAT / 40 LNK / 6 SAT_LNK),
+load 76 (`load.CDC_*` created lazily at first load), core 16, presentation 43,
+stage 0, procedures 37, functions 5.
+
 ## Surprises vs the previous repo state
 
 The regeneration revealed substantial drift between the old repo files and the
