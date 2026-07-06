@@ -254,15 +254,15 @@ BEGIN
         BEGIN
             CREATE TABLE ' + QUOTENAME(@SchemaName) + N'.[GlobalParameters] (
                 [ParameterID] [int] IDENTITY(1,1) NOT NULL,
-	            [ParameterKey] [nvarchar](100) NOT NULL,
-	            [ParameterValue] [nvarchar](4000) NULL,
+	            [ParameterKey] [nvarchar](200) NOT NULL,
+	            [ParameterValue] [nvarchar](max) NULL,
 	            [DataType] [varchar](20) NOT NULL,
-	            [Category] [nvarchar](50) NULL,
-	            [Description] [nvarchar](500) NULL,
+	            [Category] [nvarchar](100) NULL,
+	            [Description] [nvarchar](1000) NULL,
 	            [IsActive] [bit] NOT NULL,
-	            [CreatedBy] [nvarchar](100) NOT NULL,
+	            [CreatedBy] [nvarchar](200) NOT NULL,
 	            [CreatedDate] [datetime2](7) NOT NULL,
-	            [ModifiedBy] [nvarchar](100) NULL,
+	            [ModifiedBy] [nvarchar](200) NULL,
 	            [ModifiedDate] [datetime2](7) NULL,
 	            [Version] [int] NOT NULL
             );
