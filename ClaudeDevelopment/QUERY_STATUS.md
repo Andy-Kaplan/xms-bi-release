@@ -1165,6 +1165,30 @@ Arithmetic: 79,738 + 0 + 79 + 23,218 = 103,035 ≈ 103,034.29 (rounding). Balanc
 
 ---
 
+### 39a. `inventory-variance-fix/16_variance_sort_ascending.sql`
+
+**Purpose:** Changes the Top 20 Variance Items bar chart sort order from absolute value (ABS) to ascending by value, so the chart flows from most negative (left) to most positive (right).
+
+**Change:** In the outer query's UNION ALL, replaces `ABS(Variance) AS SORT` with `Variance AS SORT` for both the Value and Quantity branches. The `ROW_NUMBER() OVER(ORDER BY SORT)` then produces an ascending left-to-right layout by actual value.
+
+**Status:** Created 2026-03-23. Not yet deployed.
+
+---
+
+### 39b. `inventory-variance-fix/17_end_date_window_fix.sql`
+
+**Purpose:** Fixes `sp_UpdateEntityDeltaParameters` so the END date parameter covers the full final day. MarketMan COUNT events are timestamped at `23:59:59`. The sproc was casting `MAX(EVENT_TS)` to DATE (= midnight `00:00:00`), so `BETWEEN ... AND '2026-03-22 00:00:00'` excluded events at `23:59:59`. No COUNT data has flowed into `F_INV_COUNTS_DAY` via automated runs since the inventory-variance-fix deployment on Mar 12 — all existing data was from the manual rebuild.
+
+**Fix:** Changes the END parameter to `DATEADD(DAY, 1, CAST(CAST(@MaxValue AS DATE) AS DATETIME2))` — adds 1 day so the window ends at midnight of the NEXT day, covering all timestamps on the max date. Also updates the comparison clause for consistency.
+
+**Affects:** All time-series entity delta parameters (STOCKEVENT, LINEITEM, etc.) — the fix is generic to the sproc, not STOCKEVENT-specific. All entities benefit from the full-day coverage.
+
+**Deploy:** Update `DeploymentObjects` record → run `sp_DeployObjects` to push the new sproc to all org databases. Next scheduled DV load will pick up the fix automatically.
+
+**Status:** Created 2026-03-23. **Deployed to UAT 2026-03-23.**
+
+---
+
 ### 39. `suggestions/07_recipe_cost_section.sql`
 
 **Purpose:** Adds a dynamic Recipe Cost / POS integration check to the `InvMMHeader` MarkdownCard. Detects when an organisation has inventory count data but no recipe usage (SALE_QTY) flowing, and renders an advisory section explaining the POS integration gap.
@@ -1374,31 +1398,620 @@ Also fixes FilterDefinitions JSON and ParameterMappings JSON in all 7 vis query 
 
 ---
 
+### 48. `integrations/Growyze/12_stocktake_staging.sql`
+
+**Purpose:** Adds stock count (EVENT_TYPE = 'COUNT') support to the Growyze integration using the three new `DL_STOCKTAKE*` tables. Two StagingControl changes:
+
+1. **NEW Step 15 — GRYZ_COUNT_EVENTS (Tier 1):** Stages completed stocktake report products. Joins `DL_STOCKTAKEREPORTPRODUCTS` → `DL_STOCKTAKEREPORTS` (for timestamp) → `DL_PRODUCTS` (for product ID). Key transforms: `quantity × size` → base-UOM total; UOM mapping (`each`→`EA`, `g`→`gr`, `kg`→`Kg`); NULL quantity → 0; only COMPLETED reports staged.
+
+2. **UPDATED Step 13 — GRYZ_STOCKEVENT (Tier 3):** Adds `UNION ALL` for `[stage].[GRYZ_COUNT_EVENTS]`. Also fixes INTERNAL_REF bug — was delivery note ID / waste ID / sales detail ID for non-count events; now `itemId` (product ID) for ALL branches. Required because `F_INV_COUNTS_DAY` partitions by `(INTERNAL_REF, LOCATION_HUB_ID)` to group movements within count intervals.
+
+**MCP test results (GrowyzeDev / Padel Social Club, 2026-03-17):**
+- 903 total rows, 903 distinct SRC_KEYs (no duplicates) ✓
+- 6 completed reports staged (1 IN_PROGRESS correctly filtered out) ✓
+- 532 distinct items, 2 distinct orgs ✓
+- All 6 UOM values map to supported pipeline values (0 unsupported) ✓
+- UOM breakdown: cl=330, ml=228, EA=165, L=100, gr=46, Kg=34
+
+**Status:** Created 2026-03-17. Not yet deployed.
+
+---
+
+### 48b. `integrations/Growyze/14_dn_events_size_multiplier_fix.sql`
+
+**Purpose:** Fixes Step 10 (Growyze DN Events) so ORDER `UOM_QUANTITY` is the base-UOM total (`receivedQty × size`) instead of the raw pack count. Root cause of the very high positive variance observed on the Growyze inventory variance dashboards (Dirty Sixth, Padel Social, any Growyze org with significant packaged-goods inventory).
+
+**Symptom:** F_INV_COUNTS_DAY.VARIANCE strongly positive — ACTUAL stock appears far above the (PREVIOUS + ORDERS − SALES − WASTE) expected level. COUNT events store `quantity × size` (added 2026-03-17 in 12_stocktake_staging.sql) and SALE events store recipe-exploded base-UOM totals, but ORDER events were storing only the pack count. For packaged drinks (70cl bottles, 200ml mixers, 330ml cans, etc.) orders were 70–850× too small, so EXPECTED was vastly understated.
+
+**Sample evidence (Dirty Sixth UAT, 2026-05-18):**
+
+| UOM | Current sum | Fixed sum | Factor |
+|---|---:|---:|---:|
+| ml | 1,926 | 808,824 | 420× |
+| g | 857 | 285,544 | 333× |
+| cl | 2,017 | 139,697 | 69× |
+| L | 1,772 | 48,870 | 28× |
+| kg | 5,900 | 22,787 | 3.9× |
+| each | 1,733 | 11,321 | 6.5× |
+
+**Fix:** `UOM_QUANTITY = TRY_CAST(receivedQty AS DECIMAL(18,6)) * COALESCE(NULLIF(TRY_CAST(size AS DECIMAL(18,6)), 0), 1)` — falls back to raw qty when size is missing/zero so bulk ingredients (size = 1) are unaffected.
+
+**MCP test result (Dirty Sixth UAT, 2026-05-18):** Staging body runs cleanly, returns 5,719 rows / 5,187 distinct SRC_KEYs across 7 UOMs. Post-Tier-3 dedup on (SRC_KEY, EVENT_BEHAVIOUR) will collapse the duplicate fetch snapshots to the same ~5,227 distinct events currently in SAT_STOCKEVENT — only UOM_QUANITY values change.
+
+**Deployment:** Run script → UploadStagingControl for int_growyze001 → re-run sp_Staging for every Growyze org (Padel Social, Dirty Sixth, GrowyzeDev) → re-run sp_DataVaultLoad (CDC will write new SAT_STOCKEVENT versions for every existing ORDER hub and recompute presentation layer).
+
+**Out of scope:** Step 11 Waste Events (totalQty already a base-UOM total; volumes negligible); UOM string normalisation between ORDER ('kg'/'g'/'each') and COUNT ('Kg'/'gr'/'EA') events (a tidy-up — orders currently still reach F_INV_COUNTS_DAY).
+
+**Status:** Created 2026-05-18. Not yet deployed.
+
+---
+
+### 49. `integrations/Growyze/13_stocktake_ddl.sql`
+
+**Purpose:** Adds STAGE_DDL records to `[core].[int_growyze001].[GlobalParameters]` for the three new stocktake DL tables so that `sp_CreateIntegrationTables` can provision them in new org databases. Uses MERGE upsert on `(ParameterKey, Category)`.
+
+| ParameterKey | Columns | Purpose |
+|---|---|---|
+| `DL_STOCKTAKEREPORTS` | 25 cols | Report headers with timestamps, discrepancy data |
+| `DL_STOCKTAKEREPORTDETAIL` | 30 cols | Richer headers with products/recipes split, template IDs |
+| `DL_STOCKTAKEREPORTPRODUCTS` | 17 cols | Product-level count lines (barcode, qty, price, UOM) |
+
+**Note:** These records already exist in DEV (auto-created by the API endpoint config). This script ensures they exist in Test/UAT/Prod. DDL values match the DEV database exactly.
+
+**Status:** Created 2026-03-17. Not yet deployed.
+
+---
+
+### 50. `integrations/Growyze/reporting_queries/15_grid_layout_fix.sql`
+
+**Purpose:** (Placeholder — see script file for details.)
+
+**Status:** Created 2026-03-17. Not yet deployed.
+
+---
+
+### 51. `integrations/Growyze/reporting_queries/16_filter_tr_locations.sql`
+
+**Purpose:** (Placeholder — see script file for details.)
+
+**Status:** Created 2026-03-17. Not yet deployed.
+
+---
+
+### 52. `integrations/Growyze/reporting_queries/17_barchart_uom_display.sql`
+
+**Purpose:** Applied ml→L and g→kg UOM conversion to the two BarChartCard records (`InvTopConsumption` and `InvTopWaste`). This was the first pass at UOM display fixes for Growyze.
+
+**Status:** Created 2026-03-17. Not yet deployed.
+
+---
+
+### 53. `integrations/Growyze/reporting_queries/18_remaining_uom_conversions.sql`
+
+**Purpose:** Applies ml→L and g→kg display conversion to the remaining 6 vis query records not covered by script 17. Wraps each physical-quantity SUM with a `CASE WHEN MAX(FU.STANDARDISED_UOM) IN ('ml','g') THEN ROUND(.../ 1000.0, 1) ELSE ROUND(..., 1) END` expression. UOM display columns changed to show 'L'/'kg' instead of raw 'ml'/'g'. ORDER_QTY omits ABS (sign-preserving). YAxisLabels updated to 'Quantity (L / kg)' and 'Waste (L / kg)' on chart cards. InvMargeBrut header labels updated to 'Purchases (L/kg)', 'Consumption (L/kg)', 'Waste (L/kg)'.
+
+**Records covered (6 MERGE upserts):**
+
+| DataSetName | VisualizationType | Changes |
+|---|---|---|
+| InvConsumption | CustomDataGrid | Column5-9 qty conversion + Column10 UOM display label |
+| InvMargeBrut | CustomGroupedDataGrid | Usage CTE PURCHASE/CONSUMPTION/WASTE_QTY conversion + header label updates |
+| InvStockActivity | MultiLineChartCard | 3 UNION ALL branches Value conversion + YAxisLabel |
+| InvStockActivity | StackedBarChartCard | 3 UNION ALL branches Value conversion + YAxisLabel |
+| InvWasteAnalysis | CustomDataGrid | Column4 WASTE_QTY conversion + Column5 UOM display label |
+| InvWasteAnalysis | MultiLineChartCard | Value SUM conversion + YAxisLabel |
+
+**MCP test results (Padel Social DB on UAT, 2026-03-18):**
+- InvConsumption grid: 324 rows, 226 with L/kg UOM. Values like 7.7L, 0.1L (sensible, not thousands of ml). ✓
+- InvMargeBrut: 12 rows. Beverages 28.1L purchases, 396.8L for Earls Court. Monetary cols (TURNOVER, RECIPE_COGS) unaffected. ✓
+- InvStockActivity MultiLine: Orders In weekly values 3–61.8L, Sales Out 61.8L/348.7L. ✓
+- InvStockActivity StackedBar: Earls Court Orders In 438.4L, Sales Out 213.3L, Waste 8.8L. ✓
+- InvWasteAnalysis grid: 23 rows. Values like 0.1L, 1.8L, 1kg. UOM shows 'L'/'kg'/'each'. ✓
+- InvWasteAnalysis MultiLine: 5 rows. Values 0.7L, 8.1L. Category legend labels correct. ✓
+
+**Status:** Created 2026-03-18. Not yet deployed.
+
+---
+
+### 54. `parent-org/14_fix_currency_types.sql`
+
+**Purpose:** Fixes "Invalid currency code : null" errors on 3 cards in the Group Overview dashboard for Nabil Enterprises. The parent org context spans multiple child databases and has no currency code set, so `CURRENCY` column types in header metadata cause the front-end to fail.
+
+**Fix:** Changes `CURRENCY` → `DECIMAL` in the QueryTemplate header metadata (second SELECT) for all three datasets. Also updates the OutputDefinitions JSON for ParentLocationRankings.
+
+**Affected datasets:**
+
+| DataSetName | VisualizationType | CURRENCY columns changed |
+|---|---|---|
+| ParentGrowthSummary | CustomDataGrid | Revenue (Type2), Prev Period (Type3), Avg Order (Type6) |
+| ParentOrgSummaryTable | CustomDataGrid | Revenue (Type2), Profit (Type3), Variance (Type5) |
+| ParentLocationRankings | CustomGroupedDataGrid | Net Revenue (Type1), Avg Order Value (Type3) + OutputDefinitions JSON |
+
+**Run against:** core database
+
+**Status:** Created 2026-03-23. Not yet deployed.
+
+---
+
+### 55. `parent-org/15_remove_chart_title_values.sql`
+
+**Purpose:** Removes redundant KPI title figures from chart cards on the Group Overview dashboard. The stacked bar, multi-line, and bar charts all display a large aggregate number above the chart (e.g. "1887324") that duplicates the dedicated KPI cards at the top.
+
+**Fix:** Replaces correlated `Value`/`TotalValue` subqueries in the header SELECT with `NULL` for each dataset.
+
+**Affected datasets:**
+
+| DataSetName | VisualizationType | Column nullified |
+|---|---|---|
+| ParentOrgRevenue | StackedBarChartCard | Value (net revenue sum) |
+| ParentOrgRevenueTrend | MultiLineChartCard | Value (net revenue sum) |
+| ParentProfitByOrg | StackedBarChartCard | Value (profit sum) |
+| ParentDiscountImpact | BarChartCard | TotalValue (discount impact sum) |
+
+**Note:** `ParentEfficiencyByOrg` already has `NULL AS Value` — no change needed.
+
+**Run against:** core database
+
+**Status:** Created 2026-03-23. Not yet deployed.
+
+---
+
+### 56. `parent-org/12_filter_key_fix.sql`
+
+**Purpose:** Fixes Group Overview dashboard filters having no effect on visualisations. Two bugs:
+
+1. **FilterDefinitions key mismatch:** DashboardGridFilter.DataSet values are `ParentOrganisations` / `ParentLocations`, but FilterDefinitions JSON keys used `Organisations` / `Locations`. The system matches by name — mismatch means @FilterClause never injected.
+
+2. **ParentOrganisations FilterList ID column:** Returned `ORG_CODE` (a GUID) as `[ID]`, but chart FilterDefinitions filter on `org.[ORG_NAME]` (a name). System sends ID value in @FilterClause, producing `AND org.[ORG_NAME] IN ('5AD1BEAC-...')` — guaranteed no match. Fix: return `ORG_NAME` as both `[Label]` and `[ID]`.
+
+**Fix:**
+- REPLACE FilterDefinitions keys: `"Organisations"` → `"ParentOrganisations"`, `"Locations"` → `"ParentLocations"`
+- UPDATE ParentOrganisations FilterList QueryTemplate: `ORG_NAME AS [ID]` instead of `CAST(ORG_CODE ...) AS [ID]`
+
+Idempotent — both statements are safe to re-run.
+
+**Run against:** core database
+
+**Status:** Created 2026-03-24. Not yet deployed.
+
+---
+
+### 57. `parent-org/13_growth_summary_fix.sql`
+
+**Purpose:** Fixes ParentGrowthSummary showing "No rows" unless the date range fully contains a WEEK/MONTH/QUARTER period. A 7-day date picker window rarely contains a full week (must align Mon-Sun) and never a month or quarter.
+
+**Root cause:** ParameterMappings used containment semantics (`PERIOD_START >= @StartDate AND PERIOD_END <= @EndDate`).
+
+**Fix:**
+1. Swap ParameterMappings to **overlap** semantics: `PERIOD_END >= @StartDate AND PERIOD_START <= @EndDate` — includes any period that touches the selected date range
+2. Rewrite query with CTE to pick only the **latest** overlapping period per type (WEEK/MONTH/QUARTER)
+3. Recalculate Growth % and YoY % from group totals instead of AVG of individual rates
+
+**Result:** Any date range always produces up to 3 rows — the latest week, month, and quarter that overlap the selection.
+
+**Run against:** core database
+
+**Status:** Created 2026-03-25. Not yet deployed.
+
+---
+
+## Cost Path Redesign Scripts (`cost-path-redesign/`)
+
+### 56. `cost-path-redesign/01_invitem_v4_entity.sql`
+
+**Purpose:** Introduces INVITEM v4 in `DataVaultEntities`, adding `UOM_COST` (DECIMAL(38,10)) as the 15th attribute to carry catalogue/BOM unit cost in the item's native UOM. This enables the cost path redesign that removes the dependency on the InvLocCost staging table.
+
+**Changes:**
+1. Retires INVITEM v3 (UPDATE RELEASE_STATE → 'Retired') — safe conditional update (WHERE RELEASE_STATE = 'Live')
+2. Upserts INVITEM v4 Live via MERGE on (ENTITY_NAME, VERSION)
+
+**Attribute order (v4):** INVITEM_NAME, PARENT_ID, LEVEL_NAME, BOTTOM_LEVEL, UOM, ATTR_1, ATTR_2, ATTR_3, ATTR_4, ATTR_5, MICROSERVICE_ID, INVITEM_ID, MICROSERVICE_NAME, MICROSERVICE_ID_BIN, UOM_COST
+
+**Run against:** core database
+
+**Status:** Created 2026-03-24. Not yet deployed.
+
+---
+
+### 57. `cost-path-redesign/02_growyze_invitems_uom_cost.sql`
+
+**Purpose:** Growyze staging step to populate `UOM_COST` in SAT_INVITEM. Reads unit cost data from the Growyze DL tables and maps it into the INVITEM v4 attribute, using the new `UOM_COST` column added in script 01.
+
+**Run against:** client database (per-org)
+
+**Status:** Created 2026-03-24. Not yet deployed.
+
+---
+
+### 58. `cost-path-redesign/03_marketman_invitems_uom_cost.sql`
+
+**Purpose:** MarketMan staging step to populate `UOM_COST` in SAT_INVITEM. Reads unit cost data from MarketMan DL tables and maps it into the INVITEM v4 attribute, using the new `UOM_COST` column added in script 01.
+
+**Run against:** client database (per-org)
+
+**Status:** Created 2026-03-24. Not yet deployed.
+
+---
+
+### 59. `cost-path-redesign/04_presentation_counts_cost.sql`
+
+**Purpose:** Replaces the InvLocCost/InvCost CTE chain in the **"Inventory Counts by Day"** PresentationControl step (`F_INV_COUNTS_DAY`) with a simpler `InvItemCost` CTE that reads `UOM_COST` directly from `SAT_INVITEM`, converting from the item's native UOM to the standardised UOM via the `UOMConversion` inline table.
+
+**Deployment:** MERGE on `step_name = N'Inventory Counts by Day'`. Safe to re-run.
+
+**Note:** This step is for `F_INV_COUNTS_DAY` (count/variance facts). It is distinct from `F_INV_USAGE_DAY` (movement/throughput facts), which is handled by script 05.
+
+**Run against:** core database
+
+**Status:** Created 2026-03-24. Not yet deployed.
+
+---
+
+### 60. `cost-path-redesign/05_presentation_usage_cost.sql`
+
+**Purpose:** Replaces the InvLocCost/InvCost CTE chain in the **"Inventory Usage by Day"** PresentationControl step (`F_INV_USAGE_DAY`) with a simpler `InvItemCost` CTE that reads `UOM_COST` directly from `SAT_INVITEM`, converting from the item's native UOM to the standardised UOM via the `UOMConversion` inline table.
+
+**Changes vs source query (lines 2196–2375 of `8_PresentationControl.sql`):**
+- Removed: `DECLARE @InvItemAvgDays INT` and `SET @InvItemAvgDays = 30`
+- Removed: `InvLocCost` CTE (rolling-average cost from `SAT_INVREPORT` over `@InvItemAvgDays` days)
+- Removed: `InvCost` CTE (second-level fallback wrapping `InvLocCost`)
+- Added: `InvItemCost` CTE — single join to `SAT_INVITEM` filtered to `CURRENT_FLAG = 1`, `UOM_COST IS NOT NULL`, `BOTTOM_LEVEL = 1`; converts cost using `UOMConversion`
+- Replaced: two `LEFT OUTER JOIN` clauses (`ILC` + `IC`) with one `LEFT OUTER JOIN InvItemCost IIC`
+- Replaced: `COALESCE(ILC.UOM_COST, IC.UOM_COST)` with `IIC.UOM_COST`
+- Preserved: all other CTEs (`UOMConversion`, `StockEvents`, `MovementsByGroup`) and the full final SELECT column list unchanged
+
+**Deployment:** MERGE on `step_name = N'Inventory Usage by Day'`. Safe to re-run.
+
+**Note:** This step is for `F_INV_USAGE_DAY` (movement/throughput facts). It is distinct from `F_INV_COUNTS_DAY` (count/variance facts), which is handled by script 04.
+
+**Run against:** core database
+
+**Status:** Created 2026-03-24. Not yet deployed.
+
+---
+
+### 61. `padel_social_product_dashboard.sql`
+
+**Purpose:** Enables product visualisations and inventory value KPIs for Padel Social on the UAT report database. Creates a new "Products" dashboard and adds value-oriented inventory cards to existing dashboards.
+
+**Evaluated by agent team (2026-03-28):**
+- **READY (7 queries):** ProductMargins (Pie/StackedBar/MultiLine/Combined), TopProducts (Grid), UniqueProductsSold (KPI), ProductComparison (Grid)
+- **SKIPPED (5 queries):** ProductCount x3 (legacy `[threerocks]` prototype), ProductNetSales (legacy prototype), ProductGC (needs POS co-occurrence data), ProductMarginsChannel (no channel data in Growyze)
+- **Currency audit:** 0 of 52 Inv/Product queries contain currency symbols
+
+**Changes (5 parts):**
+1. New VisualisationConfig for SingleKPICard (VisId 10) + 8 KPI datasets (UniqueProductsSold, InvWasteCost, InvOrdersCost, InvNegVar, InvPosVar, InvNetSales, InvProdEventCost, InvProdEventValue)
+2. Product + inventory datasets added to 7 existing card-type configs (ProductMargins across 4 card types, TopProducts, ProductComparison, InvCountData, InvKPIGrouped, InvTop20Variance, Products filter)
+3. New "Products" dashboard (sort 4): 6 cards + 2 filters (Locations, Products)
+4. InvMargeBrut + InvKPIGrouped added to Cost & Margins (sort 4-5)
+5. InvWasteCost/InvOrdersCost/InvNegVar KPIs + InvTop20Variance + InvCountData added to Stock Activity (sort 8-12)
+
+**Run against:** UAT report database (`xms-mssql-ne-uat`, database: `report`)
+
+**Status:** Created 2026-03-28. Not yet deployed.
+
+---
+
+### 62. `integrations/Growyze/reporting_queries/19_productmargins_formula_fix.sql`
+
+**Purpose:** Fix all 4 ProductMargins visualisation queries that show negative Discounts and totals exceeding 100%.
+
+**Root cause (diagnosed by 3-agent team, 2026-03-28):**
+1. **PresentationControl bug:** `PROFIT = SUM(NET_VALUE - NET_COST)` subtracts one unit cost from full row revenue instead of `QUANTITY * NET_COST`. This inflates PROFIT.
+2. **Vis query formula:** Uses inflated `PROFIT_LESS_DISCOUNT / NET_VALUE` for Margin%, then derives `Discounts = 100 - Margin% - Cost%` which goes negative when Margin% + Cost% > 100%.
+3. **Growyze-specific:** `PROFIT_LESS_DISCOUNT = PROFIT` always (no POS discounting), so "Discounts" is meaningless — just absorbs the overflow.
+
+**Fix (vis query layer):** Derive Margin% as `(NET_VALUE - QUANTITY*AVG_NET_COST) / NET_VALUE` instead of using `PROFIT_LESS_DISCOUNT`. This guarantees Margin% + Cost% = 100% by construction. Discounts becomes a rounding residual only (0 or +/-1). Also removes `FORMAT('N0')` wrappers that returned nvarchar.
+
+**Additional fix:** CombinedChartCard title changed from "Margins by Channel" to "Product Margin Trends" (query groups by date, not channel).
+
+**Verified against data:** Corrected formula yields Margin 76% + Cost 24% + Discounts 0% = 100%.
+
+**Note:** The PresentationControl PROFIT formula should also be fixed as a separate data quality improvement, but this vis query fix is sufficient for correct dashboard display.
+
+**Affects:** 4 MERGE statements updating `core.core.VisualisationQueries` (ProductMargins × PieChartCard, StackedBarChartCard, MultiLineChartCard, CombinedChartCard)
+
+**Run against:** core database
+
+**Status:** Created 2026-03-28. Not yet deployed.
+
+---
+
+### 63. `integrations/Growyze/reporting_queries/20_inv_variance_category_fix.sql`
+
+**Purpose:** Fix InvVarianceCategory StackedBarChartCard showing impossibly large variance values (2M+ instead of ~100K).
+
+**Root cause:** The query joins F_INV_USAGE_DAY to the latest count from F_INV_COUNTS_DAY via a many-to-one LEFT JOIN. Each item's single variance figure is replicated across every usage row. VOSS Water: 77,500ml variance × 89 usage rows = 4.6M inflated value.
+
+**Fix:** Query F_INV_COUNTS_DAY directly with RN=1 filter (latest count per item/location). No F_INV_USAGE_DAY join needed — variance is a count-day concept.
+
+**Verified:** Beverages drops from ~2M to ~93K positive / ~105K negative — sensible values for a padel club.
+
+**Affects:** 1 MERGE on `core.core.VisualisationQueries` (InvVarianceCategory / StackedBarChartCard)
+
+**Run against:** core database
+
+**Status:** Created 2026-03-28. Not yet deployed.
+
+---
+
+### 64. `integrations/Growyze/reporting_queries/21_stock_activity_uom_fix.sql`
+
+**Purpose:** Fix InvStockActivity StackedBarChartCard and MultiLineChartCard showing misaligned values between location-grouped and week-grouped views.
+
+**Root cause:** Both queries use `MAX(STANDARDISED_UOM)` per GROUP BY to decide a single `/1000` conversion for the entire group. Different groupings (location vs week) produce different MAX UOM values, causing inconsistent totals. Also, 'gr' items fail the `IN ('ml','g')` check and never get converted.
+
+**Fix:** Per-row CASE WHEN conversion: `CASE WHEN STANDARDISED_UOM IN ('ml','g','gr') THEN qty/1000.0 ELSE qty END`. Same pattern as scripts 17/18 (InvConsumption, InvWasteAnalysis). Also adds 'gr' to the conversion check.
+
+**Affects:** 2 MERGE statements on `core.core.VisualisationQueries` (InvStockActivity × StackedBarChartCard, MultiLineChartCard)
+
+**Run against:** core database
+
+**Status:** Created 2026-03-28. Not yet deployed.
+
+---
+
+### 65. `snapshot_generator.sql`
+
+**Purpose:** Generates idempotent MERGE scripts for all core control tables by querying the source environment. Run against UAT (or any source), save the output, review, then execute against Prod (or any target). Covers 10 table types across 8 sections.
+
+**Tables included:**
+- `core.core`: Integrations, DataVaultEntities, GlobalParameters (excl. ephemeral), DeploymentObjects, PresentationTables, PresentationControl, VisualisationQueries
+- Per-integration schemas: GlobalParameters, StagingControl, EntityMappings
+
+**Tables excluded:** Organisations, OrganisationIntegrations (environment-specific), suggestion engine tables (separate deployment)
+
+**Output method:** Results to File (Ctrl+Shift+F) or Results to Text (Ctrl+T, max chars = 8192). Also supports XML grid output (commented option).
+
+**Run against:** core database (source environment)
+
+**Status:** Created 2026-03-28. Not yet tested.
+
+---
+
+### 66. `vis_uom_gr_conversion_fix.sql`
+
+**Purpose:** Add `'gr'` (grams variant) to the UOM conversion logic in InvConsumption and InvWasteAnalysis vis queries. Items with `STANDARDISED_UOM = 'gr'` (e.g. FUNKIN WHITE PEACH) display raw gram values (1000) instead of converted kg (1.0). The InvStockActivity queries already handle `'gr'` — this aligns the other 5 queries.
+
+**Root cause:** Scripts 17/18 (deployed) established the `IN ('ml','g')` conversion pattern but missed the `'gr'` variant present in Growyze data. Script 21 (not deployed) already fixes InvStockActivity with `'gr'`.
+
+**Fix (2 steps):**
+- Step 1: `REPLACE` adds `'gr'` to all `IN ('ml','g')` lists → `IN ('ml','g','gr')` for /1000 division
+- Step 2: `REPLACE` adds `'gr' → 'kg'` UOM label mapping in CustomDataGrid queries
+
+**Affected queries (5):** InvConsumption (BarChartCard, CustomDataGrid), InvWasteAnalysis (BarChartCard, MultiLineChartCard, CustomDataGrid)
+
+**Run against:** core database. **Idempotent:** Yes (REPLACE no-op if already fixed).
+
+**Status:** Created 2026-03-28. Not yet deployed.
+
+---
+
+### 67. `vis_locations_filter_fix.sql`
+
+**Purpose:** Fix Locations FilterList vis query to only show locations with transaction data. Prevents phantom locations (e.g. parent-org test locations) from appearing in the dropdown.
+
+**Root cause:** Locations FilterList queries `[datavault].[SAT_LOCATION]` with only `CURRENT_FLAG = 1`. Any DV location appears regardless of fact data. Padel Social shows 7 locations but only 3 have transactions.
+
+**Complements:** Script 16 (`16_filter_tr_locations.sql`, not deployed) fixes the staging pipeline. This fix makes the vis query itself resilient for all orgs.
+
+**Fix:** MERGE updates QueryTemplate + ExecutionQuery to add EXISTS checks against 5 fact tables. Parent locations (BOTTOM_LEVEL=0) included only if children have data.
+
+**Affects:** 1 MERGE on `core.core.VisualisationQueries` (Locations / FilterList)
+
+**Run against:** core database. **Idempotent:** Yes (MERGE).
+
+**Status:** Created 2026-03-28. Not yet deployed.
+
+---
+
+### 68. `integrations/Growyze/reporting_queries/22_filter_wiring_fix.sql`
+
+**Purpose:** Add Products filter to Padel Social's Cost & Margins and Period Analysis dashboards.
+
+**Root cause:** These dashboards only have Locations + InvItems filters. 8 POS-margin queries (InvCOGSByCategory ×2, InvMarginTrend, InvWeeklySummary ×2, InvPeriodComp ×3) already have `Products.column` wired in their FilterDefinitions, but no Products filter widget exists on the dashboards. The InvItems filter can't apply to these queries — F_PRODUCT_MARGIN_DAY joins D_PRODUCT not D_INVITEM, and product/invitem names are different entities. The Products FilterList provides a hierarchical tree with expandable categories.
+
+**Fix:** INSERT Products DashboardGridFilter (SortOrder 3) on both dashboards. Idempotent via IF NOT EXISTS guard.
+
+**Affects:** 2 INSERT on `report.dbo.DashboardGridFilter`
+
+**Run against:** report database (microservice server)
+
+**Status:** Created 2026-03-28. Not yet deployed.
+
+---
+
+### 69. `clean-display-characters/clean_display_characters.sql`
+
+**Purpose:** Sanitises characters that break the HTML frontend (e.g. straight apostrophe `'`) at the Data Vault load boundary. Two parts:
+
+- **Part 1:** MERGE a `fnCleanForDisplay` scalar function into DeploymentObjects (order 24, Core Functions category). Uses `NCHAR(39) → NCHAR(8217)` (straight apostrophe → typographic right single quote). Deployed to all client DBs via sp_DeployObjects.
+- **Part 2:** Updated `BuildSelectClause` procedure — wraps all hash:0 (pass-through) columns with `core.fnCleanForDisplay()`. After running UploadEntityMappings, all generated load SQL in StagingControl will include the cleaning function.
+
+**Deploy order:** Part 1 (core) → sp_DeployObjects (all orgs) → Part 2 (core) → UploadEntityMappings (each integration schema)
+
+**Affects:** `core.DeploymentObjects` (1 new record), `core.BuildSelectClause` (procedure update), all client DB `core.fnCleanForDisplay` (new function)
+
+**Status:** Created 2026-03-28. Not yet deployed.
+
+---
+
+### 70. `integrations/Growyze/reporting_queries/24_invmargebrut_header_fix.sql`
+
+**Purpose:** Fix InvMargeBrut CustomGroupedDataGrid HTTP 500 error.
+
+**Root cause:** The QueryTemplate includes a second SELECT (header metadata) that produces a second result set. The CustomGroupedDataGrid microservice handler does not support dual result sets — it crashes with HTTP 500. Other working CustomGroupedDataGrid queries (InvKPIGrouped, SalesKPI) have no header SELECT.
+
+**Fix:** Remove the header SELECT from the QueryTemplate. The data query itself is unchanged and returns correct results (verified via MCP against Dirty Sixth on UAT: Turnover £105K, COGS £29K, GP% 72.1%).
+
+**Affects:** 1 VisualisationQueries record — InvMargeBrut / CustomGroupedDataGrid
+
+**Note:** ParentLocationRankings (also CustomGroupedDataGrid with a header) likely has the same issue.
+
+**Status:** Created 2026-04-01. Not yet deployed.
+
+---
+
+### 71. `integrations/Growyze/reporting_queries/25_biconfig_prefix_fix.sql`
+
+**Purpose:** Fix Padel Social BiConfig DbPrefix in the microservice report database (UAT).
+
+**Root cause:** Padel Social (OrgId `94A4B719-EB0F-421F-AD03-ABECDD888B14`) has DbPrefix `20251208` (copied from DEV GrowyzeDev org) instead of the correct UAT prefix `20260310`. The microservice constructs the DB name as `{DbPrefix}_XMS_{OrgId}`, connecting to a nonexistent database. All dashboard cards for Padel Social fail.
+
+**Fix:** Single UPDATE to dbo.BiConfig setting DbPrefix = '20260310'.
+
+**Affects:** 1 BiConfig record in microservice report DB (UAT only)
+
+**Status:** Created 2026-04-01. Not yet deployed.
+
+---
+
+### 72. `integrations/Growyze/reporting_queries/26_invmargintrend_column_fix.sql`
+
+**Purpose:** Fix InvMarginTrend MultiLineChartCard showing "0.00" with empty chart.
+
+**Root cause (probable):** The query uses old Pattern B column schema (`VisType` column) instead of Pattern A (`Curve`, `Stack`, `Area`, `StackOrder`, `ShowMark`) used by all working MultiLineChartCard queries (ProductMargins, NetSales, ForecastDailyRevenue, ParentOrgRevenueTrend). The underlying data is correct — verified via MCP against Dirty Sixth: GP% 71-72%, COGS% 28-29% across Jan-Mar 2026.
+
+**Fix:** Convert outer SELECT from `'line' AS VisType` to `'linear' AS Curve, NULL AS Stack, 'false' AS Area, NULL AS StackOrder, 'true' AS ShowMark`. Data query and header unchanged.
+
+**Affects:** 1 VisualisationQueries record — InvMarginTrend / MultiLineChartCard
+
+**Note:** Other Inv* MultiLineChartCard queries (InvStockActivity, InvWasteAnalysis) and ATV* queries also use Pattern B and may need the same fix. If this fix resolves InvMarginTrend, apply the same conversion to those queries.
+
+**Status:** Created 2026-04-01. Not yet deployed.
+
+## TUBR API Integration Scripts
+
+### 73. `integrations/tubr/01_sp_TubrApi_GetLocations.sql`
+### 74. `integrations/tubr/02_sp_TubrApi_GetCatalog.sql`
+### 75. `integrations/tubr/03_sp_TubrApi_GetOrders.sql`
+### 76. `integrations/tubr/04_register_deployment_objects.sql`
+
+**Purpose:** Three stored procedures backing the three endpoints TUBR (forecasting partner) requires — `GET /v1/locations`, `GET /v1/locations/{id}/catalog`, `GET /v1/locations/{id}/orders`. The fourth script registers all three in `core.core.DeploymentObjects` (ExecutionOrder 140-142, Category `'TUBR API Procedures'`) so `sp_DeployObjects` rolls them out to every client database alongside the card-procedure family.
+
+**SP shape:**
+- All three live in the `core` schema of each client database. The API resolves `OrganisationCode → DatabaseName` via `core.core.Organisations` and connects directly to the resolved DB before executing the SP.
+- Output is tabular result sets (no `FOR JSON`). `sp_TubrApi_GetCatalog` returns two result sets (products, categories). `sp_TubrApi_GetOrders` returns two result sets (orders, line_items) joined by `order_id`.
+- `sp_TubrApi_GetOrders` returns `LINEITEM_TYPE IN ('PROD','MOD')` with `parent_lineitem_id` exposed so the API can re-parent modifiers under their parent product line.
+- Pagination is `OFFSET/FETCH` keyed on `(OPEN_TIME, HUB_ID)` via `@PageNumber`/`@PageSize`. Cursor pagination can be added later.
+- Stable IDs: orders and line items expose hex-encoded SHA-256 hub keys (`ord_…`, `li_…`), guaranteeing stability across re-fetches.
+
+**Smoke tested against UAT** — Three Rocks Cafe DB (`20250917_XMS_C14CF568-588D-F011-B3CD-000D3AD9E9D4`):
+- Locations query returned 18 outlets ✓
+- Orders query returned correct totals and `'completed'` state mapping ✓
+- Real-data gaps surfaced (not query bugs): `LNK_ADDRESS_LOCATION` empty (address NULL), `GRAND_TOTAL` NULL on NCRAloha orders (worked around via `COALESCE(GRAND_TOTAL, GROSS_SALES)`), `DISCOUNT_GROSS` stored negative (wrapped in `ABS()`), `order_mode` NULL because no CHANNEL link populated for this org.
+
+**Open follow-ups:**
+1. Add `Currency CHAR(3)` and `Timezone NVARCHAR(64)` columns to `core.core.Organisations`; replace SP `@DefaultCurrency` / `@DefaultTimezone` parameter defaults with reads from those columns.
+2. Documented in `docs/data-vault-reference.md`: PRODUCT_ID must be unique per variant. Integration staging pipelines (NCRAloha, TROAP, Square, Bizon) need to honour this so TUBR's variant-level granularity is preserved end-to-end.
+3. `delivery_partner` is not modelled — needs a new attribute on CHANNEL or a dedicated entity if/when delivery integrations land.
+
+**Status:** Created 2026-05-05. Not yet deployed. Order: deploy `04_register_deployment_objects.sql` against `core`, then run `sp_DeployObjects` per-org cursor to roll the procedures out to client DBs.
+
+## Front-end Test Cards (Kitchen Sink, TEST) — XMSE-1030, XMSE-1014, XMSE-948
+
+### 77. `test-cards/01_register_vis_queries_TEST.sql`
+### 78. `test-cards/02_wire_kitchen_sink_TEST.sql`
+
+**Purpose:** Place six self-contained sample cards on the Kitchen Sink dashboard for Three Rocks Cafe (TEST) so Craig can build / reproduce the three open front-end tickets:
+
+- **XMSE-1030** — `HorizontalStackedBarTest` (StackedBarChartCard): 5 stores × 4 categories sample shape for the new horizontal stacked bar component.
+- **XMSE-1014** — `MultiLineNullValueTest` (MultiLineChartCard): header `Value = NULL` to repro the "0.00" rendering bug.
+- **XMSE-948** — `MarkdownTestEmpty` / `MarkdownTestVisible` (MarkdownCard) and `StaticBoxTestEmpty` / `StaticBoxTestVisible` (StaticBoxCard): paired empty/visible queries to verify the hide-on-empty behaviour.
+
+All six dataset queries are self-contained `(VALUES …)` constructors — no Data Vault or presentation-layer dependency, so they run regardless of whether DV data has loaded on TEST.
+
+**Targets:**
+- `01_register_vis_queries_TEST.sql` → BI MI TEST `core.core.VisualisationQueries` (MERGE upserts, idempotent)
+- `02_wire_kitchen_sink_TEST.sql` → microservice TEST `report.dbo.*` — patches `VisualisationDataSetMap` + adds six `DashboardGridItem` rows on Kitchen Sink (`DashboardGridId 87D8B576-BE97-F011-B3CD-000D3AD9E35E`) for Three Rocks Cafe (`OrganisationId C14CF568-588D-F011-B3CD-000D3AD9E9D4`). Sort orders 100–105.
+
+See `test-cards/README.md` for deploy order, row-shape reference, and revert instructions.
+
+**Status:** Created 2026-05-06. Not yet deployed. BI MI TEST MCP was unreachable at authoring time (login failure); scripts authored against UAT-derived schema and verified against TEST microservice metadata.
+
+## Growyze Orphan PRODUCT_HUB_ID Fix (2026-05-18)
+
+### 79. `integrations/Growyze/15_orphan_product_fix.sql`
+
+**Purpose:** Two-layer fix for the Growyze orphan PRODUCT_HUB_ID leak that drops product slices from dashboards.
+
+**Background:** `stage.GRYZ_LINEITEM` LEFT-joins `DL_DISHES` on `(items_posId, organizations)`. When a sale-detail `items_posId` has no matching dish, `d.id` is NULL, `PRODUCT_KEY = NULL`, and the DV load hashes NULL into a deterministic orphan PRODUCT_HUB_ID. The link row exists but the hub does not, so `D_PRODUCT` joins yield NULL — any GROUP BY product silently drops the slice. Dirty Sixth UAT 2026-05-09: orphan = £1,454.84 NET (~8.4% of day's £17,405.50 total).
+
+**Section 1 (Growyze-only, root cause):**
+- New tier-2 `StagingControl` step `Growyze LineItem Product Link` materialises `stage.GRYZ_LINEITEM_PRODUCT` filtered to rows with non-null `PRODUCT_KEY`.
+- `EntityMappings` row for `LINEITEM_PRODUCT` re-pointed from `GRYZ_LINEITEM` → `GRYZ_LINEITEM_PRODUCT` (DELETE old composite-key row + MERGE new).
+
+**Section 2 (platform-wide, defensive):**
+- Pattern-guarded UPDATE on `core.PresentationControl` row `131C3A84-F72D-4A12-B958-BFB519973BE0` (`F_LINEITEM_15MIN`): the LEFT JOIN to `LNK_LINEITEM_PRODUCT` is wrapped in a derived table that INNER-joins `HUB_PRODUCT`, so any future orphan key from any integration is discarded → outer LEFT preserves the line → existing `ISNULL(..., -999)` routes to D_PRODUCT "Unknown".
+
+**Idempotent:** MERGE on staging + entity mapping; CHARINDEX guard on presentation patch. Safe to re-run.
+
+**Release note:** `04_entity_mappings.sql` #13 and the `Growyze Line Item` staging step in `02_staging_tier1.sql` should be amended in the same release so future re-runs don't resurrect the old mapping. Section 2 modifies a CORE control table — affects every organisation's F_LINEITEM_15MIN rebuild (intentional safety net).
+
+**Status:** Created 2026-05-18. Not yet deployed. Awaiting MCP verification on Dirty Sixth UAT after running tier-2 staging + DV load + presentation rebuild.
+
+### 80. `integrations/tubr/07_sp_Api_GetLocations_TotalRecords.sql` / `08_sp_Api_GetCatalog_TotalRecords.sql` / `09_sp_Api_GetOrders_TotalRecords.sql` (+ amended `04_register_deployment_objects.sql`)
+
+**Purpose:** Companion count SPs Ian requested so the external-API caller knows when to stop paginating / can sanity-check completeness. Each one mirrors the filtering of its data SP exactly and returns a single row, single column `TotalRecords BIGINT`.
+
+**SP shape:**
+- `sp_Api_GetLocations_TotalRecords` — no params, counts active leaf outlets.
+- `sp_Api_GetCatalog_TotalRecords(@LocationId, @UpdatedSince)` — counts product rows only (categories are denormalised lookups, not paginated). Returns 0 when @LocationId is unknown.
+- `sp_Api_GetOrders_TotalRecords(@LocationId, @StartDate, @EndDate, @UpdatedSince)` — counts orders across the full filtered set (no `@PageNumber`/`@PageSize`). Returns 0 when @LocationId is unknown.
+- Filters tracked 1:1 with the data SPs (CURRENT_FLAG = 1, IS_DELETED = 0, BOTTOM_LEVEL = 1, half-open OPEN_TIME range, @UpdatedSince on LOAD_TS).
+
+**Registration:** `04_register_deployment_objects.sql` extended in-place — MERGE now upserts all 6 SPs (ExecutionOrder 140-145, Category `External API Procedures`). MERGE is idempotent so safe to re-run against the `core` DB that already has 140-142 from the Oak & Vine UAT deployment; the new entries (143-145) will INSERT and the existing ones will UPDATE with no functional change.
+
+**Deployment order:**
+1. Run amended `04_register_deployment_objects.sql` against `core` (xms-bi managed instance).
+2. Run `sp_DeployObjects` with per-org cursor to materialise the new SPs into every client DB.
+
+**Status:** Created 2026-05-21. Not yet deployed.
+
+---
+
+### `integrations/MargeBrut/` — Marge Brut mock dashboard (UAT, hosted on The Oak & Vine)
+
+**Purpose:** A real XMS BI dashboard reproducing the Accor hotel "Marge Brut" (F&B cost-of-sales) spreadsheet, fed by **mocked** Oct-2025 ISLRG data via literal-VALUES visualisation queries (no live Growyze/Bizon feed). Source: `docs/Accor - MargeBrut/`. Design: `integrations/MargeBrut/DESIGN.md`.
+
+**Host org:** existing **The Oak & Vine** (OrgID 16, GUID `7ED2E768-0D22-F111-832F-000D3AB27D87`, MI DB `20260317_XMS_7ED2E768-...`, ACTIVE) — chosen 2026-06-08 in place of a new "Ibis" org. Org already onboarded + card SPs present, so **no org-creation / microservice step**.
+
+**Scripts (deploy order in `DEPLOY.txt`):**
+- `02_margebrut_vis_queries.sql` — `core.core.VisualisationQueries`: 9 LIVE literal datasets `MargeBrut*` (CustomDataGrid grid, 4 SingleKPICards, 2 BarChartCards, 2 PieChartCards). MERGE-upsert on (DataSetName, VisualizationType, Status). **Global, org-agnostic.**
+- `00_fix_report_audit_trigger.sql` — microservice `report` DB (run directly): **platform bug fix**. ALTERs `dbo.OrganisationDashboardConfig_Audit`, which omitted NOT-NULL audit cols DashboardGridId/IconName/SortOrder (added in the DashboardGrid schema change) and blocked ALL inserts into OrganisationDashboardConfig. Must run before 03. (Same regression exists on `DashboardConfig_Audit` + `StaffDashboardConfig_Audit` — empty/unused tiers, NOT fixed.)
+- `03_margebrut_report_config.sql` — microservice `report` DB (run directly; MCP can't reach it): BiConfig → VisualisationConfig (1,3,9,10) → VisualisationDataSetMap → DashboardGrid → DashboardGridItem (9 cards) → DashboardGroup + GroupMapping (visibility) → verify. `@OrgId`/`@DbPrefix` pre-set to Oak & Vine.
+
+**Status:** Created 2026-06-08 (re-targeted from "Ibis" to Oak & Vine same day). **All 4 card query shapes MCP-verified on UAT `core`.** Script 02 (vis queries) run + 03 partially run: 03 hit the audit-trigger bug above (rolled back), now fixed via `00`. Re-run order on `report`: 00 → 03. Not yet fully deployed.
+
+---
+
 ## Mews (int_mews001)
 
 All scripts in `integrations/Mews/`. Created 2026-07-03. Design/plan: `docs/superpowers/specs/2026-07-03-mews-dv-mapping-design.md` + `docs/superpowers/plans/2026-07-03-mews-dv-mapping.md`. Org: `20260413_XMS_B4E2F7A8-3C91-4D6E-9F05-8A1D2B5E7C43` (DEV).
 
 ### 81. `integrations/Mews/01_staging_control.sql`
 
-**Purpose:** 17 StagingControl MERGE records for `int_mews001` — 8 tier-1 dimension steps (Location, Product [3-tier: type/product/variant+synthetic `{productId}-DEFAULT`], Modifier, Tax, Tender, Discount, Channel, Revenue Center), 4 tier-1 transactional steps (Customer Order, Line Item, Line Item Tax, Line Item Discount), 3 tier-1 CRM steps (Customer, Address, Contact), and 2 tier-2 link staging steps (Order Revenue Center Link, Discount Line Link).
+**Purpose:** 15 StagingControl MERGE records for `int_mews001` — 8 tier-1 dimension steps (Location, Product [3-tier: type/product/variant+synthetic `{productId}-DEFAULT`], Modifier, Tax, Tender, Discount, Channel, Revenue Center), 4 tier-1 transactional steps (Customer Order, Line Item, Line Item Tax, Line Item Discount), 2 tier-2 link staging steps (Order Revenue Center Link, Discount Line Link), and 1 tier-2 union step (Line Item Combined → `stage.MEWS_LINEITEM_ALL`, added 2026-07-03 8156 fix — see 82). The 3 CRM steps (Customer, Address, Contact) were GDPR-removed 2026-07-03 — see 85.
 
-**Status:** created — not deployed.
+**Status:** revised 2026-07-03 (added step 18 union; removed CRM steps 13–15) — awaiting re-deploy. Original 17-step version deployed 2026-07-03; E2E staging phase passed.
 
 ---
 
 ### 82. `integrations/Mews/02_entity_mappings.sql`
 
-**Purpose:** 25 EntityMappings MERGE records — 15 hub rows (#1–#15: LOCATION, PRODUCT, MOD, TAX, TENDER, DISCOUNT, CHANNEL, REVCENTER, CUSTORDER, 3× LINEITEM sources, INDIVIDUAL, ADDRESS, CONTACT) + 10 link rows (#16–#25: CUSTORDER_LOCATION, CUSTORDER_LINEITEM ×3 sources, LINEITEM_PRODUCT, LINEITEM_TAX, DISCOUNT_LINEITEM, CUSTORDER_REVCENTER, ADDRESS_INDIVIDUAL, CONTACT_INDIVIDUAL). The 10 link rows collapse into 8 distinct `LNK_*` tables at load time.
+**Purpose:** 16 EntityMappings MERGE records — 10 hub rows (LOCATION, PRODUCT, MOD, TAX, TENDER, DISCOUNT, CHANNEL, REVCENTER, CUSTORDER, LINEITEM) + 6 link rows (CUSTORDER_LOCATION, CUSTORDER_LINEITEM, LINEITEM_PRODUCT, LINEITEM_TAX, DISCOUNT_LINEITEM, CUSTORDER_REVCENTER). One row per entity — LINEITEM and CUSTORDER_LINEITEM map from the tier-2 union table `MEWS_LINEITEM_ALL`; guarded DELETEs retire the six obsolete per-type rows in already-deployed environments. INDIVIDUAL/ADDRESS/CONTACT + ADDRESS_INDIVIDUAL/CONTACT_INDIVIDUAL were GDPR-removed 2026-07-03 — see 85.
 
-**Status:** created — not deployed.
+**Root-cause note (E2E failure 2026-07-03):** the original design had 3 mapping rows each for LINEITEM/CUSTORDER_LINEITEM (one per PROD/TAX/DISCOUNT stage table). `core.UploadEntityMappings` parses column JSON into temp tables keyed by `entity_name` only (`3_CoreStoredProceduresAndFunctions.sql:1469,1479`), so multiple rows per entity triple the generated column list → SQL 8156 ("LINEITEM_HUB_ID specified multiple times") and `sp_DataVaultLoad` rolls back (surfaced as 2754 because the proc re-raises with `@ErrorNumber` in the severity slot). Even without 8156, all rows share step_name `Data Vault load - {entity}`, so the MERGE keeps only the last source table. Platform contract = one mapping row per entity; multi-source union belongs in staging (NCRAloha precedent: `NCR_LINE_ITEM_DETAIL`).
+
+**Status:** revised 2026-07-03 — awaiting re-deploy. Original 25-row version deployed 2026-07-03 and caused the DV-load E2E failure.
 
 ---
 
 ### 83. `integrations/Mews/03_upload_load_steps.sql`
 
-**Purpose:** `EXEC [core].[UploadEntityMappings] @intSchema = N'int_mews001'` — translates the 25 EntityMappings rows into 25 StagingControl `step_type = 'Load'` rows. Developer-executed (EXEC not permitted via MCP); run after 01 + 02.
+**Purpose:** `EXEC [core].[UploadEntityMappings] @intSchema = N'int_mews001'` — translates the 16 EntityMappings rows into 16 StagingControl `step_type = 'Load'` rows. Developer-executed (EXEC not permitted via MCP); run after 01 + 02 + **05 Section A** (if 03 runs before 05, the still-present CRM mappings regenerate the CRM load steps).
 
-**Status:** created — not deployed.
+**Status:** deployed 2026-07-03 (twice: first against the triplicate mappings, then post-8156-fix at 14:02 — load succeeded) — must re-run after the GDPR removal (01 → 02 → 05 → 03).
 
 ---
 
@@ -1422,20 +2035,29 @@ All scripts in `integrations/Mews/`. Created 2026-07-03. Design/plan: `docs/supe
 | MEWS_LINEITEM | 22 (5 with VOID_FLAG=1) | |
 | MEWS_LINEITEM_TAX | **DL-derived, not the literal 17** | compare to `CAST(tax AS DECIMAL(18,2)) <> 0` count on DL_INVOICE_ITEMS/DL_INVOICES |
 | MEWS_LINEITEM_DISCOUNT | 0 | no non-null promoCodeId observed yet |
-| MEWS_CUSTOMER | 364 | |
-| MEWS_ADDRESS | **0 — genuine source gap, not a failure** | check passes on equality with the DL-side derivation (both 0 today) |
-| MEWS_CONTACT | 257 (185 EMAIL + 72 PHONE) | |
+| MEWS_CUSTOMER / MEWS_ADDRESS / MEWS_CONTACT | **removed** | CRM lane GDPR-removed 2026-07-03; stage tables must not exist (05 purge) |
 | both `_LNK` staging tables | 0 | |
 | HUB_LINEITEM (DV) | derived = MEWS_LINEITEM + MEWS_LINEITEM_TAX + MEWS_LINEITEM_DISCOUNT (39 today) | never hardcode — derive |
 | LNK_CUSTORDER_LINEITEM | = HUB_LINEITEM count | |
 | LNK_LINEITEM_PRODUCT | 22 | |
 | LNK_LINEITEM_TAX | 17 | |
 | LNK_CUSTORDER_LOCATION | 19 | |
-| LNK_CONTACT_INDIVIDUAL | 257 | |
-| LNK_ADDRESS_INDIVIDUAL | 0 | |
+| LNK_CONTACT_INDIVIDUAL / LNK_ADDRESS_INDIVIDUAL | **0 Mews-sourced rows** | GDPR purge check (05) |
 
 **Count-drift rule:** if the Mews fetcher has landed more data by the time Task 7 runs, re-derive expected counts from the DL side rather than trusting these literals — the script already does this for LINEITEM_TAX and ADDRESS per the brief; the rest are point-in-time literals that may need bumping.
 
 **Section A MCP result (2026-07-03, pre-deploy, `mcp__xms-bi-dev__query` against `core`):** `staging_steps` actual 0 (expected 17, FAIL), `load_steps_generated` actual 0 (expected 25, FAIL), `entity_mappings` actual 0 (expected 25, FAIL). Correct pre-deploy observation — 01/02/03 have not been deployed yet, so `int_mews001.StagingControl`/`EntityMappings` are provisioned but empty.
 
-**Status:** created — not deployed. Section A MCP-verified (pre-deploy state confirmed 2026-07-03); Sections B–E await Task 7 post-deploy run.
+**E2E test result (2026-07-03, first deploy):** stage phase PASSED end-to-end (live Mews API pull, pagination fix confirmed, DL re-staged, CTL completed); DV load phase FAILED — SQL 8156 on `load.CUSTORDER_LINEITEM` (tripled column list, see 82), then succeeded at 14:02 after the fix. Section A expectations now 15/16/16 plus the `one_mapping_row_per_entity` guard; Section B gains `stage_MEWS_LINEITEM_ALL` = sum-of-parts and GDPR-absence checks; DV sections gain GDPR purge checks.
+
+**Data-quality audit findings (2026-07-03, post-14:02 run):** ① fullName was staged whole into FORENAME (surnames discarded) — resolved by the GDPR removal of the CRM lane; the validated split logic (first token=FORENAME, last=SURNAME, middle=MIDDLE_NAMES; MCP-tested: 365 rows, 143 surnames, 15 middles) is preserved in the 01 removal note for any future re-enable. ② "LNK_CONTACT_INDIVIDUAL loaded 0 rows silently" — **disproven, expected behaviour**: `sp_ProcessLink` DELETEs already-present LNK_IDs from the `load.*` table before inserting, so an empty load link table + LNK rows timestamped from an earlier run is the normal idempotent signature, not silent loss (confirmed live: links first committed at 14:02 still hold their load rows; the 12:56-committed link had its 258 load rows dedup-deleted). Also note failed `sp_DataVaultLoad` runs COMMIT completed entities — there is no cross-entity rollback.
+
+**Status:** revised 2026-07-03 — Sections B–E await the GDPR re-deploy (01→02→05→03) and DV load re-run.
+
+---
+
+### 85. `integrations/Mews/05_remove_crm_pii.sql`
+
+**Purpose:** GDPR removal of the Mews CRM lane. Section A (vs `core`): deletes the 5 CRM EntityMappings rows (INDIVIDUAL, ADDRESS, CONTACT, ADDRESS_INDIVIDUAL, CONTACT_INDIVIDUAL), the 3 CRM staging steps, and the 5 generated Load steps. Section B (vs org DB): drops `stage.MEWS_CUSTOMER/MEWS_ADDRESS/MEWS_CONTACT`, clears the CRM `load.*`/`load.CDC_*` tables, and purges Mews-sourced rows (`SRC = 'int_mews001'`) from the CRM hubs/satellites/links loaded on 2026-07-03 (365 names, 258 contacts, 258 link rows). Idempotent; deliberately not flag-reversible. **Must run before 03** or the CRM load steps regenerate. Landing-layer `DL_CUSTOMERS` still holds raw PII — flagged to the fetcher team (remove customers endpoint from the fetch config).
+
+**Status:** created 2026-07-03 — not deployed.
