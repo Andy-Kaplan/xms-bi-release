@@ -1,0 +1,63 @@
+DEPLOY ORDER — Clean Display Characters
+========================================
+
+Sanitises characters that break the HTML frontend (e.g. straight
+apostrophe) by wrapping all pass-through DV load columns with a
+cleaning function.
+
+Script: clean_display_characters.sql
+
+
+STEP 1 — Register the function (core database)
+-----------------------------------------------
+Run PART 1 of clean_display_characters.sql against the core database.
+This MERGEs a DeploymentObjects record for fnCleanForDisplay (order 24).
+
+
+STEP 2 — Deploy the function to all client databases
+-----------------------------------------------------
+Run sp_DeployObjects for each active organisation.
+This creates core.fnCleanForDisplay in every client database.
+
+
+STEP 3 — Update BuildSelectClause (core database)
+--------------------------------------------------
+Run PART 2 of clean_display_characters.sql against the core database.
+This replaces the BuildSelectClause procedure so that all hash:0
+(pass-through) columns are wrapped with core.fnCleanForDisplay().
+
+
+STEP 4 — Regenerate load SQL
+-----------------------------
+Run UploadEntityMappings for each integration schema to regenerate
+the load SQL stored in StagingControl:
+
+    EXEC core.UploadEntityMappings @intSchema = 'int_ncraloha001';
+    EXEC core.UploadEntityMappings @intSchema = 'int_marketman001';
+    EXEC core.UploadEntityMappings @intSchema = 'int_growyze001';
+    EXEC core.UploadEntityMappings @intSchema = 'int_surveyhero001';
+
+
+STEP 5 — Verify
+----------------
+The next sp_DataVaultLoad run will automatically clean all attribute
+values as they enter the load tables. To verify manually, pick an
+entity with known apostrophe data and check the generated load SQL
+in StagingControl:
+
+    SELECT query_sql
+    FROM [int_ncraloha001].[StagingControl]
+    WHERE step_type = 'Load' AND step_name LIKE '%PRODUCT%';
+
+Confirm the SELECT contains core.fnCleanForDisplay() wrappers on
+the pass-through columns.
+
+
+ADDING MORE CHARACTER REPLACEMENTS
+-----------------------------------
+Edit the fnCleanForDisplay CreationScript in DeploymentObjects to
+add more REPLACE lines, then re-run steps 2-4. Example:
+
+    SET @input = REPLACE(@input, NCHAR(38), N'&amp;');   -- &
+    SET @input = REPLACE(@input, NCHAR(60), N'&lt;');    -- <
+    SET @input = REPLACE(@input, NCHAR(62), N'&gt;');    -- >

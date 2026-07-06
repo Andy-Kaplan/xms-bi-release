@@ -1,7 +1,11 @@
-Demo Organisation Deployment Steps — "The Oak & Vine"
+Demo Organisation Deployment Steps - "The Oak & Vine"
 =====================================================
 
-Prerequisites: SQL Server access to core DB + demo org DB, Python 3.10+
+Prerequisites:
+  - SQL Server command-line tools (bcp.exe, sqlcmd.exe) on PATH
+  - PowerShell 5.1+
+  - Python 3.10+
+  - SQL auth credentials for the Azure SQL Managed Instance
 
 Step 1: Provision the demo organisation
 ---------------------------------------
@@ -53,28 +57,39 @@ Step 4: Generate the CSV data
 Takes ~23 seconds. Produces 52 CSV files in output/ (~3.4M rows).
 Check output/summary.txt for row counts and narrative checkpoints.
 
-Step 5: Copy CSVs to SQL Server accessible path
-------------------------------------------------
-The BULK INSERT commands need a file path accessible from the SQL Server instance.
-Copy the output/ folder to a UNC share or local path on the SQL Server.
-
-Step 6: Load data into demo org
+Step 5: Load data into demo org
 -------------------------------
-Open load_demo_data.sql in SSMS. Set the two variables at the top:
+Run the PowerShell bcp loader from the demo-data folder:
 
-    DECLARE @CsvPath NVARCHAR(500) = N'\\server\share\demo-data\output';
-    DECLARE @DatabaseName NVARCHAR(255) = N'<demo_db_name>';
+    cd ClaudeDevelopment/demo-data
 
-Execute. Takes ~2-5 minutes. Watch for FAILED messages.
+    .\load_bcp.ps1 -Server "<mi-endpoint>,<port>" `
+                   -DatabaseName "<demo_db_name>" `
+                   -Username "<sql_user>" `
+                   -Password "<sql_password>"
 
-Step 7: Build presentation layer
+Example:
+
+    .\load_bcp.ps1 -Server "xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342" `
+                   -DatabaseName "20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87" `
+                   -Username "admin" -Password "secret"
+
+The script:
+  - Uses bcp to push CSVs from your local machine to the MI (no server-side
+    file access needed)
+  - Processes one table at a time to minimize disk usage
+  - Has resume logic: if interrupted, re-run and it will skip tables that
+    already have data
+  - Loads 52 tables across 4 phases: hubs, satellites, links, link satellites
+
+Step 6: Build presentation layer
 ---------------------------------
-After the loader completes successfully:
+After the loader completes successfully, run in SSMS against the demo org DB:
 
-    EXEC [<demo_db>].[core].[sp_PopulateCalendar] @YearsBefore = 2, @YearsAfter = 2
-    EXEC [<demo_db>].[core].[sp_ProcessPresentation]
+    EXEC [core].[sp_PopulateCalendar] @YearsBefore = 2, @YearsAfter = 2
+    EXEC [core].[sp_ProcessPresentation]
 
-Step 8: Configure report database
+Step 7: Configure report database
 ----------------------------------
 Create dashboard configuration in the microservice report DB so the front end
 renders cards for the demo org. Follow the pattern in:
@@ -85,7 +100,7 @@ DashboardGrid, DashboardItem, DashboardFilter, OrganisationDashboardConfig.
 
 Remember: TransactionId is IDENTITY (omit), IsDeleted has no DEFAULT (pass 0).
 
-Step 9: Verify
+Step 8: Verify
 --------------
 Spot-check these dashboard cards:
   - Sales overview KPI: should show ~66K orders, revenue in expected range
@@ -99,6 +114,17 @@ Regeneration
 To regenerate with different parameters:
   1. Edit config.py (adjust narratives, products, date range, etc.)
   2. Re-run: python generate.py
-  3. In load_demo_data.sql, uncomment the TRUNCATE section at the top
-  4. Re-execute the loader
+  3. Truncate all datavault tables in the demo org DB (see load_demo_data.sql
+     for the full TRUNCATE list), or use a fresh database
+  4. Re-run: .\load_bcp.ps1 ...
   5. Re-run sp_PopulateCalendar + sp_ProcessPresentation
+
+Troubleshooting
+---------------
+  - "bcp.exe not found": Install SQL Server command-line tools (ODBC Driver 17+)
+  - "Unexpected EOF in BCP data-file": CSV line endings must be LF (\n). The
+    script uses -r 0x0a to handle this.
+  - Storage errors: The MI instance may be out of space. Check instance storage
+    in Azure Portal. The per-table approach minimizes staging overhead.
+  - Resume after failure: Just re-run the script. It checks each datavault
+    table for existing rows and skips tables that already loaded.
