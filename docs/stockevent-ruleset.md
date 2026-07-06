@@ -78,4 +78,4 @@ All subsequent +/- events apply their behaviour against the value of the most re
 | Integration | EVENT_TYPEs Used | Known Issues |
 |---|---|---|
 | MarketMan | ORDER, TRANSFER, WASTE, SALE, PRODUCTION | `INVOICE` in PRE_ORDEREVENT staging (should be `ORDER`); `STOCKCOUNT` in count staging (should be `COUNT`) |
-| Growyze | ORDER, WASTE, SALE | `DELIVERY` used in GRYZ_DN_EVENTS (should be `ORDER`) — fix pending in 02_staging_tier1.sql |
+| Growyze | ORDER, WASTE, SALE, COUNT | `DELIVERY` used in GRYZ_DN_EVENTS (should be `ORDER`) — fix pending in 02_staging_tier1.sql. INTERNAL_REF bug fixed in 12_stocktake_staging.sql (was record ID, now item ID for all event types). |

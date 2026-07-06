@@ -270,8 +270,8 @@ Each record in `core.PresentationControl` defines one ETL step. The procedure th
 | 6 | F_LINEITEM_15MIN | `F_LINEITEM_15MIN` | `SAT_LINEITEM`, `LNK_DEAL_LINEITEM`, `LNK_DISCOUNT_LINEITEM`, `LNK_EMPLOYEE_LINEITEM`, `LNK_LINEITEM_MOD`, `LNK_LINEITEM_OCCASION`, `LNK_LINEITEM_PRODUCT`, `LNK_LINEITEM_SVCCHARGE`, `LNK_LINEITEM_TAX`, `LNK_CUSTORDER_LINEITEM`, `SAT_CUSTORDER`, `LNK_CUSTORDER_LOCATION`, `LNK_CUSTORDER_REVCENTER`, `LNK_CHANNEL_CUSTORDER`, `core.Integrations` | Date range from `GlobalParameters` keys `LINEITEM_START`/`LINEITEM_END`; 15-min bucket via `DATEADD`/`DATEDIFF`; sentinel `-999` for NULL hub IDs |
 | 7 | Forecast Actuals Base | `FORECAST_ACTUALS_BASE` | `SAT_LINEITEM`, `LNK_LINEITEM_PRODUCT`, `presentation.D_PRODUCT`, `LNK_CUSTORDER_*`, `presentation.CALENDAR` | Complex CTE chain: DailySales → LocationCategories → Calendar → CompleteData → FeaturesData with window-function rolling averages and lag columns |
 | 8 | Inv Item Dimension | `D_INVITEM` | `datavault.SAT_INVITEM` | Recursive CTE + sentinel |
-| 9 | Inventory Counts by Day | `F_INV_COUNTS_DAY` | `datavault.SAT_STOCKEVENT_*`, inventory link tables | Date range from `STOCKEVENT_START`/`STOCKEVENT_END` |
-| 10 | Inventory Usage by Day | `F_INV_USAGE_DAY` | Inventory datavault entities | STOCKEVENT date range |
+| 9 | Inventory Counts by Day | `F_INV_COUNTS_DAY` | `datavault.SAT_STOCKEVENT_*`, inventory link tables, `datavault.SAT_INVITEM` | Date range from `STOCKEVENT_START`/`STOCKEVENT_END`; cost sourced via `InvItemCost` CTE reading `SAT_INVITEM.UOM_COST` (direct per-item lookup, replaces former `InvLocCost`/`SAT_INVREPORT` cost path) |
+| 10 | Inventory Usage by Day | `F_INV_USAGE_DAY` | Inventory datavault entities, `datavault.SAT_INVITEM` | STOCKEVENT date range; cost sourced via `InvItemCost` CTE reading `SAT_INVITEM.UOM_COST` (direct per-item lookup, replaces former `InvLocCost`/`SAT_INVREPORT` cost path) |
 | 11 | Location Dimension | `D_LOCATION` | `datavault.SAT_LOCATION` | Recursive CTE + sentinel |
 | 12 | Mod Dimension | `D_MOD` | `datavault.SAT_MOD` | Recursive CTE + sentinel |
 | 13 | Occasion Dimension | `D_OCCASION` | `datavault.SAT_OCCASION` | Recursive CTE + sentinel |
@@ -369,6 +369,8 @@ WHERE [ParameterKey] = 'LINEITEM_END';
 ```
 
 Keys used: `LINEITEM_START`, `LINEITEM_END` (POS data), `STOCKEVENT_START`, `STOCKEVENT_END` (inventory data).
+
+**These parameters are ephemeral.** The DV load stored procedure (`sp_DataVaultLoad`) sets them at the start of each run based on the date range of data in the DL tables (typically the last 3 days). After the presentation layer rebuilds successfully, the parameters are cleared back to NULL. Seeing NULL values in `GlobalParameters` for these keys is the **expected resting state** — it means the last load cycle completed successfully. The parameters only hold values transiently during an active load run.
 
 #### 15-minute timestamp bucketing
 

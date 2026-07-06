@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XMS BI — Direct Data Access</title>
+<style>
+  :root{
+    --bg:#0b0f14;
+    --bg-2:#11161d;
+    --panel:#161c25;
+    --panel-2:#1c2430;
+    --line:#232c39;
+    --ink:#e7ecf3;
+    --ink-dim:#9aa6b6;
+    --ink-muted:#6b7787;
+    --accent:#7dd3fc;
+    --accent-2:#a78bfa;
+    --accent-3:#34d399;
+    --warn:#fbbf24;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.55}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;padding:96px 0 72px;overflow:hidden;border-bottom:1px solid var(--line);background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(125,211,252,.10), transparent 60%),
+    radial-gradient(900px 400px at 0% 30%, rgba(167,139,250,.08), transparent 60%),
+    var(--bg);}
+  .eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:24px}
+  h1{font-size:clamp(40px,5.6vw,72px);line-height:1.02;margin:0 0 24px;font-weight:700;letter-spacing:-.02em}
+  h1 .grad{background:linear-gradient(120deg,var(--accent) 0%,var(--accent-2) 60%,var(--accent-3) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{font-size:20px;color:var(--ink-dim);max-width:780px;margin:0 0 40px}
+  .pill-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:32px}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:13px;color:var(--ink-dim)}
+  .pill::before{content:"";width:6px;height:6px;border-radius:999px;background:var(--accent-3)}
+
+  /* ---------- STAT BAND ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg-2)}
+  .stat{padding:32px;border-right:1px solid var(--line)}
+  .stat:last-child{border-right:none}
+  .stat .n{font-size:42px;font-weight:700;letter-spacing:-.02em;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .l{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-muted);margin-top:4px}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:88px 0;border-bottom:1px solid var(--line)}
+  section.alt{background:var(--bg-2)}
+  h2{font-size:36px;letter-spacing:-.015em;margin:0 0 16px;font-weight:600}
+  h3{font-size:20px;margin:0 0 12px;font-weight:600}
+  .section-lead{color:var(--ink-dim);max-width:780px;font-size:17px;margin:0 0 48px}
+
+  /* ---------- 3-card row ---------- */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .card{padding:28px;border:1px solid var(--line);border-radius:14px;background:var(--panel);transition:border-color .2s, transform .2s}
+  .card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .card .ico{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--bg);margin-bottom:18px;font-size:16px}
+  .card p{color:var(--ink-dim);margin:0;font-size:15px}
+
+  /* ---------- ARCHITECTURE DIAGRAM ---------- */
+  .arch{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:stretch;margin-top:24px}
+  .arch .step{position:relative;padding:22px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+  .arch .step .num{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin-bottom:10px}
+  .arch .step h4{margin:0 0 6px;font-size:15px}
+  .arch .step p{margin:0;color:var(--ink-dim);font-size:13px}
+  .arch .step.hl{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset, 0 10px 40px -10px rgba(125,211,252,.25);background:linear-gradient(180deg, rgba(125,211,252,.06), var(--panel))}
+  .arch .step.hl .num{color:var(--accent-3)}
+  .arrow-row{display:none}
+  @media (max-width: 900px){.arch{grid-template-columns:1fr}}
+
+  .arch-key{display:flex;gap:24px;margin-top:24px;font-size:13px;color:var(--ink-muted);flex-wrap:wrap}
+  .key-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:middle}
+  .key-dot.you{background:var(--accent-3)}
+  .key-dot.us{background:var(--ink-muted)}
+
+  /* ---------- ACCESS LAYERS (two-col) ---------- */
+  .layers{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .layer{border:1px solid var(--line);border-radius:16px;padding:32px;background:var(--panel)}
+  .layer.primary{border-color:rgba(125,211,252,.35);background:linear-gradient(180deg, rgba(125,211,252,.04), var(--panel))}
+  .layer .tag{display:inline-block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:14px}
+  .layer.secondary .tag{color:var(--accent-2)}
+  .layer ul{list-style:none;padding:0;margin:18px 0 0}
+  .layer li{padding:10px 0;border-top:1px dashed var(--line);color:var(--ink-dim);font-size:14px;display:flex;gap:12px;align-items:flex-start}
+  .layer li::before{content:"+";color:var(--accent-3);font-weight:700;flex-shrink:0;font-family:"SF Mono",ui-monospace,Menlo,monospace}
+  .layer.secondary li::before{color:var(--accent-2)}
+
+  /* ---------- ENTITY CATALOGUE ---------- */
+  .domains{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+  @media (max-width: 900px){.domains{grid-template-columns:1fr}}
+  .domain{border:1px solid var(--line);border-radius:14px;padding:24px;background:var(--panel)}
+  .domain h3{display:flex;align-items:center;gap:10px}
+  .domain h3 .badge{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted);font-weight:500;padding:2px 8px;border:1px solid var(--line);border-radius:6px}
+  .domain p.sub{color:var(--ink-muted);font-size:13px;margin:0 0 16px}
+  .ent-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 16px}
+  .ent{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12.5px;color:var(--ink);padding:6px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .ent:last-child{border-bottom:none}
+  .ent .kind{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted);font-family:inherit}
+  .ent.hub{color:var(--accent)}
+  .ent.lnk{color:var(--accent-2)}
+  .ent.evt{color:var(--accent-3)}
+
+  /* ---------- HOW IT WORKS ---------- */
+  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .feat{border:1px solid var(--line);padding:24px;border-radius:14px;background:var(--panel)}
+  .feat .ico{font-family:"SF Mono",ui-monospace,Menlo,monospace;color:var(--accent);font-size:13px;margin-bottom:10px;letter-spacing:.1em}
+  .feat h4{margin:0 0 8px;font-size:16px}
+  .feat p{margin:0;font-size:14px;color:var(--ink-dim)}
+
+  /* ---------- CONNECTION ---------- */
+  .conn-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:24px}
+  .conn{padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--panel);text-align:center}
+  .conn .label{font-size:12px;color:var(--ink-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+  .conn .val{font-size:14px;color:var(--ink);font-family:"SF Mono",ui-monospace,Menlo,monospace}
+
+  /* ---------- FOOTER CTA ---------- */
+  .cta{padding:96px 0;text-align:center;background:
+    radial-gradient(800px 300px at 50% 0%, rgba(167,139,250,.10), transparent 60%),
+    var(--bg)}
+  .cta h2{font-size:44px;margin-bottom:14px}
+  .cta p{font-size:18px;color:var(--ink-dim);max-width:620px;margin:0 auto 32px}
+  .btn{display:inline-block;padding:14px 28px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#0b0f14;font-weight:600;letter-spacing:.01em}
+
+  footer{padding:28px 0;color:var(--ink-muted);font-size:12px;text-align:center;border-top:1px solid var(--line)}
+
+  @media (max-width: 900px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .stat{border-right:none;border-bottom:1px solid var(--line)}
+    .cards,.layers,.features{grid-template-columns:1fr}
+    .conn-row{grid-template-columns:repeat(2,1fr)}
+    .ent-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================ HERO ================ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">XMS BI · Direct Data Access</div>
+    <h1>Your operational data, <span class="grad">modelled, joined and yours to query.</span></h1>
+    <p class="lead">XMS BI consolidates the data from your operational systems into a single, query-ready warehouse built on a model designed to grow with you — across departments, source systems and industries. Plug your own BI tool straight into it.</p>
+    <div class="pill-row">
+      <span class="pill">SQL Server compatible</span>
+      <span class="pill">Read-only credentials</span>
+      <span class="pill">Scheduled refresh</span>
+      <span class="pill">Isolated per organisation</span>
+    </div>
+  </div>
+</header>
+
+<!-- ================ STAT BAND ================ -->
+<div class="stats">
+  <div class="stat"><div class="n">2.0</div><div class="l">Data Vault model standard</div></div>
+  <div class="stat"><div class="n">∞</div><div class="l">Domains the model can extend to</div></div>
+  <div class="stat"><div class="n">SCD2</div><div class="l">Full historisation, nothing overwritten</div></div>
+  <div class="stat"><div class="n">SQL</div><div class="l">Open standard, any BI tool</div></div>
+</div>
+
+<!-- ================ WHAT IT IS ================ -->
+<section>
+  <div class="wrap">
+    <h2>The short version</h2>
+    <p class="section-lead">XMS BI is a data platform. We pull your data out of the operational silos it lives in today, conform it into one industrial-strength, extensible model, and host it ready to query.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="ico">1</div>
+        <h3>We ingest</h3>
+        <p>Any operational system with an API or data feed — transactions, movements, people, customers, assets, events. New sources are added through a standard onboarding pattern, not a custom build each time.</p>
+      </div>
+      <div class="card">
+        <div class="ico">2</div>
+        <h3>We conform</h3>
+        <p>Every source feeds the same standardised entity model. A "product", "location" or "transaction" means the same thing regardless of which system it came from — and the model is designed to absorb new business domains as your operation evolves.</p>
+      </div>
+      <div class="card">
+        <div class="ico">3</div>
+        <h3>You query</h3>
+        <p>Connect Power BI, Tableau, Looker, Metabase, Python, dbt — or anything that speaks SQL — directly to your dedicated database. No middleware, no exports, no waiting for IT.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ ARCHITECTURE ================ -->
+<section class="alt">
+  <div class="wrap">
+    <h2>How the data gets to you</h2>
+    <p class="section-lead">Five stages, scheduled. You connect to the last two.</p>
+    <div class="arch">
+      <div class="step">
+        <div class="num">01 · Source</div>
+        <h4>Operational systems</h4>
+        <p>POS, inventory, scheduling, surveys.</p>
+      </div>
+      <div class="step">
+        <div class="num">02 · Land</div>
+        <h4>Raw landing</h4>
+        <p>Untransformed payloads with full lineage.</p>
+      </div>
+      <div class="step">
+        <div class="num">03 · Stage</div>
+        <h4>Cleansing &amp; CDC</h4>
+        <p>Type-cast, deduplicated, change-detected.</p>
+      </div>
+      <div class="step hl">
+        <div class="num">04 · Available</div>
+        <h4>Data Vault</h4>
+        <p>Hubs, satellites, links. Full history.</p>
+      </div>
+      <div class="step hl">
+        <div class="num">05 · Available</div>
+        <h4>Presentation</h4>
+        <p>Dimensional star schema, ready to chart.</p>
+      </div>
+    </div>
+    <div class="arch-key">
+      <div><span class="key-dot us"></span>Operated by Three Rocks &nbsp;·&nbsp; refreshed on schedule</div>
+      <div><span class="key-dot you"></span>Available to your team via read-only credentials</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ TWO LAYERS ================ -->
+<section>
+  <div class="wrap">
+    <h2>Two layers, one connection</h2>
+    <p class="section-lead">Connect once. Pick the layer that fits the question. Most teams use both — the Data Vault for bespoke analysis, the Presentation layer to skip a lot of joins.</p>
+    <div class="layers">
+      <div class="layer primary">
+        <div class="tag">Layer 1 · Foundation</div>
+        <h3>The Data Vault</h3>
+        <p style="color:var(--ink-dim);margin:0;font-size:15px">Industrial-strength, fully historised model of your business reality. Every change to every record is tracked with effective-from / effective-to dates. Nothing is overwritten, nothing is lost.</p>
+        <ul>
+          <li><strong style="color:var(--ink)">84 conformed entities</strong> spanning sales, inventory, workforce, surveys and CRM</li>
+          <li><strong style="color:var(--ink)">SCD Type 2 history</strong> — query state as it was on any date</li>
+          <li><strong style="color:var(--ink)">SHA-256 hash keys</strong> — deterministic joins, integration-agnostic</li>
+          <li><strong style="color:var(--ink)">Source-of-truth</strong> for any custom mart, KPI or ML feature you want to build</li>
+        </ul>
+      </div>
+      <div class="layer secondary">
+        <div class="tag">Layer 2 · Accelerator</div>
+        <h3>The Presentation Layer</h3>
+        <p style="color:var(--ink-dim);margin:0;font-size:15px">Pre-built fact and dimension tables — flattened, indexed, ready to drop straight into a BI tool. The same tables we use to power the XMS dashboards.</p>
+        <ul>
+          <li><strong style="color:var(--ink)">Fact tables</strong> — line-item sales (15-min grain), product margin, inventory counts / usage / sales by day</li>
+          <li><strong style="color:var(--ink)">Dimensions</strong> — 3-tier hierarchical (location, product, occasion, deal, channel, …)</li>
+          <li><strong style="color:var(--ink)">Calendar &amp; forecast tables</strong> for period-over-period and target tracking</li>
+          <li><strong style="color:var(--ink)">No SQL gymnastics</strong> — designed for self-service BI</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ ENTITY CATALOGUE ================ -->
+<section class="alt">
+  <div class="wrap">
+    <h2>What's in the Vault</h2>
+    <p class="section-lead">A snapshot of the entity model today, grouped by business domain. <strong style="color:var(--ink)">Hubs</strong> are the things your business runs on; <strong style="color:var(--ink)">events</strong> are what happens to them, with full timestamped history. Every entity is fully relatable to every other — and the model is built to grow.</p>
+
+    <div class="domains">
+
+      <!-- Transactions -->
+      <div class="domain">
+        <h3>Transactions <span class="badge">Sales &amp; orders</span></h3>
+        <p class="sub">Every order and every line, with the modifiers, discounts, taxes and tenders that built them.</p>
+        <div class="ent-grid">
+          <div class="ent evt">CUSTORDER <span class="kind">event</span></div>
+          <div class="ent evt">LINEITEM <span class="kind">event</span></div>
+          <div class="ent evt">POSTX <span class="kind">event</span></div>
+          <div class="ent hub">PRODUCT <span class="kind">hub</span></div>
+          <div class="ent hub">CHANNEL <span class="kind">hub</span></div>
+          <div class="ent hub">OCCASION <span class="kind">hub</span></div>
+          <div class="ent hub">REVCENTER <span class="kind">hub</span></div>
+          <div class="ent hub">TENDER <span class="kind">hub</span></div>
+          <div class="ent hub">TAX <span class="kind">hub</span></div>
+          <div class="ent hub">SVCCHARGE <span class="kind">hub</span></div>
+          <div class="ent hub">MOD <span class="kind">hub</span></div>
+          <div class="ent hub">DEAL <span class="kind">hub</span></div>
+          <div class="ent hub">DISCOUNT <span class="kind">hub</span></div>
+          <div class="ent hub">COMP <span class="kind">hub</span></div>
+          <div class="ent hub">REFUND <span class="kind">hub</span></div>
+        </div>
+      </div>
+
+      <!-- Inventory & supply -->
+      <div class="domain">
+        <h3>Inventory &amp; Supply Chain <span class="badge">Stock &amp; cost</span></h3>
+        <p class="sub">Full goods-in / goods-out ledger, theoretical vs actual usage, supplier orders and recipe costing.</p>
+        <div class="ent-grid">
+          <div class="ent evt">STOCKEVENT <span class="kind">event</span></div>
+          <div class="ent evt">STOCKORDER <span class="kind">event</span></div>
+          <div class="ent evt">INVREPORT <span class="kind">event</span></div>
+          <div class="ent hub">INVITEM <span class="kind">hub</span></div>
+          <div class="ent hub">SUPPLIER <span class="kind">hub</span></div>
+          <div class="ent hub">DISTRIBUTOR <span class="kind">hub</span></div>
+        </div>
+      </div>
+
+      <!-- People -->
+      <div class="domain">
+        <h3>People &amp; Workforce <span class="badge">Staff &amp; shifts</span></h3>
+        <p class="sub">Who worked, when, on what — with timecards, jobs and roles fully historised.</p>
+        <div class="ent-grid">
+          <div class="ent evt">TIMECARD <span class="kind">event</span></div>
+          <div class="ent hub">EMPLOYEE <span class="kind">hub</span></div>
+          <div class="ent hub">JOB <span class="kind">hub</span></div>
+          <div class="ent hub">ROLE <span class="kind">hub</span></div>
+        </div>
+      </div>
+
+      <!-- Customer -->
+      <div class="domain">
+        <h3>Customer &amp; CRM <span class="badge">Identity</span></h3>
+        <p class="sub">A shared customer model that bridges sales, surveys, marketing and bookings.</p>
+        <div class="ent-grid">
+          <div class="ent hub">INDIVIDUAL <span class="kind">hub</span></div>
+          <div class="ent hub">CONTACT <span class="kind">hub</span></div>
+          <div class="ent hub">COMPANY <span class="kind">hub</span></div>
+          <div class="ent hub">ADDRESS <span class="kind">hub</span></div>
+          <div class="ent hub">LOCATION <span class="kind">hub</span></div>
+        </div>
+      </div>
+
+      <!-- Customer Experience -->
+      <div class="domain">
+        <h3>Customer Experience <span class="badge">Surveys &amp; touchpoints</span></h3>
+        <p class="sub">Every survey response tied to the question, the touchpoint and — where possible — the customer and the transaction.</p>
+        <div class="ent-grid">
+          <div class="ent hub">ANSWER <span class="kind">hub</span></div>
+          <div class="ent hub">QUESTION <span class="kind">hub</span></div>
+          <div class="ent hub">TOUCHPOINT <span class="kind">hub</span></div>
+          <div class="ent hub">EVENT <span class="kind">hub</span></div>
+        </div>
+      </div>
+
+      <!-- Future -->
+      <div class="domain" style="border-style:dashed;background:linear-gradient(180deg, rgba(167,139,250,.05), var(--panel))">
+        <h3>...and the next domain you need <span class="badge" style="border-color:var(--accent-2);color:var(--accent-2)">Extensible</span></h3>
+        <p class="sub">The model is designed to extend. Bookings, assets, marketing, loyalty, finance, fleet, IoT telemetry — adding a new business domain is a configuration exercise, not a re-platforming exercise.</p>
+        <div class="ent-grid">
+          <div class="ent hub" style="color:var(--accent-2)">BOOKING <span class="kind">in build</span></div>
+          <div class="ent hub" style="color:var(--accent-2)">ASSET <span class="kind">in build</span></div>
+          <div class="ent hub" style="color:var(--accent-2)">FORECAST <span class="kind">in build</span></div>
+          <div class="ent hub" style="color:var(--ink-muted)">your domain <span class="kind">on request</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================ HOW ACCESS WORKS ================ -->
+<section>
+  <div class="wrap">
+    <h2>How access works</h2>
+    <p class="section-lead">Built around the same isolation, security and refresh model that runs the XMS product.</p>
+    <div class="features">
+      <div class="feat">
+        <div class="ico">01</div>
+        <h4>Your own database</h4>
+        <p>Every organisation lives in a dedicated SQL Server database. No shared tables, no row-level filtering to worry about — only your data is in your database.</p>
+      </div>
+      <div class="feat">
+        <div class="ico">02</div>
+        <h4>Read-only by design</h4>
+        <p>You receive a scoped login with read access to the Data Vault and Presentation schemas. The pipeline keeps writing on its schedule; nothing you do can affect it.</p>
+      </div>
+      <div class="feat">
+        <div class="ico">03</div>
+        <h4>Scheduled refresh</h4>
+        <p>Data lands on a recurring cadence (typically multiple times per day). Every record carries a load timestamp, so freshness is always visible in your queries.</p>
+      </div>
+      <div class="feat">
+        <div class="ico">04</div>
+        <h4>Full historisation</h4>
+        <p>The Data Vault never forgets. A price change, a renamed location, a moved employee — all preserved with effective-from / effective-to dates.</p>
+      </div>
+      <div class="feat">
+        <div class="ico">05</div>
+        <h4>Schema stability</h4>
+        <p>The entity model is versioned. Additive changes are the norm; breaking changes are rare, announced, and supported with a deprecation window.</p>
+      </div>
+      <div class="feat">
+        <div class="ico">06</div>
+        <h4>Documented</h4>
+        <p>You get the same internal reference docs we use — entity catalogue, ER diagrams, integration coverage matrix, source-of-truth definitions.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:56px;margin-bottom:12px">Connection essentials</h3>
+    <div class="conn-row">
+      <div class="conn"><div class="label">Engine</div><div class="val">SQL Server</div></div>
+      <div class="conn"><div class="label">Auth</div><div class="val">SQL login (scoped)</div></div>
+      <div class="conn"><div class="label">Encryption</div><div class="val">TLS in transit</div></div>
+      <div class="conn"><div class="label">Schemas</div><div class="val">datavault · presentation</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================ CTA ================ -->
+<section class="cta">
+  <div class="wrap">
+    <h2>Ready to plug in?</h2>
+    <p>We'll provision a credential against your dedicated database, share the entity reference pack and walk your data team through the first few joins. Most teams have their first chart running the same day.</p>
+    <a class="btn" href="#">Talk to us about access</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">XMS BI · Three Rocks · Direct Data Access pitch</div>
+</footer>
+
+</body>
+</html>

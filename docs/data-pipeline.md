@@ -769,6 +769,8 @@ entity_columns = '["PARENT_HUB_ID", "CHILD_HUB_ID", "UOM", "UOM_VALUE"]'
 
 Uses the `PARENT_HUB_ID`/`CHILD_HUB_ID` naming convention for self-referencing recipe ingredient hierarchies.
 
+**INVITEM cost mapping (UOM_COST):** Both MarketMan and Growyze map a per-item cost into `SAT_INVITEM.UOM_COST` (DECIMAL(38,10)) — MarketMan from `DL_INVENTORY_ITEMS.BOMPrice`, Growyze from `DL_PRODUCTS.price`. The presentation layer reads this via an `InvItemCost` CTE (a direct per-item lookup on `SAT_INVITEM`) when building `F_INV_COUNTS_DAY` and `F_INV_USAGE_DAY`. This replaces the earlier `InvLocCost` CTE that read cost from `SAT_INVREPORT`.
+
 ### 5.3 Growyze (Inventory)
 
 **Schema:** `int_growyze001`

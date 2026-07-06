@@ -124,7 +124,7 @@ Integration API → {clientDB}.int_{name_version}.DL_* → {clientDB}.stage.* �
 | `Integrations` | Integration definitions (IntegrationID, schema name, type) |
 | `OrganisationIntegrations` | Organisation↔Integration links (INSERT trigger provisions schemas) |
 | `DataVaultEntities` | DV entity definitions with JSON attributes (148 records, 84 entities) |
-| `GlobalParameters` | Config KV store; STAGE_DDL category holds integration DDL |
+| `GlobalParameters` | Config KV store; STAGE_DDL category holds integration DDL; also holds ephemeral load-window parameters (see below) |
 | `PresentationControl` | SQL queries for building presentation tables (22 tiered steps) |
 | `PresentationTables` | DDL definitions for 24 presentation tables |
 | `VisualisationQueries` | 109 parameterized SQL templates for dashboard cards |
@@ -257,4 +257,5 @@ When presentation tables or visualisation queries change (e.g. changes to `8_Pre
 - **DL table columns**: All NVARCHAR(MAX) + `LOADTS_UTC` + `INT_FETCH_DATE` system columns
 - **FilterClause injection**: `WHERE 1=1 @FilterClause` pattern; filters defined in FilterDefinitions JSON
 - **Database states**: PENDING → CREATING → ACTIVE → FAILED → INACTIVE → MAINTENANCE → ARCHIVED
+- **Ephemeral load-window parameters**: `sp_DataVaultLoad` sets `LINEITEM_START`/`LINEITEM_END` (POS) and `STOCKEVENT_START`/`STOCKEVENT_END` (inventory) in `GlobalParameters` at the start of each run, based on the DL table date range (typically last ~3 days). After the presentation layer rebuild completes successfully, these are cleared to NULL. **NULL is the expected resting state** — it means the last load cycle completed. Non-NULL means a load is in progress or failed mid-run.
 - **Vis query dual-result pattern**: Result set 1 = data rows, Result set 2 = header metadata (title, axis labels)

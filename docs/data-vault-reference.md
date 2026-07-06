@@ -235,11 +235,11 @@ These entities share a common dimension hierarchy pattern: `{NAME}`, `PARENT_ID`
 | DISCOUNT | v5 | NULL | `VALUE_TYPE`, `VALUE (DECIMAL)`, `IS_WASTE (BIGINT)`, `DISCOUNT_ID` |
 | DISTRIBUTOR | v3 | NULL | `DISTRIBUTOR_ID` |
 | EVENT | v4 | NULL | `EVENT_CODE`, `EVENT_DATE (DATETIME2)`, `EVENT_ID` |
-| INVITEM | v3 | NULL | `UOM`, `INVITEM_ID` |
+| INVITEM | v4 | NULL | `UOM`, `INVITEM_ID`, `UOM_COST (DECIMAL(38,10))` — v4 adds UOM_COST: catalogue/BOM unit cost in the item's native UOM, used by the presentation layer for inventory cost derivation |
 | LOCATION | v4 | NULL | `LOCATION_ID` |
 | MOD | v4 | NULL | `MOD_ID` |
 | OCCASION | v3 | NULL | `OCCASSION_ID` **BUG: Typo — double-S** |
-| PRODUCT | v4 | NULL | `PRODUCT_ID` |
+| PRODUCT | v4 | NULL | `PRODUCT_ID` — **Convention: must be unique per variant.** When a POS source models variants (e.g. "Latte — Small" / "Latte — Large"), each variant must land as its own HUB_PRODUCT row with a distinct `PRODUCT_ID`. Downstream consumers (TUBR API, margin reporting) join sales lines to products on `PRODUCT_ID`, so collapsing variants to a single hub row would lose price/cost granularity. Integration staging pipelines are responsible for enforcing this. |
 | QUESTION | v5 | NULL | `QUESTION (NOT NULL)`, `QUESTION_ID` — **Exception: no ATTR_1–ATTR_5 columns** |
 | REVCENTER | v2 | NULL | `REVC_ID` — **Exception: name attribute is `REVC_NAME` (not `REVCENTER_NAME`)** |
 | SUPPLIER | v3 | NULL | `SUPPLIER_ID` |
@@ -988,7 +988,7 @@ Entities that have undergone multiple versions, showing evolution pattern:
 | CHANNEL | 3 | Progressive: MICROSERVICE_ID_BIN added in v3 |
 | DISTRIBUTOR | 3 | Progressive: MICROSERVICE_ID_BIN added in v3 |
 | EMPLOYEE | 3 | Progressive: MICROSERVICE_ID_BIN added in v3 |
-| INVITEM | 3 | Progressive: MICROSERVICE_ID_BIN added in v3 |
+| INVITEM | 4 | Progressive: MICROSERVICE_ID_BIN added in v3; UOM_COST DECIMAL(38,10) added in v4 |
 | JOB | 3 | Progressive: MICROSERVICE_ID_BIN added in v3 |
 | OCCASION | 3 | Progressive: MICROSERVICE_ID_BIN added (typo persists) |
 | STOCKORDER | 3 | Structural: v1 empty stub → v2 attributes → v3 TIME_SERIES |

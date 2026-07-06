@@ -1,0 +1,7 @@
+﻿"id","name","address_line1","city","region","postal_code","country","timezone","currency","status","created_at"
+"LOC002","The Oak & Vine - Covent Garden","42 Long Acre","London","England","WC2E 9JY","United Kingdom","GBP","Europe/London","active","2025-09-30T00:00:00.0000000"
+"LOC003","The Oak & Vine - Deansgate","156 Deansgate","Manchester","England","M3 3WD","United Kingdom","GBP","Europe/London","active","2025-09-30T00:00:00.0000000"
+"LOC006","The Oak & Vine - New Town","32 George Street","Edinburgh","Scotland","EH2 2LR","United Kingdom","GBP","Europe/London","active","2025-09-30T00:00:00.0000000"
+"LOC004","The Oak & Vine - Northern Quarter","18 Oldham Street","Manchester","England","M1 1JN","United Kingdom","GBP","Europe/London","active","2025-09-30T00:00:00.0000000"
+"LOC005","The Oak & Vine - Old Town","87 Grassmarket","Edinburgh","Scotland","EH1 2HJ","United Kingdom","GBP","Europe/London","active","2025-09-30T00:00:00.0000000"
+"LOC001","The Oak & Vine - Soho","24 Dean Street","London","England","W1D 3RY","United Kingdom","GBP","Europe/London","active","2025-09-30T00:00:00.0000000"

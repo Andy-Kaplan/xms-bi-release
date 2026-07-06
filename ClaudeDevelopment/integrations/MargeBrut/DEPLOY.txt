@@ -1,0 +1,43 @@
+Marge Brut mock dashboard — deploy order (UAT, hosted on The Oak & Vine)
+========================================================================
+
+Host org : The Oak & Vine  (OrgID 16)
+Org GUID : 7ED2E768-0D22-F111-832F-000D3AB27D87
+MI DB    : 20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87   (ACTIVE)
+Prefix   : 20260317
+
+The org already exists and is onboarded in the microservice, so there is NO
+org-creation step. The card-type SPs (CustomDataGrid, SingleKPICard,
+BarChartCard, PieChartCard) are confirmed present in its client DB.
+
+1.  02_margebrut_vis_queries.sql
+    Server : xms-bi-uat   DB: core
+    Run. Registers 9 LIVE datasets in core.core.VisualisationQueries
+    (these are GLOBAL, not org-specific).
+    Optional MCP test: simulate each card SP per CLAUDE.md (strip comments,
+    @FilterClause -> '', drop the 2nd/header SELECT) and confirm RS1 matches
+    DESIGN.md s7.
+
+2.  00_fix_report_audit_trigger.sql   (ONE-TIME platform fix)
+    Server : xms-mssql-ne-uat   DB: report   (run directly)
+    Repairs dbo.OrganisationDashboardConfig_Audit, which omitted the NOT-NULL
+    columns DashboardGridId/IconName/SortOrder and blocked all inserts into
+    OrganisationDashboardConfig. Verify the trailing SELECT returns 0 rows.
+    (Idempotent; skip if already applied.)
+
+3.  03_margebrut_report_config.sql
+    Server : xms-mssql-ne-uat   DB: report   (run directly — MCP can't reach it)
+    @OrgId / @DbPrefix are pre-set to The Oak & Vine. Run.
+    The verification block aborts/rolls back if any dashboard is ungrouped.
+
+4.  04_reorder_chart_cards.sql   (only needed if 03 was already run with the old order)
+    Server : xms-mssql-ne-uat   DB: report   (run directly)
+    Reorders the live cards so row 2 = the two bar charts, row 3 = the two pies.
+    (A clean run of 03 already produces this order; this only fixes existing rows.)
+
+5.  [VERIFY]  Log in as The Oak & Vine and open the "Marge Brut" dashboard.
+    Expect: KPI strip (Cost of Sales 31.6% + GP 68.4%, Consumption, Turnover,
+    Purchases), the Marge Brut grid, and the 4 supporting charts.
+
+Re-runs: both scripts are idempotent.
+Rollback: see README.md.

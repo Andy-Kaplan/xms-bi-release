@@ -1,0 +1,1274 @@
+StoreHub REST APIs
+
+General                      2
+
+API Specifications           2
+
+Authentication               2
+
+Rate Limiting                2
+
+APIs                         2
+
+Products                     2
+
+      Get Product List       2
+
+      Get Product by Id      6
+
+Customers                    6
+
+      Create Customer        6
+
+      Get Customer by RefId  9
+
+      Update Customer        9
+
+      Get All Customers      10
+
+      Search Customers       11
+
+Inventory                    11
+
+      Get Inventory          11
+
+Transaction                  12
+
+      Get Transactions       12
+
+      Add Transaction        20
+
+      Cancel Transaction     22
+
+Employees                    23
+
+      Get All Employees      23
+
+Stores                       24
+
+      Get All Stores         24
+
+Timesheets                   25
+
+      Search Timesheets      25
+
+Report                       26
+
+      Get hourly sales data  26
+
+      Get Shift report data  28
+
+Revision History             30
+
+                             1
+General
+
+API Specifications
+
+Protocol                            HTTPS
+Host
+Accepted Request Format             api.storehubhq.com
+Response Format
+Date Format                         JSON
+
+                                    JSON
+
+                                    Any request parameters or response field
+                                    of date are in ISO 8601,
+
+                                    e.g. 1970-01-01T00:00:00+00:00
+                                         1970-01-01T00:00:00Z
+
+Authentication
+
+All APIs are authenticated via basic HTTP authentication. The Username is the store name you
+have registered with StoreHub (ie. subdomain of the back-office URL) and password is the API
+token. The API token is auto-generated for each registered account. Please contact your
+StoreHub sales representative to receive your account's API token.
+
+Rate Limiting
+
+Rate limiting may be applied if your application is detected to have exceeded over 3 calls per
+second. Once rate limiting is applied, your application will receive an error in response. If your
+account has been rate limited, you will need to contact the StoreHub customer success team to
+remove the rate limiting. Please note that we reserve the right to permanently block accounts who
+repeatedly abuse the StoreHub API.
+
+APIs                     /products
+                         GET
+Products
+1. Get Product List
+
+ URL
+ HTTP Verb
+
+Parameters
+                                                                                                                        2
+This API doesn't accept any additional query parameters
+
+Response
+
+Returns an array of Product objects. If there's no products, empty array is returned.
+
+The Transfer-Encoding is chunked
+
+{
+
+"   id": "587890b412e90163297e8e7d",
+
+"   name": "Product 1",
+
+"   tags":[
+
+             "test",
+
+             "only"
+
+    ],
+
+    "category": "Product",
+
+    "sku": "P001",
+
+"   priceType": "Fixed",
+
+    "unitPrice": 94.33962264150944,
+
+    "cost": 53.33,
+
+"   barcode": "19238912312,1231242314",
+
+"   trackStockLevel": true,
+
+"   isParentProduct": false
+
+},
+
+{
+
+    "id": "587890bf12e90163297e8e94",
+
+    "name": "Product 2",
+
+    "tags":[
+
+             "item",
+
+    "test"
+
+    ],
+
+    "category": "Item",
+
+"   sku": "P002",
+
+"   priceType": "Fixed",
+
+"   unitPrice": 94.33962264150944,
+
+"   cost": 20,
+
+"   barcode": "204833921023881",
+
+    "trackStockLevel": true,
+
+"   isParentProduct": false,
+
+}
+
+Product Schema
+
+   id              String            This is a unique id that identifies the product
+   name            String            Product's name
+   sku             String            Product's SKU
+   barcode         String            Product's barcode number
+
+                                                                                                    3
+category       String           Product's category
+subCategory    String
+tags           Array of String  Product's subCategory
+priceType      Enum
+                                Tags of the product
+unitPrice      Number
+cost           Number           Possible values are `Fixed' or 'Variable'.
+
+trackStockLevel Boolean         If the product's priceType = `fixed', its
+                                unitPrice is determined by the unitPrice set on
+isParentProduct Boolean         the product.
+
+variantGroups  Array of         If the product's priceType = `variable', its
+               VariantGroup     unitPrice is specified during check-out. And
+                                unitPrice set on the product is ignored.
+variantValues  Array of
+               VariantValue     Unit price of the product
+
+parentProductId String          The amount of money or cost required to
+                                manufacture the product
+
+                                If the product stock level is tracked by
+                                StoreHub, this value is set to true
+
+                                A product is considered as a parent product if
+                                and only if it has variants and trackStockLevel
+                                equals to true.
+
+                                Please refer here for more information about
+                                Parent Products
+
+                                Variant groups of a product, this value is only
+                                returned on parent products.
+
+                                Please refer here for more information
+
+                                Variants value of a child product, this value is
+                                only returned for child products
+
+                                Please refer here for more information
+
+                                Parent product id, this value is only returned
+                                on child products.
+
+                                Please refer here for more information
+
+Parent and Child Products
+
+If a product has variants and tracking stock level is enabled, it's considered to be a parent
+product.
+
+                                                                                                                        4
+An example of a Parent Product is a product named `t-shirt' that is configured to track stock level
+and has two variants groups:
+
+     Colour. Options are red, green, yellow
+     Size. Options are S,M,L,
+
+A t-shirt that is red and small sized is a child product whose variantValues are colour = red and
+size = S. The parent product t-shirt with two variant groups of 3 options, will have 3 child
+products. (3 x 3 = 9)
+
+If a product has variants but tracking stock value is not enabled, it's not considered a parent
+product and doesn't have child products.
+
+VariantGroup Schema
+
+id           String         id of the variant group
+name                        Variant group name, e.g. color, size
+options      String         Available options of this variant group
+
+             Array of
+             VariantOption
+
+VariantOption Schema
+
+id           String         id of the variant option
+optionValue  String
+isDefault    Boolean        Value of the option, e.g `red'
+
+priceDifference Number      If this option is the default value of the variant,
+                            the value is set to true.
+
+                            The unitPrice set on the product is the base
+                            for the price difference. And the unitPrice of a
+                            variant is determined by product unitPrice and
+                            priceDifference set on the variant group.
+
+                            For example, a coffee's unitPrice is $1 and has
+                            two variant groups, one is `temperature' with
+                            options hot and cold, one is `size' with normal
+                            and large. If the priceDifference of cold option
+                            is $1 and priceDifference of large option is $2,
+                            then the unit price of a cold large coffee is $1
+                            + $1 + $2 = $4.
+
+VariantValue Schema
+
+                                                                                 5
+   variantGroupId  String            id of the variantGroup
+   value           String            Value of the corresponding variant
+
+2. Get Product by Id       /products/<id>
+                           GET
+ URL
+ HTTP Verb
+
+Response
+
+Returns a product if a product with specified id can be found. Otherwise, returns 404 as
+status code.
+
+Please refer to Product schema here
+
+{
+
+   "id": "587890b412e90163297e8e7d",
+
+   "name": "Product 1",
+
+   "tags":[
+
+          "test",
+
+          "only"
+
+   ],
+
+   "category": "Product",
+
+   "sku": "P001",
+
+   "priceType": "Fixed",
+
+"  unitPrice": 94.33962264150944,
+
+"  cost": 53.33,
+
+"  barcode": "19238912312,1231242314",
+
+"  trackStockLevel": true,
+
+"  isParentProduct": false
+
+}
+
+Customers                  /customers
+1. Create Customer         POST
+                           application/json
+ URL
+ HTTP Verb
+ Content Type
+
+Request Body
+                                                                                                                        6
+   refId        UUID      Required   uniquely identify a customer, need to
+                                     be passed in by client
+   firstName    String    Required
+   lastName     String    Required   customer's first name
+   email        String    Optional
+   phone        String    Optional   customer's last name
+   address1     String    Optional
+   address2     String    Optional   customer's email
+   city         String    Optional
+   state        String    Optional   customer's phone number
+   postalCode   String    Optional
+   birthday     String    Optional   street line 1 of customer's address
+
+   memberId     String    Optional   street line 2 of customer's address
+   tags                   Optional
+                Array of             city of customer's address
+   createdTime  String    Optional
+                                     state of customer's address
+                String
+                                     postal code of customer's address
+
+                                     customer's birthday, format should be
+                                     YYYY-MM-DD
+
+                                     customer's member Id
+
+                                     tags of the customer. Multiple tags can
+                                     be added separated by a comma.
+
+                                     timestamp when the customer is
+                                     added.
+
+                                     if createdTime is missing in request
+                                     body, current time is used when the
+                                     request is processed
+
+Response
+
+If an existing customer with the same refId is found, the request is ignored and the existing
+customer object is returned.
+
+There's no validation on uniqueness of name/email/phone. As long as the refId is unique, a
+customer with the same name/email/phone can be added multiple times. If no errors are found in
+the POST, a new customer is created and the created customer object is returned.
+
+{
+
+"  refId": "815c8c86-1b1d-41b7-b979-7e9d03f3f9fe",
+
+"  firstName": "Tom",
+
+          "lastName": "Anderson",
+
+          "email": "tom@stone.com",
+
+                                                                                               7
+   "phone": "0123456789",
+
+"  address1": "52, Jalan USJ 2/5J",
+
+"  address2": "USJ 2",
+
+"  city": "Subang Jaya",
+
+"  state": "Selangor",
+
+"  postalCode": "47600",
+
+"  createdTime": "2017-02-03T04:24:20.625Z",
+
+"  modifiedTime": "2017-03-24T09:18:54.354Z",
+
+"  tags":[
+
+   "vip",
+
+   " member"
+
+   ],
+
+   "birthday": "1989-01-01",
+
+   "memberId": "ABC123"
+
+}
+
+Customer Schema
+
+   refId         UUID                uniquely identify a customer
+   firstName     String
+   lastName      String              customer's first name
+   email         String
+   phone         String              customer's last name
+   address1      String
+   address2      String              customer's email
+   city          String
+   state         String              customer's phone number
+   postalCode    String
+   memberId      String              street line 1 of customer's address
+   birthday      String
+                                     street line 2 of customer's address
+   tags          Array of String
+                                     city of customer's address
+   loyalty       Number
+                                     state of customer's address
+
+                                     postal code of customer's address
+
+                                     customer's member Id
+
+                                     customer's birthday, format is
+                                     YYYY-MM-DD
+
+                                     tags of the customer, empty array returns
+                                     if there's no tags
+
+                                     the store credit amount the customer has.
+                                     This field is NOT supported in Create
+                                     Customer API and is ONLY returned in
+                                     Get Customer By RefId API if store credit
+                                     is enabled for this account.
+
+                                                                                               8
+storeCreditsBalan Number            the store credit amount the customer has
+ce                                  this field is NOT supported in Create
+                                    Customer API and ONLY for get
+cashbackBalance Number              customer API, if customer don't have
+                                    store credit, response not show this field
+createdTime   String
+modifiedTime  String                the store credit amount the customer has
+                                    this field is NOT supported in Create
+                                    Customer API and ONLY for get
+                                    customer API, if customer don't have
+                                    store credit, response not show this field
+
+                                    timestamp when the customer is added
+
+                                    timestamp when the customer is
+                                    modified last time
+
+2. Get Customer by RefId
+
+URL                       /customers/<refId>
+HTTP Verb                 GET
+
+Response
+
+If no customer can be found with specified refId, status code 404 is returned.
+
+Otherwise the customer object of specified refId is returned, please note that the response
+schema is same as the Create Customer POST.
+
+3. Update Customer        /customers/<refId>
+ URL                      PUT
+ HTTP Verb
+
+Request Body
+
+firstName     String      Required  customer's first name
+lastName      String      Required  customer's last name
+email         String      Optional  customer's email
+
+                                                                                             9
+phone         String    Optional    customer's phone number
+address1      String    Optional
+address2      String    Optional    street line 1 of customer's address
+city          String    Optional
+state         String    Optional    street line 2 of customer's address
+postalCode    String    Optional
+tags          Array of  Optional    city of customer's address
+              String
+modifiedTime  String    Optional    state of customer's address
+
+                                    postal code of customer's address
+
+                                    tags of the customer. Multiple tags can
+                                    be added separated by a comma.
+
+                                    timestamp when the customer is
+                                    modified.
+
+                                    If this is missing in the request, current
+                                    time is used when the request is
+                                    processed
+
+Response
+
+If no customer can be found with specified refId, status code 404 is returned.
+
+Otherwise, the customer data is replaced with the data passed in the request body. Partial
+update is not supported. That means if some property is missing in the update body, the existing
+value of the property is removed.
+
+If the update is performed successfully without errors, customer object is returned. Please refer
+here for customer schema.
+
+4. Get All Customers
+
+URL                     /customers
+HTTP Verb               GET
+
+Response
+Returns an array of customers. If no customer can be found, empty array is returned.
+The Transfer-Encoding is chunked.
+Please reference here for Customer schema
+
+                                                                                      10
+5. Search Customers
+
+URL                  /customers
+HTTP Verb            GET
+
+Request Query Parameters
+
+Customers can be searched by first name/last name/email/phone. Query is specified by query
+parameters. Accepted query parameters are firstName, lastName, email, phone.
+
+When searching using firstName or lastName, all results that begin with the specified parameter
+value will be returned. When searching using email or phone, results containing the specific
+parameter value will be returned. If multiple query parameters are specified, AND logic will be
+applied to the search.
+
+e.g https://api.storehubhq.com/customers?email=abc@storehub.com returns all customers with
+email contains "abc@storehub.com"
+
+Response
+
+Returns an array of customer objects that matches query.
+
+If search results is more than 100, only first 100 results are returned sorted by last name and then
+first name.
+
+Please reference here for customer schema.
+
+Inventory
+1. Get Inventory
+
+URL                  /inventory/<storeId>
+HTTP Verb            GET
+
+Response
+
+If no store is found with specified storeId, status code 404 is returned. Otherwise it
+returns an array of stocks. Only products that configured to track stock level has stock
+information. If you don't set Warning Stock Level or Ideal Stock Level, will only return
+Quantity.
+
+{
+          "productId": "58affc2b8d2ffae03a385909",
+          "quantityOnHand": 1,
+
+                                                                                                                      11
+      warningStock: 10
+
+},
+
+{
+
+"     productId": "58affc2b8d2ffae03a38590c",
+
+      "quantityOnHand": 2,
+
+      idealStock: 12
+
+},
+
+{
+
+      "productId": "58affc2b8d2ffae03a385906",
+
+      "quantityOnHand": 2,
+
+      warningStock: 10,
+
+      idealStock: 12
+
+}
+
+Stock Schema
+
+   productId       String                  unique Id of the product
+   quantityOnHand  Number                  quantity of product available in stock
+   warningStock    Number                  quantity of product warning stock level
+   idealStock      Number                  quantity of product ideal stock level
+
+Transaction                 /transactions
+1. Get Transactions         GET
+ URL
+ HTTP Verb
+
+Request Query Parameters
+
+from               String   Optional, format is       transactions with created
+                            YYYY-MM-DD, e.g.          time is later or equal than
+                            1970-01-01                this date are returned
+
+                            default to Jan 1st, 1970
+                            if not specified
+
+                                                                                    12
+to             String  Optional, format is        transactions with created
+                       YYYY-MM-DD, e.g.           time is earlier or equal than
+storeId                1970-01-01                 this date are returned
+includeOnline
+onlineOnly             default to current day if
+                       not specified
+
+               String  Optional                   transactions of the store with
+                                                  specified storeId are
+                       default to all stores if   returned
+                       not specified
+
+               Boolean Optional                   online orders would be
+                                                  included in the returned
+                                                  transactions
+
+               Boolean Optional                   only online orders are
+                                                  returned
+
+Response
+
+Returns an array of transactions. If no transactions can be found, empty array is returned.
+Only up to 5000 transactions are returned within one API call.
+Note: return date is ISO date.
+[
+
+   {
+      "refId": "BE7606B7-EE3D-4D2C-93A1-B3594FAFFAC7",
+      "invoiceNumber": "0001808071236168",
+      "storeId": "5b62d783081ccd016185cf08",
+      "registerId": "5b62d783081ccd016185cf09",
+      "employeeId": "5b62d783081ccd016185cf0b",
+      "transactionType": "Sale",
+      "transactionTime": "2018-08-07T04:36:16.473Z",
+      "total": 473,
+      "subTotal": 473,
+      "tax": 0,
+      "discount": 0,
+      "roundedAmount": 0,
+      "serviceCharge": 0,
+      "promotions": [],
+      "items": [
+          {
+             "productId": "5b641ae7278bb801617052b2",
+             "quantity": 1,
+             "total": 473,
+             "subTotal": 473,
+             "taxCode": "gst",
+             "discount": 0,
+             "unitPrice": 473,
+
+                                                                                                                      13
+          "itemType": "Item",
+          "promotions": []
+      }
+   ],
+   "payments": [
+      {
+          "paymentMethod": "Cash",
+          "amount": 473
+      }
+   ],
+   "isCancelled": false,
+   "channel": "OFFLINE_PAYMENTS"
+},
+{
+   "refId": "864ece52-902d-4dfc-ad35-10fc1eff9137",
+   "invoiceNumber": "813366324236434",
+   "storeId": "5b62d783081ccd016185cf08",
+   "registerId": "",
+   "transactionType": "Sale",
+   "transactionTime": "2018-08-10T06:40:02.377Z",
+   "customerRefId": "5b613aae5e1fe60074d57f24",
+   "total": 258.8,
+   "subTotal": 253.8,
+   "tax": 0,
+   "discount": 0,
+   "roundedAmount": 0,
+   "serviceCharge": 0,
+   "promotions": [],
+   "items": [
+      {
+          "productId": "5b69083a891f4e0161b3af68",
+          "quantity": 1,
+          "total": 253.8,
+          "subTotal": 253.8,
+          "taxCode": "gst",
+          "discount": 0,
+          "unitPrice": 253.8,
+          "itemType": "Item",
+          "notes": "comment",
+          "promotions": [],
+          "selectedOptions": [
+
+             {
+                "groupId": "5b69083a891f4e0161b3af64",
+                "optionId": "5b69083a891f4e0161b3af67",
+                "quantity": 1
+
+             }
+          ]
+      }
+   ],
+   "payments": [
+      {
+          "amount": 258.8
+
+                                                                                                                   14
+      }
+   ],
+   "isCancelled": false,
+   "channel": "ONLINE_PAYMENTS",
+   "deliveryInformation": [
+
+      {
+          "address": {
+             "updatedTime": "2018-08-10T06:40:02.390Z",
+             "createdTime": "2018-08-10T06:40:02.390Z",
+             "name": "viji",
+             "phone": "0123456789",
+             "address": "C-G-31, 10 Boulevard, Lebuhraya SPRINT, Kayu Ara,",
+             "city": "Petaling Jaya",
+             "postCode": "47400",
+             "state": "Selangor",
+             "country": "MY",
+             "companyName": "StoreHub"
+          },
+          "shippingFee": 5,
+          "courier": "",
+          "trackingId": "",
+          "deliveryMethodInfo": {
+             "shippingZoneName": "Selangor",
+             "deliveryMethodName": "Standard",
+             "rate": 5,
+             "minShippingTime": 1,
+             "maxShippingTime": 2,
+             "isFree": false
+          }
+
+      }
+   ],
+   "contactDetail": {
+
+      "email": "viji.ravi+1@storehub.com",
+      "phone": "0123456789",
+      "name": "viji"
+   },
+   "pickupInformation": [],
+   "shippingFee": 5,
+   "pendingPaymentStartTime": null,
+   "status": "created",
+   "shippingType": "delivery",
+   "shippingFeeDiscount": null
+}]
+
+Transaction Response Schema
+
+refId          UUID          uniquely identity of the transaction
+invoiceNumber  String        invoice number of the transaction
+
+                                                                              15
+storeId            String            Id of the store which the transaction is
+                                     associated with
+registerId         String
+                                     Id of the register which the transaction is
+employeeId         String            processed by
+
+transactionType    Enum              Id of the employee who processed the
+transactionTime    Date              transaction
+
+customerRefId      UUID              possible values are Sale/Return
+
+total              Number            Time at which the transaction occurred
+subTotal           Number            (in UTC time)
+discount           Number
+tax                Number            refId of the customer which the
+roundedAmount      Number            transaction is associated with
+items
+                                     total amount of the transaction
+payments
+                                     subTotal amount of the transaction
+isCancelled
+cancelledBy                          discount applied to the transaction
+
+cancelledTime                        tax applied to the transaction
+comment
+returnReason                         rounded amount of the transaction
+
+saleInvoiceNumber  Array of Item     products purchased/returned in the
+                   Response          transaction
+serviceCharge      Array of Payment
+                   Response          payments associated of the transaction
+                   Boolean
+                   String            true if the transaction is cancelled
+
+                   Date              Id of employee who cancelled the
+                   String            transaction
+                   String
+                                     time when the transaction is cancelled
+                   String
+                                     comment on the transaction
+                   Number
+                                     the reason the purchased item was
+                                     returned
+
+                                     if it's a returned transaction, this is the
+                                     invoice number of sale transaction that
+                                     the return is associated with
+
+                                     the amount of service charge applied to
+                                     the transaction
+
+                                                                                  16
+promotions           Array of            promotions that have been applied at the
+tableId              AppliedPromotion    transaction level. These promotions are
+                     response            independent from the promotions applied
+                                         at line item level.
+
+                     String              table info of the transaction
+
+deliveryInformation  Array of            delivery information array
+contactDetail
+                     DeliveryInformatio
+
+                     n response
+
+                     ContactDetail       contact detail
+
+pickupInformation    Array of            pick up information
+shippingFee
+                     PickupInformation
+
+                     response
+
+                     Number              shipping fee
+
+pendingPaymentStar Date                  pending payment start date
+tTime                                    order status
+
+status               String
+
+shippingType         String              delivery or pickup
+
+shippingFeeDiscount Number               shipping fee discount
+
+channel              String                    ONLINE_PAYMENTS: 1,
+                                               OFFLINE_PAYMENTS: 2,
+Item Response Schema                           BEEP_ORDERS: 3
+                                               GRABFOOD: 10,
+productId            String                    SHOPEEFOOD: 11,
+itemType             Enum                      FOODPANDA: 12
+
+quantity             Number              Id of sold/returned product
+                                         possible values are
+                                         Item/Discount/ServiceCharge
+                                         sold/returned quantity of the product
+
+                                                                                                 17
+total       Number                total of the item
+subTotal    Number                subTotal of the item
+discount    Number                discount applied to the item
+notes       String                comment for the item
+tax         Number                tax applied to the item
+taxCode     String                tax code applied to this line item
+unitPrice   Number                unit price of the item if the product's
+                                  priceType is Variable
+promotions  Array of              promotions that have been applied to this
+            AppliedPromotion      line item
+tableId     response
+            String                table info of the transaction
+
+Payment Response Schema           Possible values are
+ paymentMethod String             Cash/CreditCard/Loyalty, or custom
+                                  payment options defined in BackOffice
+amount      Number
+                                  amount paid with this payment
+AppliedPromotion Response Schema
+                                  unique id of the applied promotion
+id          String
+name        String                applied promotion's name as configured
+                                  in StoreHub BackOffice
+discount    Number
+                                  discount applied due to this promotion,
+tax         Number                discounted amount is deducted from the
+                                  subtotal without tax
+
+                                  tax deducted due to this promotion,
+                                  when this number is not zero. The total
+                                  discounted amount due to this promotion
+                                  is (discount - tax) since tax is negative
+                                  here.
+
+DeliveryInformation Response Schema
+                                                                                                                      18
+address                  address response      customer address
+                                               information
+courier                  String
+trackingId               String                courier
+shippingFee              Number
+deliveryMethodInfo       delivery method       tracking id
+                         information response
+                                               shipping fee
+
+                                               customer delivery method
+                                               information
+
+address Response Schema
+
+updatedTime              Date                  address update date
+createdTime              Date                  address create date
+name                     String                customer name
+phone                    String                customer phone
+address                  String                customer address
+city                     String                customer city
+postCode                 String                customer postcode
+state                    String                customer state
+country                  String                customer country
+companyName              String                customer company name
+
+DeliveryMethodInfo Schema                      shipping zone name
+                                               delivery method name
+shippingZoneName         String                shipping fee
+deliveryMethodName       String                min shipping time
+rate                     Number
+minShippingTime          Number                                                    19
+maxShippingTime           Number           max shipping time
+shippingTimeUnit          String
+                                           shipping time unit(day or
+isFree                    Boolean          hour)
+
+                                           if free shipping
+
+ContactDetail Schema Response
+
+email                     String           email address
+name                      String           name
+phone                     String           phone number
+
+PickupInformation Schema Response
+
+store                     stores response  store information
+
+1. Add Transaction
+
+URL                       /transactions
+HTTP Verb                 POST
+
+Request Body
+
+refId             UUID    Required         unique identity of the transaction
+invoiceNumber     String  Required*        invoice number of the transaction
+storeId           String  Required         store which this transaction belongs to
+employeeId        String
+                          Optional         specifies which employee processed
+transactionType   Enum    Required         the transaction
+                          Required
+transactionTime   Date                     allowed values are Sale/Return (case
+                                           sensitive).
+
+                                           specifies when this transaction
+                                           happened
+
+                                                                                 20
+paymentMethod Enum        Required  allowed values are Cash/CreditCard
+                          Optional  (case sensitive).
+customerRefId  UUID       Required
+                          Required  refId of the customer that this
+total          Number     Optional  transaction is associated with
+subTotal       Number     Required
+tax            Number               total amount of the transaction
+discount       Number     Optional
+                                    subTotal amount of the transaction
+roundedAmount  Number     Optional
+                          Required  tax amount applied to the transaction
+comment        String     Optional
+items                     Optional  discount applied to the transaction.
+               Array of
+returnReason   Item       Optional  specify 0 if no discount
+
+               String               rounded amount of the transaction
+
+saleInvoiceNumber String            default to 0
+
+tableId        String               comment on the transaction
+
+                                    purchased or returned items of the
+                                    transaction
+
+                                    the reason the purchased item was
+                                    returned
+
+                                    If this is a Return transaction, specifies
+                                    the invoiceNumber of sale transaction
+                                    that this return associated with
+
+                                    table info of the transaction
+
+Item Schema    String     Required  specifies the product Id
+               Number     Required  purchased/returned quantity of the
+ productId                          product
+ quantity      Number     Required  total of this line item
+               Number     Required  subTotal of this line item
+ total         Number     Optional  tax applied to this line item
+ subTotal      Number     Required  discount applied to this line
+ tax
+ discount                           Specify 0 if no discount applied.
+
+                                                                                       21
+unitPrice       Number  Optional  If the product's priceType is `Variable',
+                                  specifies the unitPrice on item which is
+                                  determined when check-out
+
+Notes:
+
+1) There's no validation on whether sum-up of subtotal/total/discount/tax on each item equals to
+   subtotal/total/discount/tax of the transaction
+
+2) All discounts should be specified in absolute value instead of percentage.
+2) Return transactions needs to be performed as a different transaction, which can be associated
+
+   with the related Sale transaction by specifying the matching saleInvoiceNumber.
+3) There's no validation on whether the returned items are actually part of the sale transaction or
+
+   has been returned already not even if the salveInvoiceNumber is specified.
+4) All numbers should be tax exclusive. It's expected that total = subtotal + tax - discount +
+
+   roundedAmount + serviceCharge at transaction level and total = subTotal + tax - discount
+   at item level.
+
+Response
+
+If an existing transaction with same refId can be found, the request is ignored and the existing
+transaction is returned.
+
+Otherwise the transaction is added. And the added transaction is returned.
+
+Please reference Transaction Response Schema in Get Transactions section for response
+
+3. Cancel Transaction
+
+ URL                    /transactions/<refId>/cancel
+                        (refId is the refId of transaction to be cancelled)
+ HTTP Verb              POST
+Request Body
+ cancelledTime  Date              Required  specify cancelled
+ cancelledBy    String            Optional  time.
+
+Response                                    specify employee Id
+                                            who cancelled the
+                                            transaction
+
+                                                                                                  22
+If the transaction with specified refId cannot be found, status code 404 is returned.
+
+Otherwise the transaction is cancelled and the response object is returned. Please reference here
+for transaction schema.
+
+Notes:
+
+1) Only Sale transactions can be cancelled
+
+Employees
+1. Get All Employees
+
+   URL                      /employees
+   HTTP Verb                GET
+
+Query Parameters
+
+   modifiedSince      Date              Optional  if specified, only
+                                                  returns those
+                                                  employees added
+                                                  or modified equal to
+                                                  or after the
+                                                  specified date time
+                                                  using format
+                                                  YYYY-MM-DD, e.g.
+                                                  "2015-10-01"
+
+Response
+
+An array of employees are returned. Please reference the Employee schema below.
+
+{
+
+   "id": "589fe4ffb92508602f477428",
+
+"  firstName": "John",
+
+   "lastName": "Doe",
+
+   "email": "john@gmail.com",
+
+   "phone": "0123456789",
+
+"  createdTime": "2017-02-12T04:30:55.601Z",
+
+"  modifiedTime": "2017-02-15T08:02:17.472Z"
+
+}
+
+Employee Schema
+
+   id                  String  Unique Id of the employee
+   firstName           String  first name of the employee
+
+                                                                                 23
+   lastName        String           last name of the employee
+   email           String           email of the employee
+   phone           String           phone of the employee
+   createdTime     Date             the time of the employee added to StoreHub
+                                    system
+   modifiedTime    Date
+                                    the last time the employee gets modified
+
+Stores
+1. Get All Stores
+
+   URL                     /stores
+   HTTP Verb               GET
+
+Response
+
+An array of all stores are returned. Please reference the Store schema below.
+
+{
+
+   "id": "580c5da45c196d8304aa4986",
+
+   "name": "ew",
+
+"  address1": "1, The Intermark",
+
+"  address2": "Jalan Tun Razak",
+
+   "city": "Kuala Lumpur",
+
+"  state": "Kuala Lumpur",
+
+"  country": "Malaysia",
+
+"  postalCode": "50400",
+
+   "phone": "0321660000",
+
+"  email": "ew@gmail.com",
+
+"  website": "ew-shop.com"
+
+}
+
+Store Schema
+
+   id              String           Unique Id of the store
+   name            String           name of the store
+   address1        String           address line 1 of the store
+   address2        String           address line 2 of the store
+   city            String           the city the store is located in
+
+                                                                                24
+   state              String  the state the store is located in
+   country            String  the country the store is located in
+   postalCode         String  postal code of the store
+   phone              String  store's phone number
+   email              String  store's email address
+   website            String  store's website
+
+Timesheets                /timesheets
+1. Search Timesheets      GET
+
+ URL
+ HTTP Verb
+
+Query Parameters
+
+   storeId            String  Unique Id of the store [Optional]
+   employeeId         String
+   from               Date    Unique Id of the employee [Optional]
+
+   to                 Date    search the records employee clock in after this
+                              time [Optional]
+
+                              search the records employee clock in before
+                              this time [Optional]
+
+Response
+
+An array of all timesheet records meet the search conditions.
+
+{
+
+   ""employeeId: "xxxx",
+
+   "storeId": "xxxx",
+
+"  clockInTime: "2019-01-31T11:11:04.013Z",
+
+"  clockOutTime: "2019-01-31T11:11:04.013Z",
+
+}
+
+Timesheet Schema
+
+   employeeId         String  Unique Id of the employee
+
+                                                                   25
+storeId               String  Unique Id of the store that employee created
+                              this timesheet
+clockInTime           String
+clockOutTime          String  When the employee clock in
+
+                              When the employee clock out
+
+Revision History
+
+Date             Version      Description
+-                1.0
+28th March 2017  1.1          Initial draft
+
+21st June 2017   1.2          - Added response object examples
+                              - Refined descriptions and definitions
+31st Jan 2019    1.3
+                              Added store credit balance field to customer
+1st Nov 2019     1.4          object
+
+12th Nov 2019    1.5          Add timesheets api document
+
+                              Add tableId to Transaction API
+
+                              Update get Transaction api
+
+                                                                            26
+

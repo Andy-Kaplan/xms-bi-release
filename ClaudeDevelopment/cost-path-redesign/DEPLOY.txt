@@ -1,0 +1,26 @@
+=== Inventory Cost Path Redesign — Deploy Order ===
+
+Pre-requisites:
+- Growyze staging scripts (02-04 in ClaudeDevelopment/integrations/Growyze/) must be deployed first
+
+Deploy order:
+
+1. 01_invitem_v4_entity.sql             — Entity definition + ALTER TABLE on all org DBs (core DB)
+                                           (Script includes org cursor that adds UOM_COST column
+                                            to SAT_INVITEM + load.INVITEM in every active org DB.
+                                            sp_GenerateDataVaultTables is NOT needed — it only
+                                            CREATEs new tables, does not ALTER existing ones.)
+2. 02_growyze_invitems_uom_cost.sql     — Growyze INVITEM staging + mapping
+3. 03_marketman_invitems_uom_cost.sql   — MarketMan INVITEM staging + mapping
+4. Run UploadEntityMappings:
+     EXEC [core].[UploadEntityMappings] @intSchema = N'int_growyze001'
+     EXEC [core].[UploadEntityMappings] @intSchema = N'int_marketman001'
+5. 04_presentation_counts_cost.sql      — PresentationControl: F_INV_COUNTS_DAY
+6. 05_presentation_usage_cost.sql       — PresentationControl: F_INV_USAGE_DAY
+
+Post-deploy:
+- Run a full data load (sp_DataVaultLoad) for at least one Growyze and one MarketMan org
+- Verify SAT_INVITEM.UOM_COST is populated for leaf items (BOTTOM_LEVEL = 1)
+- Verify F_INV_COUNTS_DAY.UOM_COST and F_INV_USAGE_DAY.UOM_COST are non-NULL
+- Verify F_INV_SALES_DAY recalculates correctly (Tier 2 — automatic)
+- Compare MarketMan cost values before/after for regression check

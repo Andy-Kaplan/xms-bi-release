@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XMS BI — Direct Data Access</title>
+<style>
+  :root{
+    /* Neutral surface palette */
+    --bg:#F4F5F7;
+    --bg-2:#ECEEF1;
+    --surface:#FFFFFF;
+    --surface-2:#F9FAFB;
+
+    /* Ink */
+    --ink:#0F172A;
+    --ink-2:#1F2937;
+    --ink-3:#475569;
+    --ink-dim:#64748B;
+    --ink-muted:#94A3B8;
+    --ink-faint:#CBD5E1;
+
+    /* Rules */
+    --rule:#E2E8F0;
+    --rule-soft:#EDF1F5;
+
+    /* XMS brand */
+    --brand-navy:#1F2C44;
+    --brand-coral:#E97359;
+
+    /* BI accent palette (teal) */
+    --accent:#0F5454;
+    --accent-2:#0D6B6B;
+    --accent-3:#14807A;
+    --accent-soft:#D9EDEB;
+    --accent-faint:#ECF5F4;
+
+    /* Domain accents (entity-model) */
+    --c-tx:#0F5454;
+    --c-inv:#B45C2E;
+    --c-ppl:#8A6510;
+    --c-crm:#6A2F4D;
+    --c-exp:#2A4880;
+    --c-ext:#475569;
+
+    /* Type stack */
+    --sans:"Calibri","Carlito","Segoe UI",-apple-system,BlinkMacSystemFont,"Trebuchet MS",Helvetica,Arial,sans-serif;
+    --mono:"Consolas","Cascadia Code","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+    /* Radii / shadow */
+    --r-sm:6px;
+    --r:10px;
+    --r-lg:16px;
+    --shadow-1:0 1px 2px rgba(15,23,42,.04), 0 1px 1px rgba(15,23,42,.03);
+    --shadow-2:0 4px 14px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.04);
+    --shadow-3:0 12px 36px rgba(15,23,42,.08), 0 4px 12px rgba(15,23,42,.04);
+
+    /* Layout */
+    --wrap:1200px;
+    --ease:cubic-bezier(.2,.65,.2,1);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.55;font-size:16px}
+  body{font-feature-settings:"kern" 1;font-variant-numeric:tabular-nums lining-nums}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{color:var(--accent-2)}
+  img{display:block;max-width:100%}
+
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 32px;position:relative}
+  .mono{font-family:var(--mono)}
+  .eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:var(--accent);display:inline-flex;align-items:center;gap:10px}
+  .eyebrow::before{content:"";width:24px;height:2px;background:var(--accent);display:inline-block;border-radius:1px}
+
+  /* ============ TOP BAR ============ */
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);backdrop-filter:saturate(140%) blur(10px);-webkit-backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--rule)}
+  .topbar-inner{max-width:var(--wrap);margin:0 auto;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand img{height:34px;width:auto}
+  .brand-bi{display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;font-weight:700;font-size:13px;letter-spacing:.04em;width:30px;height:30px;border-radius:6px;text-transform:lowercase}
+  .brand-text{font-weight:700;color:var(--ink);font-size:15px;letter-spacing:.02em}
+  .brand-text small{display:block;font-weight:500;color:var(--ink-dim);font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-top:1px}
+  .topbar-meta{font-size:12px;color:var(--ink-dim);font-weight:500;letter-spacing:.04em}
+  .topbar-meta strong{color:var(--ink-2);font-weight:600}
+
+  /* ============ HERO ============ */
+  .hero{padding:80px 0 72px;position:relative}
+  .hero-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:64px;align-items:center}
+  .hero-eyebrow{margin-bottom:24px}
+  .hero h1{font-size:clamp(40px,5.4vw,64px);line-height:1.05;letter-spacing:-.02em;font-weight:700;margin:0 0 24px;color:var(--ink)}
+  .hero h1 .hl{color:var(--accent);position:relative;display:inline-block;white-space:nowrap}
+  .hero-lead{font-size:18px;line-height:1.6;color:var(--ink-3);max-width:560px;margin:0 0 36px;font-weight:400}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:28px 40px;padding-top:28px;border-top:1px solid var(--rule)}
+  .hero-meta-item{display:flex;flex-direction:column;gap:2px}
+  .hero-meta-key{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);font-weight:600}
+  .hero-meta-val{font-size:18px;font-weight:600;color:var(--ink);letter-spacing:-.005em}
+  .hero-meta-val .infinity{font-size:22px;line-height:1;display:inline-block;transform:translateY(1px)}
+
+  /* Hero visual — flow diagram */
+  .hero-visual{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-lg);box-shadow:var(--shadow-2);padding:28px;position:relative}
+  .hero-visual::before{content:"";position:absolute;inset:-1px;border-radius:inherit;background:linear-gradient(135deg,transparent 60%,var(--accent-faint) 100%);pointer-events:none;z-index:0}
+  .hero-visual-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;position:relative;z-index:1}
+  .hero-visual-title{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .hero-visual-dot{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink-dim);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+  .hero-visual-dot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-faint)}
+  .hero-visual svg{display:block;width:100%;height:auto;position:relative;z-index:1}
+
+  .hv-col-label{font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;fill:var(--ink-dim)}
+  .hv-box{fill:#fff;stroke:var(--ink-faint);stroke-width:1}
+  .hv-box-label{font-size:11px;fill:var(--ink-2);font-weight:600}
+  .hv-vault-box{fill:#fff;stroke:var(--accent);stroke-width:1.4}
+  .hv-vault-label{font-size:10px;fill:var(--accent);font-weight:700;letter-spacing:.06em;font-family:var(--mono)}
+  .hv-conn{stroke:var(--ink-muted);stroke-width:1;fill:none}
+  .hv-conn-accent{stroke:var(--accent);stroke-width:1.4;fill:none}
+
+  /* ============ SECTION FRAME ============ */
+  section{padding:96px 0;position:relative}
+  section.tint{background:var(--bg-2)}
+  .section-head{margin-bottom:56px;max-width:780px}
+  .section-head .eyebrow{margin-bottom:16px}
+  .section-head h2{font-size:clamp(30px,3.4vw,40px);line-height:1.15;margin:0 0 14px;letter-spacing:-.014em;color:var(--ink);font-weight:700}
+  .section-head p{font-size:17px;color:var(--ink-3);margin:0;line-height:1.6}
+
+  /* ============ PILLARS ============ */
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .pillar{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-lg);padding:32px 28px 30px;transition:transform .25s var(--ease),box-shadow .25s var(--ease),border-color .25s var(--ease)}
+  .pillar:hover{transform:translateY(-2px);box-shadow:var(--shadow-2);border-color:#D5DCE5}
+  .pillar-icon{width:46px;height:46px;border-radius:10px;background:var(--accent-faint);display:flex;align-items:center;justify-content:center;margin-bottom:24px;color:var(--accent)}
+  .pillar-icon svg{width:24px;height:24px}
+  .pillar-num{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--accent);margin-bottom:8px}
+  .pillar h3{margin:0 0 12px;font-size:22px;letter-spacing:-.005em;color:var(--ink);font-weight:700}
+  .pillar p{margin:0;color:var(--ink-3);font-size:15.5px;line-height:1.6}
+
+  /* ============ PIPELINE ============ */
+  .pipeline-card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-lg);box-shadow:var(--shadow-1);padding:48px 40px 40px}
+  .pipeline-head-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:36px}
+  .pipeline-head-row-left{font-weight:700;font-size:14px;color:var(--ink-2)}
+  .pipeline-head-row-right{font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase}
+  .pipeline-svg-wrap{width:100%;overflow:visible}
+  .pipeline-svg{display:block;width:100%;height:auto;overflow:visible}
+
+  .ps-tick{stroke:var(--ink-faint);stroke-width:1;fill:none}
+  .ps-conn{stroke:var(--ink-muted);stroke-width:1.4;fill:none;stroke-linecap:round}
+  .ps-conn.accent{stroke:var(--accent);stroke-width:1.8}
+  .ps-node-circle{fill:#fff;stroke:var(--ink-muted);stroke-width:1.4}
+  .ps-node-circle.accent{stroke:var(--accent);stroke-width:1.8;fill:var(--accent-faint)}
+  .ps-node-dot{fill:var(--ink-2)}
+  .ps-node-dot.accent{fill:var(--accent)}
+  .ps-num{font-family:var(--mono);font-size:11px;font-weight:700;fill:var(--ink-dim);letter-spacing:.04em}
+  .ps-num.accent{fill:var(--accent)}
+  .ps-title{font-size:15px;font-weight:700;fill:var(--ink)}
+  .ps-title.accent{fill:var(--accent)}
+  .ps-sub{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;fill:var(--ink-dim)}
+  .ps-sub.accent{fill:var(--accent-2)}
+  .ps-bracket{fill:none;stroke:var(--accent);stroke-width:1.2}
+  .ps-bracket-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;fill:var(--accent)}
+
+  .pipeline-legend{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:40px;padding-top:32px;border-top:1px solid var(--rule)}
+  .pl-row{display:flex;gap:14px;align-items:flex-start}
+  .pl-mark{flex:0 0 28px;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--ink-muted);display:flex;align-items:center;justify-content:center;margin-top:2px}
+  .pl-mark.accent{border-color:var(--accent);background:var(--accent-faint)}
+  .pl-mark-dot{width:8px;height:8px;border-radius:50%;background:var(--ink-2)}
+  .pl-mark.accent .pl-mark-dot{background:var(--accent)}
+  .pl-text-key{font-weight:700;font-size:14px;color:var(--ink-2);margin-bottom:2px}
+  .pl-text-body{font-size:14.5px;color:var(--ink-3);line-height:1.55}
+
+  /* ============ ENTITY MODEL — 2×3 grid ============ */
+  .domains{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .domain{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-lg);padding:24px 22px 18px;position:relative;overflow:hidden;transition:transform .25s var(--ease),box-shadow .25s var(--ease);min-height:340px;display:flex;flex-direction:column}
+  .domain:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+  .domain.dashed{border-style:dashed;background:var(--surface-2)}
+  .domain-strip{height:3px;background:var(--c);border-radius:3px;width:42px;margin-bottom:14px}
+  .domain-num{font-size:10px;font-weight:700;letter-spacing:.18em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:4px}
+  .domain h3{margin:0 0 10px;font-size:19px;font-weight:700;color:var(--ink);letter-spacing:-.005em}
+  .domain p{margin:0 0 14px;font-size:13.5px;line-height:1.55;color:var(--ink-3)}
+  .domain-diagram{flex:1;position:relative;margin-top:4px;border-radius:var(--r);background:var(--surface-2);padding:8px;border:1px solid var(--rule-soft)}
+  .domain-diagram svg{display:block;width:100%;height:100%;overflow:visible}
+
+  .dm-blob{fill:var(--c);fill-opacity:.04;stroke:var(--c);stroke-width:1;stroke-opacity:.65}
+  .dm-blob.dashed{stroke-dasharray:4 5;stroke-opacity:.5}
+  .dm-link{stroke:var(--ink-muted);stroke-width:.7;fill:none;opacity:.55}
+  .dm-node-hub{fill:#fff;stroke:var(--c);stroke-width:1.2}
+  .dm-node-event{fill:var(--c);stroke:var(--c);stroke-width:1.2}
+  .dm-node-placeholder{fill:#fff;stroke:var(--ink-muted);stroke-width:1;stroke-dasharray:2 2}
+  .dm-label{font-size:8.4px;font-weight:600;fill:var(--ink-2);text-anchor:middle;font-family:var(--sans);paint-order:stroke fill;stroke:#fff;stroke-width:2px;stroke-linejoin:round;stroke-linecap:round}
+  .dm-label.event{fill:var(--c);font-weight:700}
+  .dm-label.placeholder{fill:var(--ink-muted);font-style:italic;font-weight:500}
+
+  /* Field guide */
+  .field-guide{margin-top:32px;padding:18px 22px;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);display:flex;flex-wrap:wrap;gap:24px;align-items:center;font-size:13.5px;color:var(--ink-3)}
+  .fg-item{display:flex;align-items:center;gap:8px}
+  .fg-marker{width:10px;height:10px;border-radius:50%;background:var(--accent);border:1.4px solid var(--accent);flex-shrink:0}
+  .fg-marker.hub{background:#fff}
+  .fg-marker.placeholder{background:#fff;border-style:dashed;border-color:var(--ink-muted)}
+  .fg-term{font-weight:700;color:var(--ink-2)}
+
+  /* ============ CONNECTION PROFILE ============ */
+  .connection{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:48px;align-items:start;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-lg);padding:48px;box-shadow:var(--shadow-1)}
+  .connection-intro h2{font-size:32px;line-height:1.15;letter-spacing:-.012em;margin:0 0 16px;font-weight:700;color:var(--ink)}
+  .connection-intro p{margin:0 0 24px;font-size:16px;line-height:1.6;color:var(--ink-3)}
+  .connection-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .ct-pill{font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--bg);padding:7px 12px;border-radius:999px;border:1px solid var(--rule)}
+  .spec{background:var(--bg);border-radius:var(--r);padding:24px 24px 12px;border:1px solid var(--rule)}
+  .spec-title{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:18px}
+  .spec-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:14px 0;border-top:1px solid var(--rule)}
+  .spec-row:first-of-type{border-top:0;padding-top:0}
+  .spec-row:last-of-type{padding-bottom:6px}
+  .spec-label{font-size:13px;color:var(--ink-dim);font-weight:600;letter-spacing:.04em;text-transform:uppercase;flex-shrink:0}
+  .spec-value{font-size:15px;color:var(--ink);font-weight:600;text-align:right}
+  .spec-value.mono{font-family:var(--mono);font-weight:500;font-size:14px}
+
+  /* ============ FOOTER ============ */
+  .site-footer{padding:48px 0 56px;background:var(--bg);border-top:1px solid var(--rule)}
+  .site-footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px}
+  .footer-brand{display:flex;align-items:center;gap:12px;color:var(--ink-2);font-size:13px;font-weight:600}
+  .footer-brand img{height:30px;width:auto}
+  .footer-meta{font-size:12px;color:var(--ink-dim);letter-spacing:.04em}
+
+  /* ============ REVEAL ============ */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    .reveal{opacity:1;transform:none;transition:none}
+    *,*::before,*::after{animation:none !important;transition:none !important}
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1040px){
+    .hero-grid{grid-template-columns:1fr;gap:48px}
+    .hero-visual{order:2}
+    .domains{grid-template-columns:repeat(2,1fr)}
+    .connection{grid-template-columns:1fr;gap:32px;padding:36px}
+  }
+  @media (max-width: 720px){
+    .wrap{padding:0 20px}
+    .topbar-inner{padding:12px 20px}
+    .topbar-meta{display:none}
+    .hero{padding:48px 0 56px}
+    .hero h1{font-size:34px}
+    .hero-meta{gap:20px 28px}
+    section{padding:64px 0}
+    .pillars{grid-template-columns:1fr;gap:14px}
+    .domains{grid-template-columns:1fr}
+    .pipeline-card{padding:28px 20px}
+    .pipeline-legend{grid-template-columns:1fr;gap:18px}
+    .connection{padding:28px 22px}
+    .section-head h2{font-size:26px}
+    .section-head p{font-size:15.5px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <img src="XMS%20logo%20(1).png" alt="XMS" />
+      <span class="brand-bi">bi</span>
+      <span class="brand-text">XMS BI<small>Direct Data Access</small></span>
+    </div>
+    <span class="topbar-meta">For data teams · <strong>Read-only</strong> · Your dedicated database</span>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+
+      <div class="hero-main reveal">
+        <div class="hero-eyebrow eyebrow">Direct Data Access</div>
+        <h1>Your operational data, modelled, joined and <span class="hl">yours to query.</span></h1>
+        <p class="hero-lead">
+          XMS BI consolidates the data from your operational systems — POS, inventory, surveys and more — into a single, query-ready warehouse on a model designed to grow across departments and source systems. Plug your own BI tool straight into it.
+        </p>
+
+        <div class="hero-meta">
+          <div class="hero-meta-item">
+            <span class="hero-meta-key">Model</span>
+            <span class="hero-meta-val">Data&nbsp;Vault&nbsp;2.0</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-key">Domains</span>
+            <span class="hero-meta-val"><span class="infinity">∞</span>&nbsp;extensible</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-key">History</span>
+            <span class="hero-meta-val">SCD&nbsp;Type&nbsp;2</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-key">Interface</span>
+            <span class="hero-meta-val">SQL Server</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="hero-visual reveal" aria-hidden="true">
+        <div class="hero-visual-head">
+          <span class="hero-visual-title">How your data moves</span>
+          <span class="hero-visual-dot">Scheduled</span>
+        </div>
+        <svg viewBox="0 0 360 260">
+          <text class="hv-col-label" x="56"  y="20" text-anchor="middle">SOURCES</text>
+          <text class="hv-col-label" x="180" y="20" text-anchor="middle">DATA&nbsp;VAULT</text>
+          <text class="hv-col-label" x="304" y="20" text-anchor="middle">YOUR&nbsp;TOOLS</text>
+
+          <!-- source boxes -->
+          <g>
+            <rect class="hv-box" x="20" y="42"  width="72" height="30" rx="5" />
+            <text class="hv-box-label" x="56" y="62" text-anchor="middle">POS</text>
+            <rect class="hv-box" x="20" y="86"  width="72" height="30" rx="5" />
+            <text class="hv-box-label" x="56" y="106" text-anchor="middle">Inventory</text>
+            <rect class="hv-box" x="20" y="130" width="72" height="30" rx="5" />
+            <text class="hv-box-label" x="56" y="150" text-anchor="middle">Surveys</text>
+            <rect class="hv-box" x="20" y="174" width="72" height="30" rx="5" stroke-dasharray="3 3" />
+            <text class="hv-box-label" x="56" y="194" text-anchor="middle" fill="#94A3B8">…more</text>
+          </g>
+
+          <!-- connectors S→V -->
+          <path class="hv-conn" d="M92 57 C 122 57, 140 116, 148 130"/>
+          <path class="hv-conn" d="M92 101 C 122 101, 140 142, 148 142"/>
+          <path class="hv-conn" d="M92 145 C 122 145, 140 152, 148 152"/>
+          <path class="hv-conn" d="M92 189 C 122 189, 140 168, 148 162"/>
+
+          <!-- vault stack -->
+          <g>
+            <rect class="hv-vault-box" x="148" y="118" width="64" height="22" rx="5" />
+            <text class="hv-vault-label" x="180" y="133" text-anchor="middle">HUB</text>
+            <rect class="hv-vault-box" x="148" y="142" width="64" height="22" rx="5" />
+            <text class="hv-vault-label" x="180" y="157" text-anchor="middle">SAT</text>
+            <rect class="hv-vault-box" x="148" y="166" width="64" height="22" rx="5" />
+            <text class="hv-vault-label" x="180" y="181" text-anchor="middle">LINK</text>
+          </g>
+
+          <!-- connectors V→T -->
+          <path class="hv-conn-accent" d="M212 129 C 240 129, 252 148, 260 152"/>
+          <path class="hv-conn-accent" d="M212 153 C 240 153, 252 153, 260 153"/>
+          <path class="hv-conn-accent" d="M212 177 C 240 177, 252 162, 260 156"/>
+
+          <!-- consumer -->
+          <g>
+            <rect class="hv-box" x="260" y="86"  width="80" height="30" rx="5" />
+            <text class="hv-box-label" x="300" y="106" text-anchor="middle">Power BI</text>
+            <rect class="hv-box" x="260" y="130" width="80" height="30" rx="5" />
+            <text class="hv-box-label" x="300" y="150" text-anchor="middle">Tableau</text>
+            <rect class="hv-box" x="260" y="174" width="80" height="30" rx="5" stroke-dasharray="3 3" />
+            <text class="hv-box-label" x="300" y="194" text-anchor="middle" fill="#94A3B8">any SQL tool</text>
+          </g>
+
+          <!-- bottom axis labels -->
+          <text x="56"  y="232" text-anchor="middle" font-size="10" fill="#94A3B8" font-style="italic">operational</text>
+          <text x="180" y="232" text-anchor="middle" font-size="10" fill="#94A3B8" font-style="italic">modelled · historised</text>
+          <text x="304" y="232" text-anchor="middle" font-size="10" fill="#94A3B8" font-style="italic">queried</text>
+          <line x1="20" y1="244" x2="340" y2="244" stroke="#CBD5E1" stroke-width=".6"/>
+          <path d="M334 240 L340 244 L334 248" stroke="#CBD5E1" stroke-width=".6" fill="none"/>
+        </svg>
+      </aside>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ PILLARS ============ -->
+<section class="tint">
+  <div class="wrap">
+
+    <div class="section-head reveal">
+      <span class="eyebrow">The method</span>
+      <h2>Three movements, repeated for every source.</h2>
+      <p>New systems are added through a standard onboarding pattern — not a custom build each time. The same model carries every domain.</p>
+    </div>
+
+    <div class="pillars">
+      <article class="pillar reveal">
+        <div class="pillar-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="4" cy="6" r="1.3" fill="currentColor"/>
+            <circle cx="4" cy="12" r="1.3" fill="currentColor"/>
+            <circle cx="4" cy="18" r="1.3" fill="currentColor"/>
+            <path d="M5.3 6 C 10 6, 12 12, 18 12"/>
+            <path d="M5.3 12 L 18 12"/>
+            <path d="M5.3 18 C 10 18, 12 12, 18 12"/>
+            <path d="M18 12 L 21 12"/>
+          </svg>
+        </div>
+        <div class="pillar-num">01 · INGEST</div>
+        <h3>We ingest.</h3>
+        <p>Any operational system with an API or data feed — transactions, movements, people, customers, assets, events. Onboarding new sources is a configuration job, not a code project.</p>
+      </article>
+
+      <article class="pillar reveal">
+        <div class="pillar-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 5 L8 4 L9 8 L4 9 Z"/>
+            <path d="M3 14 L9 13 L10 17 L4 18 Z"/>
+            <path d="M11 6 L15 8"/>
+            <path d="M11 15 L15 13"/>
+            <rect x="15" y="6" width="6" height="12" rx="1"/>
+            <path d="M15 11 L21 11"/>
+          </svg>
+        </div>
+        <div class="pillar-num">02 · CONFORM</div>
+        <h3>We conform.</h3>
+        <p>Every source feeds the same standardised entity model. A product, location or transaction means the same thing regardless of where it came from — and the model absorbs new business domains as your operation evolves.</p>
+      </article>
+
+      <article class="pillar reveal">
+        <div class="pillar-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="5" width="18" height="13" rx="1.4"/>
+            <path d="M3 8 L21 8"/>
+            <path d="M6 14 L6 11" stroke-width="2.2"/>
+            <path d="M9 14 L9 10" stroke-width="2.2"/>
+            <path d="M12 14 L12 12" stroke-width="2.2"/>
+            <path d="M14.5 13 L16.5 11 L18 12 L21 9"/>
+          </svg>
+        </div>
+        <div class="pillar-num">03 · QUERY</div>
+        <h3>You query.</h3>
+        <p>Connect Power BI, Tableau, Looker, Metabase, Python or dbt — anything that speaks SQL — directly to your dedicated database. No middleware, no exports, no waiting for IT.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PIPELINE ============ -->
+<section>
+  <div class="wrap">
+
+    <div class="section-head reveal">
+      <span class="eyebrow">The pipeline</span>
+      <h2>Five stages from source to your tools.</h2>
+      <p>Stages 01 — 03 are operated by Three Rocks behind the scenes. Stages 04 and 05 are where your team plugs in.</p>
+    </div>
+
+    <div class="pipeline-card reveal">
+
+      <div class="pipeline-head-row">
+        <span class="pipeline-head-row-left">Pipeline schematic</span>
+        <span class="pipeline-head-row-right">FIG.&nbsp;02 — STAGES&nbsp;01–05</span>
+      </div>
+
+      <svg class="pipeline-svg" viewBox="0 0 1200 340" preserveAspectRatio="xMidYMid meet">
+        <!-- top hairline -->
+        <line class="ps-tick" x1="100" y1="60" x2="1100" y2="60"/>
+
+        <!-- connectors -->
+        <path class="ps-conn" d="M 198 200 L 378 200"/>
+        <path class="ps-conn" d="M 458 200 L 580 200"/>
+        <path class="ps-conn accent" d="M 658 200 L 800 200"/>
+        <path class="ps-conn accent" d="M 880 200 L 1000 200"/>
+
+        <!-- bracket for stages 4 & 5 -->
+        <path class="ps-bracket" d="M 770 110 L 770 95 L 1080 95 L 1080 110"/>
+        <text class="ps-bracket-label" x="925" y="84" text-anchor="middle">Available to your team</text>
+
+        <!-- Stage 01 -->
+        <g>
+          <text class="ps-num" x="170" y="50" text-anchor="middle">01</text>
+          <circle class="ps-node-circle" cx="170" cy="200" r="28"/>
+          <circle class="ps-node-dot" cx="170" cy="200" r="3"/>
+          <text class="ps-title" x="170" y="262" text-anchor="middle">Source</text>
+          <text class="ps-sub" x="170" y="286" text-anchor="middle">OPERATIONAL SYSTEMS</text>
+        </g>
+        <!-- Stage 02 -->
+        <g>
+          <text class="ps-num" x="420" y="50" text-anchor="middle">02</text>
+          <circle class="ps-node-circle" cx="420" cy="200" r="28"/>
+          <circle class="ps-node-dot" cx="420" cy="200" r="3"/>
+          <text class="ps-title" x="420" y="262" text-anchor="middle">Land</text>
+          <text class="ps-sub" x="420" y="286" text-anchor="middle">RAW LANDING</text>
+        </g>
+        <!-- Stage 03 -->
+        <g>
+          <text class="ps-num" x="620" y="50" text-anchor="middle">03</text>
+          <circle class="ps-node-circle" cx="620" cy="200" r="28"/>
+          <circle class="ps-node-dot" cx="620" cy="200" r="3"/>
+          <text class="ps-title" x="620" y="262" text-anchor="middle">Stage</text>
+          <text class="ps-sub" x="620" y="286" text-anchor="middle">CLEANSING &amp; CDC</text>
+        </g>
+        <!-- Stage 04 -->
+        <g>
+          <text class="ps-num accent" x="840" y="50" text-anchor="middle">04</text>
+          <circle class="ps-node-circle accent" cx="840" cy="200" r="30"/>
+          <circle class="ps-node-dot accent" cx="840" cy="200" r="4.5"/>
+          <text class="ps-title accent" x="840" y="262" text-anchor="middle">Data Vault</text>
+          <text class="ps-sub accent" x="840" y="286" text-anchor="middle">HUB · SAT · LINK</text>
+        </g>
+        <!-- Stage 05 -->
+        <g>
+          <text class="ps-num accent" x="1040" y="50" text-anchor="middle">05</text>
+          <circle class="ps-node-circle accent" cx="1040" cy="200" r="30"/>
+          <circle class="ps-node-dot accent" cx="1040" cy="200" r="4.5"/>
+          <text class="ps-title accent" x="1040" y="262" text-anchor="middle">Presentation</text>
+          <text class="ps-sub accent" x="1040" y="286" text-anchor="middle">STAR SCHEMA</text>
+        </g>
+      </svg>
+
+      <div class="pipeline-legend">
+        <div class="pl-row">
+          <div class="pl-mark"><div class="pl-mark-dot"></div></div>
+          <div>
+            <div class="pl-text-key">Stages 01 – 03</div>
+            <div class="pl-text-body">Operated by Three Rocks. Refreshed on a schedule, with full lineage and audit.</div>
+          </div>
+        </div>
+        <div class="pl-row">
+          <div class="pl-mark accent"><div class="pl-mark-dot"></div></div>
+          <div>
+            <div class="pl-text-key">Stages 04 – 05</div>
+            <div class="pl-text-body">Available to your team through read-only credentials, on your own tools.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ENTITY MODEL ============ -->
+<section class="tint">
+  <div class="wrap">
+
+    <div class="section-head reveal">
+      <span class="eyebrow">The model</span>
+      <h2>One entity model, six business domains — and room for the next one.</h2>
+      <p>Hubs are the things your business runs on (Product, Location, Customer). Events are what happens, with a timestamp. Domains plug in without rebuilding the model.</p>
+    </div>
+
+    <div class="domains" id="domainsGrid"></div>
+
+    <div class="field-guide reveal">
+      <span class="fg-item"><span class="fg-marker hub"></span><span><span class="fg-term">Hub</span> — a thing your business runs on</span></span>
+      <span class="fg-item"><span class="fg-marker"></span><span><span class="fg-term">Event</span> — something that happened, with a timestamp</span></span>
+      <span class="fg-item"><span class="fg-marker placeholder"></span><span><span class="fg-term">Domain</span> — a business area; new ones plug in</span></span>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ CONNECTION PROFILE ============ -->
+<section>
+  <div class="wrap">
+
+    <div class="connection reveal">
+      <div class="connection-intro">
+        <span class="eyebrow" style="margin-bottom:18px;display:inline-flex">Connect</span>
+        <h2>Bring your own tool.</h2>
+        <p>Every organisation lives in its own SQL Server database. You get a scoped, read-only login against the <strong>datavault</strong> and <strong>presentation</strong> schemas. The pipeline keeps writing on its schedule; nothing your queries do can affect it.</p>
+        <p>Data lands on a recurring cadence. Every record carries a load timestamp, so freshness is always visible in your queries — and the Data Vault never forgets, with effective-from / effective-to dates on every change.</p>
+
+        <div class="connection-tools">
+          <span class="ct-pill">Power BI</span>
+          <span class="ct-pill">Tableau</span>
+          <span class="ct-pill">Looker</span>
+          <span class="ct-pill">Metabase</span>
+          <span class="ct-pill">Python</span>
+          <span class="ct-pill">dbt</span>
+          <span class="ct-pill">Excel</span>
+          <span class="ct-pill">Anything SQL</span>
+        </div>
+      </div>
+
+      <div class="spec">
+        <div class="spec-title">Connection profile</div>
+        <div class="spec-row">
+          <span class="spec-label">Engine</span>
+          <span class="spec-value mono">SQL Server</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Auth</span>
+          <span class="spec-value">SQL login &middot; read-only</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Encryption</span>
+          <span class="spec-value">TLS in transit</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Schemas</span>
+          <span class="spec-value mono">datavault &middot; presentation</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Refresh</span>
+          <span class="spec-value">Scheduled (multiple/day)</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">History</span>
+          <span class="spec-value">SCD Type 2, full</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-brand">
+      <img src="XMS%20logo%20(1).png" alt="XMS" />
+      <span>XMS BI · Three Rocks</span>
+    </div>
+    <div class="footer-meta">Direct Data Access · Pitch document</div>
+  </div>
+</footer>
+
+<!-- ============ SCRIPTS ============ -->
+<script>
+(function(){
+  /* ===== Reveal on scroll ===== */
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!('IntersectionObserver' in window) || reduced){
+    document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+  } else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.14, rootMargin: '0px 0px -6% 0px' });
+    document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+  }
+
+  /* ===== Entity-model card grid ===== */
+  // Each domain has its own coordinate space within its diagram SVG (300×220 viewBox).
+  // No labels overlap because each diagram is in its own card; the card header sits ABOVE the SVG.
+  var domains = [
+    {
+      id:'tx', number:'I', name:'Transactions', cssVar:'--c-tx',
+      caption:'Sales & orders. Every order and every line, with the modifiers, discounts, taxes and tenders that built them.',
+      cx:150, cy:110, rx:122, ry:90,
+      entities:[
+        {n:'CUSTORDER', t:'event', x:108, y:62},
+        {n:'LINEITEM',  t:'event', x:160, y:46},
+        {n:'POSTX',     t:'event', x:216, y:62},
+        {n:'PRODUCT',   t:'hub',   x:80,  y:108},
+        {n:'CHANNEL',   t:'hub',   x:128, y:130},
+        {n:'OCCASION',  t:'hub',   x:174, y:148},
+        {n:'REVCENTER', t:'hub',   x:228, y:124},
+        {n:'TENDER',    t:'hub',   x:50,  y:80},
+        {n:'TAX',       t:'hub',   x:46,  y:130},
+        {n:'SVCCHARGE', t:'hub',   x:248, y:90},
+        {n:'MOD',       t:'hub',   x:96,  y:170},
+        {n:'DEAL',      t:'hub',   x:154, y:96},
+        {n:'DISCOUNT',  t:'hub',   x:212, y:170},
+        {n:'COMP',      t:'hub',   x:256, y:154},
+        {n:'REFUND',    t:'hub',   x:38,  y:108}
+      ],
+      links:[
+        ['CUSTORDER','LINEITEM'],['LINEITEM','POSTX'],
+        ['LINEITEM','PRODUCT'],['LINEITEM','MOD'],['LINEITEM','DEAL'],['LINEITEM','DISCOUNT'],
+        ['CUSTORDER','CHANNEL'],['CUSTORDER','OCCASION'],['CUSTORDER','REVCENTER'],
+        ['POSTX','TENDER'],['POSTX','TAX'],['POSTX','SVCCHARGE'],
+        ['POSTX','COMP'],['POSTX','REFUND']
+      ]
+    },
+    {
+      id:'inv', number:'II', name:'Inventory & Supply Chain', cssVar:'--c-inv',
+      caption:'Stock & cost. Full goods-in / goods-out ledger, theoretical vs actual usage, supplier orders and recipe costing.',
+      cx:150, cy:110, rx:108, ry:78,
+      entities:[
+        {n:'STOCKEVENT', t:'event', x:118, y:64},
+        {n:'STOCKORDER', t:'event', x:188, y:80},
+        {n:'INVREPORT',  t:'event', x:142, y:118},
+        {n:'INVITEM',    t:'hub',   x:74,  y:110},
+        {n:'SUPPLIER',   t:'hub',   x:226, y:128},
+        {n:'DISTRIBUTOR',t:'hub',   x:152, y:172}
+      ],
+      links:[
+        ['STOCKEVENT','INVITEM'],['STOCKEVENT','INVREPORT'],
+        ['STOCKORDER','INVITEM'],['STOCKORDER','SUPPLIER'],['STOCKORDER','DISTRIBUTOR'],
+        ['INVREPORT','INVITEM']
+      ]
+    },
+    {
+      id:'ppl', number:'III', name:'People & Workforce', cssVar:'--c-ppl',
+      caption:'Staff & shifts. Who worked, when, on what — with timecards, jobs and roles fully historised.',
+      cx:150, cy:110, rx:96, ry:74,
+      entities:[
+        {n:'TIMECARD', t:'event', x:150, y:60},
+        {n:'EMPLOYEE', t:'hub',   x:84,  y:120},
+        {n:'JOB',      t:'hub',   x:216, y:120},
+        {n:'ROLE',     t:'hub',   x:150, y:168}
+      ],
+      links:[
+        ['TIMECARD','EMPLOYEE'],['TIMECARD','JOB'],['TIMECARD','ROLE'],
+        ['EMPLOYEE','ROLE'],['JOB','ROLE']
+      ]
+    },
+    {
+      id:'crm', number:'IV', name:'Customer & CRM', cssVar:'--c-crm',
+      caption:'Identity. A shared customer model that bridges sales, surveys, marketing and bookings.',
+      cx:150, cy:110, rx:108, ry:80,
+      entities:[
+        {n:'INDIVIDUAL', t:'hub', x:88,  y:80},
+        {n:'CONTACT',    t:'hub', x:158, y:60},
+        {n:'COMPANY',    t:'hub', x:222, y:88},
+        {n:'ADDRESS',    t:'hub', x:148, y:128},
+        {n:'LOCATION',   t:'hub', x:72,  y:152}
+      ],
+      links:[
+        ['INDIVIDUAL','CONTACT'],['CONTACT','COMPANY'],
+        ['INDIVIDUAL','ADDRESS'],['COMPANY','ADDRESS'],['ADDRESS','LOCATION']
+      ]
+    },
+    {
+      id:'exp', number:'V', name:'Customer Experience', cssVar:'--c-exp',
+      caption:'Surveys & touchpoints. Every survey response tied to the question, the touchpoint, and where possible the customer and the transaction.',
+      cx:150, cy:110, rx:96, ry:74,
+      entities:[
+        {n:'ANSWER',     t:'hub', x:108, y:74},
+        {n:'QUESTION',   t:'hub', x:202, y:78},
+        {n:'TOUCHPOINT', t:'hub', x:102, y:148},
+        {n:'EVENT',      t:'hub', x:204, y:150}
+      ],
+      links:[
+        ['ANSWER','QUESTION'],['ANSWER','TOUCHPOINT'],
+        ['TOUCHPOINT','EVENT'],['ANSWER','EVENT'],['QUESTION','EVENT']
+      ]
+    },
+    {
+      id:'ext', number:'VI', name:'…and the next domain you need', cssVar:'--c-ext', dashed:true,
+      caption:'The model is designed to extend. Bookings, assets, marketing, loyalty, finance, fleet, IoT telemetry — adding a new business domain is configuration, not re-platforming.',
+      cx:150, cy:110, rx:108, ry:80,
+      entities:[
+        {n:'BOOKING',     t:'placeholder', x:90,  y:80},
+        {n:'ASSET',       t:'placeholder', x:212, y:74},
+        {n:'FORECAST',    t:'placeholder', x:108, y:148},
+        {n:'your domain', t:'placeholder', x:206, y:154}
+      ],
+      links:[]
+    }
+  ];
+
+  function seedRng(seed){
+    var s = seed >>> 0;
+    return function(){ s = (s * 1664525 + 1013904223) >>> 0; return (s & 0xffffffff) / 0x100000000; };
+  }
+  function blobPath(cx, cy, rx, ry, seed){
+    var rng = seedRng(seed);
+    var n = 9;
+    var pts = [];
+    for (var i = 0; i < n; i++){
+      var ang = (i / n) * Math.PI * 2 + (rng() - 0.5) * 0.32;
+      var j = 0.88 + rng() * 0.22;
+      pts.push({ x: cx + Math.cos(ang) * rx * j, y: cy + Math.sin(ang) * ry * j });
+    }
+    var d = '';
+    var t = 0.18;
+    for (var k = 0; k < pts.length; k++){
+      var p0 = pts[(k - 1 + pts.length) % pts.length];
+      var p1 = pts[k];
+      var p2 = pts[(k + 1) % pts.length];
+      var p3 = pts[(k + 2) % pts.length];
+      if (k === 0) d += 'M ' + p1.x.toFixed(2) + ' ' + p1.y.toFixed(2) + ' ';
+      var c1x = p1.x + (p2.x - p0.x) * t, c1y = p1.y + (p2.y - p0.y) * t;
+      var c2x = p2.x - (p3.x - p1.x) * t, c2y = p2.y - (p3.y - p1.y) * t;
+      d += 'C ' + c1x.toFixed(2) + ' ' + c1y.toFixed(2) + ', ' + c2x.toFixed(2) + ' ' + c2y.toFixed(2) + ', ' + p2.x.toFixed(2) + ' ' + p2.y.toFixed(2) + ' ';
+    }
+    return d + 'Z';
+  }
+
+  function svgEl(name, attrs){
+    var el = document.createElementNS('http://www.w3.org/2000/svg', name);
+    if (attrs) for (var k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  var grid = document.getElementById('domainsGrid');
+  if (!grid) return;
+
+  domains.forEach(function(dom, idx){
+    var card = document.createElement('article');
+    card.className = 'domain reveal' + (dom.dashed ? ' dashed' : '');
+    card.style.setProperty('--c', 'var(' + dom.cssVar + ')');
+
+    card.innerHTML =
+      '<div class="domain-strip"></div>' +
+      '<div class="domain-num">' + dom.number + ' &middot; Domain</div>' +
+      '<h3>' + dom.name + '</h3>' +
+      '<p>' + dom.caption + '</p>' +
+      '<div class="domain-diagram"><svg viewBox="0 0 300 220" preserveAspectRatio="xMidYMid meet"></svg></div>';
+
+    grid.appendChild(card);
+
+    var svg = card.querySelector('svg');
+
+    // 1. blob
+    var blob = svgEl('path', {
+      'class': 'dm-blob' + (dom.dashed ? ' dashed' : ''),
+      'd': blobPath(dom.cx, dom.cy, dom.rx, dom.ry, 17 + idx * 23)
+    });
+    svg.appendChild(blob);
+
+    // 2. links (drawn under nodes)
+    var index = {};
+    dom.entities.forEach(function(e){ index[e.n] = e; });
+    (dom.links || []).forEach(function(pair){
+      var a = index[pair[0]], b = index[pair[1]];
+      if (!a || !b) return;
+      var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      var dx = b.x - a.x, dy = b.y - a.y;
+      var dist = Math.sqrt(dx*dx + dy*dy);
+      var nx = -dy / (dist || 1), ny = dx / (dist || 1);
+      var bow = Math.min(12, dist * 0.10);
+      var cpx = mx + nx * bow, cpy = my + ny * bow;
+      svg.appendChild(svgEl('path', {
+        'class': 'dm-link',
+        'd': 'M ' + a.x + ' ' + a.y + ' Q ' + cpx.toFixed(1) + ' ' + cpy.toFixed(1) + ' ' + b.x + ' ' + b.y
+      }));
+    });
+
+    // 3. node markers
+    dom.entities.forEach(function(ent){
+      var nodeCls = 'dm-node-' + ent.t;
+      var marker;
+      if (ent.t === 'event'){
+        marker = svgEl('rect', { 'class': nodeCls, 'x': ent.x - 3.6, 'y': ent.y - 3.6, 'width': 7.2, 'height': 7.2, 'rx': 1 });
+      } else {
+        marker = svgEl('circle', { 'class': nodeCls, 'cx': ent.x, 'cy': ent.y, 'r': 3.4 });
+      }
+      svg.appendChild(marker);
+    });
+
+    // 4. labels — placed above for nodes in top half, below otherwise, with text halo for legibility
+    dom.entities.forEach(function(ent){
+      var dy = (ent.y < dom.cy) ? -7 : 12;
+      var lbl = svgEl('text', {
+        'class': 'dm-label' + (ent.t === 'event' ? ' event' : '') + (ent.t === 'placeholder' ? ' placeholder' : ''),
+        'x': ent.x, 'y': ent.y + dy
+      });
+      lbl.textContent = ent.n;
+      svg.appendChild(lbl);
+    });
+  });
+
+  // observe newly created reveal cards
+  if (!reduced && ('IntersectionObserver' in window)){
+    var io2 = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){ e.target.classList.add('in'); io2.unobserve(e.target); }
+      });
+    }, { threshold: 0.1 });
+    grid.querySelectorAll('.reveal').forEach(function(el){ io2.observe(el); });
+  } else {
+    grid.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+  }
+})();
+</script>
+
+</body>
+</html>
