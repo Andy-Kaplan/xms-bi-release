@@ -20,8 +20,8 @@ USING (VALUES (N'INVITEM', N'GRYZ_INVITEMS')) AS src (entity_name, source_table)
 ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
 WHEN MATCHED THEN
     UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "INVITEM_NAME", "hash": 0}, {"name": "PARENT_ID", "hash": 0}, {"name": "LEVEL_NAME", "hash": 0}, {"name": "BOTTOM_LEVEL", "hash": 0}, {"name": "UOM", "hash": 0}, {"name": "ATTR_1", "hash": 0}, {"name": "ATTR_2", "hash": 0}, {"name": "ATTR_3", "hash": 0}, {"name": "ATTR_4", "hash": 0}, {"name": "ATTR_5", "hash": 0}, {"name": "MICROSERVICE_NAME", "hash": 0}, {"name": "MICROSERVICE_ID", "hash": 0}, {"name": "INVITEM_ID", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "INVITEM_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "UOM", "ATTR_1", "ATTR_2", "ATTR_3", "ATTR_4", "ATTR_5", "MICROSERVICE_NAME", "MICROSERVICE_ID", "INVITEM_ID"]',
+        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "INVITEM_NAME", "hash": 0}, {"name": "PARENT_ID", "hash": 0}, {"name": "LEVEL_NAME", "hash": 0}, {"name": "BOTTOM_LEVEL", "hash": 0}, {"name": "UOM", "hash": 0}, {"name": "ATTR_1", "hash": 0}, {"name": "ATTR_2", "hash": 0}, {"name": "ATTR_3", "hash": 0}, {"name": "ATTR_4", "hash": 0}, {"name": "ATTR_5", "hash": 0}, {"name": "INVITEM_ID", "hash": 0}]',
+        entity_columns      = N'["HUB_ID", "INVITEM_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "UOM", "ATTR_1", "ATTR_2", "ATTR_3", "ATTR_4", "ATTR_5", "INVITEM_ID"]',
         type2_columns       = NULL,
         cdc_exclude_columns = NULL,
         date_filter_column  = NULL,
@@ -44,8 +44,8 @@ USING (VALUES (N'LOCATION', N'GRYZ_LOCATION')) AS src (entity_name, source_table
 ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
 WHEN MATCHED THEN
     UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "LOCATION_NAME", "hash": 0}, {"name": "PARENT_ID", "hash": 0}, {"name": "LEVEL_NAME", "hash": 0}, {"name": "BOTTOM_LEVEL", "hash": 0}, {"name": "MICROSERVICE_NAME", "hash": 0}, {"name": "MICROSERVICE_ID", "hash": 0}, {"name": "LOCATION_ID", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "LOCATION_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "MICROSERVICE_NAME", "MICROSERVICE_ID", "LOCATION_ID"]',
+        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "LOCATION_NAME", "hash": 0}, {"name": "PARENT_ID", "hash": 0}, {"name": "LEVEL_NAME", "hash": 0}, {"name": "BOTTOM_LEVEL", "hash": 0}, {"name": "LOCATION_ID", "hash": 0}]',
+        entity_columns      = N'["HUB_ID", "LOCATION_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "LOCATION_ID"]',
         type2_columns       = NULL,
         cdc_exclude_columns = NULL,
         date_filter_column  = NULL,
@@ -68,8 +68,8 @@ USING (VALUES (N'SUPPLIER', N'GRYZ_SUPPLIERS')) AS src (entity_name, source_tabl
 ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
 WHEN MATCHED THEN
     UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "SUPPLIER_NAME", "hash": 0}, {"name": "SUPPLIER_ID", "hash": 0}, {"name": "MICROSERVICE_NAME", "hash": 0}, {"name": "MICROSERVICE_ID", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "SUPPLIER_NAME", "SUPPLIER_ID", "MICROSERVICE_NAME", "MICROSERVICE_ID"]',
+        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "SUPPLIER_NAME", "hash": 0}, {"name": "SUPPLIER_ID", "hash": 0}]',
+        entity_columns      = N'["HUB_ID", "SUPPLIER_NAME", "SUPPLIER_ID"]',
         type2_columns       = NULL,
         cdc_exclude_columns = NULL,
         date_filter_column  = NULL,
@@ -92,8 +92,8 @@ USING (VALUES (N'PRODUCT', N'GRYZ_PRODUCT')) AS src (entity_name, source_table)
 ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
 WHEN MATCHED THEN
     UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "PRODUCT_NAME", "hash": 0}, {"name": "PARENT_ID", "hash": 0}, {"name": "LEVEL_NAME", "hash": 0}, {"name": "BOTTOM_LEVEL", "hash": 0}, {"name": "PRODUCT_ID", "hash": 0}, {"name": "ATTR_1", "hash": 0}, {"name": "ATTR_2", "hash": 0}, {"name": "MICROSERVICE_NAME", "hash": 0}, {"name": "MICROSERVICE_ID", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "PRODUCT_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "PRODUCT_ID", "ATTR_1", "ATTR_2", "MICROSERVICE_NAME", "MICROSERVICE_ID"]',
+        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "PRODUCT_NAME", "hash": 0}, {"name": "PARENT_ID", "hash": 0}, {"name": "LEVEL_NAME", "hash": 0}, {"name": "BOTTOM_LEVEL", "hash": 0}, {"name": "PRODUCT_ID", "hash": 0}, {"name": "ATTR_1", "hash": 0}, {"name": "ATTR_2", "hash": 0}]',
+        entity_columns      = N'["HUB_ID", "PRODUCT_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "PRODUCT_ID", "ATTR_1", "ATTR_2"]',
         type2_columns       = NULL,
         cdc_exclude_columns = NULL,
         date_filter_column  = NULL,

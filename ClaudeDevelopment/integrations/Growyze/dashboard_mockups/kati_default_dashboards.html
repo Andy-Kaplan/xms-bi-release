@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Growyze Default Dashboards — XMS BI Mockup</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f6f8;
+    color: #1f2937;
+  }
+  header {
+    background: #0f172a;
+    color: #fff;
+    padding: 16px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid #2563eb;
+  }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .meta { font-size: 12px; opacity: 0.75; }
+
+  .tabs { display: flex; background: #fff; border-bottom: 1px solid #e5e7eb; padding: 0 28px; }
+  .tab {
+    padding: 12px 20px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+  .tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+  .tab:hover { color: #2563eb; }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    padding: 10px 28px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .legend-dot.avail { background: #16a34a; }
+  .legend-dot.partial { background: #f59e0b; }
+  .legend-dot.missing { background: #dc2626; }
+
+  .dashboard { padding: 24px 28px; display: none; }
+  .dashboard.active { display: block; }
+  .dashboard h2 { margin: 0 0 4px 0; font-size: 22px; font-weight: 700; }
+  .dashboard .subtitle { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+
+  .row { display: grid; gap: 14px; margin-bottom: 16px; }
+  .row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .row.cols-5 { grid-template-columns: repeat(5, 1fr); }
+  .row.cols-6 { grid-template-columns: repeat(6, 1fr); }
+  .row.cols-2-3 { grid-template-columns: 2fr 3fr; }
+  .row.cols-3-2 { grid-template-columns: 3fr 2fr; }
+  .row.cols-1-1 { grid-template-columns: 1fr 1fr; }
+
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    padding: 16px;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .card-title {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-value { font-size: 28px; font-weight: 700; color: #111827; }
+  .card-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .delta-up { color: #16a34a; font-weight: 600; }
+  .delta-down { color: #dc2626; font-weight: 600; }
+
+  .badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .badge.avail { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .badge.partial { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .badge.missing { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+  .source-tag {
+    display: inline-block;
+    font-size: 10px;
+    background: #eef2ff;
+    color: #4338ca;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .gap-note {
+    background: #fff7ed;
+    border-left: 3px solid #f59e0b;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #9a3412;
+    margin-top: 8px;
+    border-radius: 4px;
+    line-height: 1.4;
+  }
+  .miss-note {
+    background: #fef2f2;
+    border-left: 3px solid #dc2626;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #991b1b;
+    margin-top: 8px;
+    border-radius: 4px;
+    line-height: 1.4;
+  }
+
+  .chart-card { min-height: 260px; }
+  .chart-card.tall { min-height: 380px; }
+  .chart-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #111827; }
+
+  /* Mock chart visuals */
+  .line-chart, .bar-chart, .pie-chart, .area-chart, .heatmap, .quadrant {
+    width: 100%;
+    height: 220px;
+    border-radius: 6px;
+    margin-top: 8px;
+  }
+
+  table.mock-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  table.mock-table th {
+    text-align: left;
+    background: #f9fafb;
+    padding: 8px;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+    color: #374151;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  table.mock-table td {
+    padding: 8px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  table.mock-table tr:hover td { background: #fafafa; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .total-row { background: #fef3c7 !important; font-weight: 600; }
+
+  .highlight-item {
+    border-left: 4px solid;
+    padding: 10px 12px;
+    background: #fafafa;
+    border-radius: 0 6px 6px 0;
+  }
+  .highlight-item .hi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .highlight-item .hi-value { font-size: 18px; font-weight: 700; color: #111827; margin: 4px 0; }
+  .highlight-item .hi-meta { font-size: 11px; color: #6b7280; }
+
+  .summary-box {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    padding: 16px 18px;
+    border-radius: 10px;
+    margin-bottom: 18px;
+  }
+  .summary-box h3 { margin: 0 0 8px 0; color: #166534; font-size: 14px; }
+  .summary-stat { display: inline-block; margin-right: 22px; }
+  .summary-stat .num { font-size: 22px; font-weight: 700; }
+  .summary-stat .lbl { font-size: 11px; color: #6b7280; }
+
+  .filter-bar {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 12px;
+  }
+  .filter-bar .pill {
+    background: #f3f4f6;
+    padding: 5px 10px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+  }
+  .filter-bar .pill .lbl { color: #6b7280; margin-right: 4px; }
+  .filter-bar .pill .val { font-weight: 600; }
+
+  .gap-summary {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .gap-summary h3 { margin: 0 0 12px 0; font-size: 15px; }
+  .gap-summary table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .gap-summary th { background: #f9fafb; text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+  .gap-summary td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  .gap-summary .status-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+  .status-badge.avail { background: #dcfce7; color: #166534; }
+  .status-badge.partial { background: #fef3c7; color: #92400e; }
+  .status-badge.missing { background: #fee2e2; color: #991b1b; }
+
+  /* SVG chart styles */
+  svg .axis { stroke: #d1d5db; stroke-width: 1; }
+  svg .grid { stroke: #f3f4f6; stroke-width: 1; }
+  svg .label { font-size: 10px; fill: #6b7280; font-family: inherit; }
+  svg .series-label { font-size: 10px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Growyze Default Dashboards — XMS BI Mockup</h1>
+    <div class="meta">Based on Kati's wishlist (3 dashboards) · Mapped to current XMS BI capability · 2026-05-20</div>
+  </div>
+  <div class="meta">Sample data shown · Padel Social / Dirty Sixth</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="overview">Overview</div>
+  <div class="tab" data-tab="sales">Sales &amp; Profitability</div>
+  <div class="tab" data-tab="inventory">Inventory Control</div>
+  <div class="tab" data-tab="gaps">Gap Summary</div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot avail"></span> Available now in XMS BI</div>
+  <div class="legend-item"><span class="legend-dot partial"></span> Partial / requires fix or wiring</div>
+  <div class="legend-item"><span class="legend-dot missing"></span> Not available — gap to close</div>
+  <div class="legend-item" style="margin-left:auto; color:#6b7280;">Card tags show source dataset / vis type</div>
+</div>
+
+<!-- ============================ OVERVIEW ============================ -->
+<div class="dashboard active" id="overview">
+  <h2>Overview Dashboard</h2>
+  <div class="subtitle">High-level pulse across sales, profit and inventory health</div>
+
+  <div class="filter-bar">
+    <div class="pill"><span class="lbl">Period:</span><span class="val">1 Mar – 31 Mar 2026</span></div>
+    <div class="pill"><span class="lbl">vs:</span><span class="val">Feb 2026</span></div>
+    <div class="pill"><span class="lbl">Venues:</span><span class="val">All (9)</span></div>
+    <div class="pill"><span class="lbl">Categories:</span><span class="val">All</span></div>
+  </div>
+
+  <!-- Top KPI row 1: Sales / Profit -->
+  <div class="row cols-3">
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="card-title">Total Menu Sales</div>
+      <div class="card-value">£128,340</div>
+      <div class="card-sub">vs Feb 2026 <span class="delta-up">▲ 8.6%</span></div>
+      <div class="card-sub"><span class="source-tag">NetSales · SingleKPICard</span></div>
+      <div class="gap-note"><strong>Requires:</strong> P1 filter fix (PresentationControl IntegrationType IN ('POS','INVENTORY')). Growyze has its own sales feed (DL_SALES + DL_SALESDETAIL staged into GRYZ_LINEITEM), so once the filter is widened this will populate from Growyze data directly.</div>
+    </div>
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="card-title">Profit</div>
+      <div class="card-value">£74,210</div>
+      <div class="card-sub">vs Feb 2026 <span class="delta-up">▲ 9.8%</span></div>
+      <div class="card-sub"><span class="source-tag">OakVineCostGrossMargin · SingleKPICard</span> (or ProductMargins-derived)</div>
+      <div class="gap-note"><strong>Requires:</strong> P1 + cost wiring from Growyze. DL_DISHES carries <code>totalCost</code> per product natively — staged as NET_COST in GRYZ_PRODUCT. Profit = SUM(NET_VALUE − QUANTITY × totalCost). No separate recipe mapping needed.</div>
+    </div>
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="card-title">Profit %</div>
+      <div class="card-value">57.9%</div>
+      <div class="card-sub">vs Feb 2026 <span class="delta-down">▼ 1.4 pp</span></div>
+      <div class="card-sub"><span class="source-tag">OakVineCostFoodCostPct · SingleKPICard</span> (inverted)</div>
+      <div class="gap-note">Same source as Profit. Card type supports period-over-period delta in pp.</div>
+    </div>
+  </div>
+
+  <!-- KPI row 2: Inventory KPIs -->
+  <div class="row cols-4">
+    <div class="card">
+      <span class="badge avail">Available</span>
+      <div class="card-title">Theoretical stock on hand</div>
+      <div class="card-value">£73,300</div>
+      <div class="card-sub">vs prior period <span class="delta-up">▲ 5.9%</span></div>
+      <div class="card-sub"><span class="source-tag">OakVineInvTotalCost · SingleKPICard</span></div>
+    </div>
+    <div class="card">
+      <span class="badge missing">Missing</span>
+      <div class="card-title">Active stocktakes</div>
+      <div class="card-value">7 / 9</div>
+      <div class="card-sub">venues counted · 78%</div>
+      <div class="card-sub"><span class="source-tag">— no dataset —</span></div>
+      <div class="miss-note"><strong>Gap:</strong> Need a new dataset counting venues with stocktakes inside the period, against the venue total. Source data exists (DL_STOCKTAKES → F_INV_COUNTS_DAY); no SingleKPICard wired for &quot;X of Y&quot; ratio.</div>
+    </div>
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="card-title">Deliveries (value)</div>
+      <div class="card-value">£28,450</div>
+      <div class="card-sub">in period <span class="delta-up">▲ 12.7%</span></div>
+      <div class="card-sub"><span class="source-tag">F_PURCHASES_DAY · (proposed)</span></div>
+      <div class="gap-note"><strong>Pending deploy:</strong> Scripts 05, 06, 07 (INVITEM_STOCKORDER attrs + F_PURCHASES_DAY table + build step) exist in ClaudeDevelopment/Growyze/ but are not yet deployed. Once deployed a SingleKPICard wraps the SUM(DELIVERY_VALUE).</div>
+    </div>
+    <div class="card">
+      <span class="badge avail">Available</span>
+      <div class="card-title">Waste (value)</div>
+      <div class="card-value">£5,120</div>
+      <div class="card-sub">in period <span class="delta-down">▲ 6.4%</span></div>
+      <div class="card-sub"><span class="source-tag">InvWasteCost / OakVineInvWasteCost · SingleKPICard</span></div>
+    </div>
+  </div>
+
+  <!-- Category trend lines -->
+  <div class="row">
+    <div class="card chart-card tall">
+      <span class="badge avail">Available</span>
+      <div class="chart-title">Stock Value Over Time by Category (All Venues)</div>
+      <div class="card-sub">Showing last 6 stocktakes · <span class="source-tag">InvStockActivity · MultiLineChartCard</span></div>
+
+      <svg viewBox="0 0 800 280" class="line-chart" preserveAspectRatio="none">
+        <!-- gridlines -->
+        <g class="grid">
+          <line x1="60" y1="40" x2="780" y2="40"/>
+          <line x1="60" y1="90" x2="780" y2="90"/>
+          <line x1="60" y1="140" x2="780" y2="140"/>
+          <line x1="60" y1="190" x2="780" y2="190"/>
+          <line x1="60" y1="240" x2="780" y2="240"/>
+        </g>
+        <!-- y axis -->
+        <line x1="60" y1="20" x2="60" y2="240" class="axis"/>
+        <!-- y labels -->
+        <text x="50" y="240" text-anchor="end" class="label">0</text>
+        <text x="50" y="190" text-anchor="end" class="label">10K</text>
+        <text x="50" y="140" text-anchor="end" class="label">20K</text>
+        <text x="50" y="90" text-anchor="end" class="label">30K</text>
+        <text x="50" y="40" text-anchor="end" class="label">40K</text>
+        <text x="50" y="22" text-anchor="end" class="label">50K</text>
+        <!-- x labels -->
+        <text x="120" y="260" class="label">01 Apr</text>
+        <text x="240" y="260" class="label">15 Apr</text>
+        <text x="360" y="260" class="label">29 Apr</text>
+        <text x="480" y="260" class="label">13 May</text>
+        <text x="600" y="260" class="label">27 May</text>
+        <text x="720" y="260" class="label">10 Jun</text>
+
+        <!-- Drinks (green) -->
+        <polyline fill="none" stroke="#16a34a" stroke-width="2.5" points="120,60 240,55 360,48 480,40 600,45 720,30"/>
+        <!-- Food (blue) -->
+        <polyline fill="none" stroke="#2563eb" stroke-width="2.5" points="120,113 240,99 360,95 480,85 600,84 720,60"/>
+        <!-- Other (orange) -->
+        <polyline fill="none" stroke="#f59e0b" stroke-width="2.5" points="120,160 240,151 360,142 480,135 600,125 720,102"/>
+        <!-- Cleaning (purple) -->
+        <polyline fill="none" stroke="#8b5cf6" stroke-width="2.5" points="120,210 240,206 360,202 480,201 600,200 720,196"/>
+
+        <!-- legend -->
+        <g transform="translate(450,5)">
+          <circle cx="0" cy="5" r="4" fill="#2563eb"/><text x="8" y="9" class="series-label" fill="#2563eb">Food</text>
+          <circle cx="55" cy="5" r="4" fill="#16a34a"/><text x="63" y="9" class="series-label" fill="#16a34a">Drinks</text>
+          <circle cx="115" cy="5" r="4" fill="#f59e0b"/><text x="123" y="9" class="series-label" fill="#f59e0b">Other</text>
+          <circle cx="170" cy="5" r="4" fill="#8b5cf6"/><text x="178" y="9" class="series-label" fill="#8b5cf6">Cleaning</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Category callouts -->
+  <div class="row cols-4">
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="card-title"><span class="dot" style="background:#2563eb"></span>Food</div>
+      <div class="card-value" style="font-size:18px;">+£10.7K</div>
+      <div class="card-sub">+42.1% increase</div>
+      <div class="gap-note">Requires a derivative dataset that computes &quot;latest stocktake value − earliest in window&quot; per category. Source columns exist in F_INV_COUNTS_DAY; no current vis query computes this delta-summary pattern.</div>
+    </div>
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="card-title"><span class="dot" style="background:#16a34a"></span>Drinks</div>
+      <div class="card-value" style="font-size:18px;">+£6.3K</div>
+      <div class="card-sub">+17.5% increase</div>
+    </div>
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="card-title"><span class="dot" style="background:#f59e0b"></span>Other</div>
+      <div class="card-value" style="font-size:18px;">+£11.6K</div>
+      <div class="card-sub">+72.5% increase</div>
+    </div>
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="card-title"><span class="dot" style="background:#8b5cf6"></span>Cleaning</div>
+      <div class="card-value" style="font-size:18px;">+£2.6K</div>
+      <div class="card-sub">+42.6% increase</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ SALES & PROFITABILITY ============================ -->
+<div class="dashboard" id="sales">
+  <h2>Sales &amp; Profitability</h2>
+  <div class="subtitle">Menu mix, item performance and margin trend</div>
+
+  <div class="summary-box" style="background:#eff6ff; border-color:#bfdbfe;">
+    <h3 style="color:#1e40af;">Growyze sales feed — granularity note</h3>
+    <div style="font-size:12px; color:#1e3a8a;">Growyze provides a <strong>product-level sales feed</strong> (DL_SALES order headers + DL_SALESDETAIL line items + DL_DISHES menu catalogue with <code>salePrice</code> + <code>totalCost</code>). This is sufficient for menu-item revenue, GP%, sold-quantity, mix, and category-level analysis. <strong>Limitations vs a true POS feed:</strong> no sub-product modifiers, no tender / discount breakdowns at line-item level, no per-second timestamps (line items carry the sale window <code>OPEN_TIME</code>/<code>CLOSE_TIME</code> from DL_SALES, not exact pour time). One blocker remains: <strong>P1</strong> — F_LINEITEM_15MIN / F_PRODUCT_MARGIN_DAY currently filter <code>IntegrationType = 'POS'</code> and exclude Growyze.</div>
+  </div>
+
+  <!-- 6 KPIs -->
+  <div class="row cols-6">
+    <div class="card"><span class="badge partial">After P1</span><div class="card-title">Total Menu Sales</div><div class="card-value">£128,340</div><div class="card-sub">vs Feb 2026 <span class="delta-up">▲ 8.6%</span></div><div class="card-sub"><span class="source-tag">NetSales</span></div></div>
+    <div class="card"><span class="badge partial">After P1</span><div class="card-title">Profit</div><div class="card-value">£74,210</div><div class="card-sub">vs Feb 2026 <span class="delta-up">▲ 9.8%</span></div><div class="card-sub"><span class="source-tag">OakVineCostGrossMargin</span> (Growyze totalCost)</div></div>
+    <div class="card"><span class="badge partial">After P1</span><div class="card-title">Profit %</div><div class="card-value">57.9%</div><div class="card-sub">vs Feb 2026 <span class="delta-down">▼ 1.4 pp</span></div></div>
+    <div class="card"><span class="badge partial">After P1</span><div class="card-title">Avg Selling Price</div><div class="card-value">£12.48</div><div class="card-sub">vs Feb 2026 <span class="delta-up">▲ 3.2%</span></div><div class="card-sub"><span class="source-tag">OakVineMenuAvgItemValue</span></div></div>
+    <div class="card"><span class="badge missing">New build</span><div class="card-title">Avg Cost Spend</div><div class="card-value">£5.27</div><div class="card-sub">vs Feb 2026 <span class="delta-up">▲ 6.7%</span></div>
+      <div class="miss-note">No existing dataset. Easy build: SingleKPICard = SUM(QUANTITY × NET_COST) / SUM(QUANTITY) from SAT_LINEITEM joined to SAT_PRODUCT. Cost is available from Growyze DL_DISHES.totalCost.</div>
+    </div>
+    <div class="card"><span class="badge missing">New build</span><div class="card-title">Best Performing Category</div><div class="card-value" style="font-size:20px;">Burgers</div><div class="card-sub">GP% 64.2%</div>
+      <div class="miss-note">No SingleKPICard returns a <em>label</em> + secondary metric. Variant of OakVineMenuTopSeller — adapt to return category name (from D_PRODUCT_MIDDLE_1) + ranked GP%.</div>
+    </div>
+  </div>
+
+  <!-- Menu Item Highlights -->
+  <div class="card" style="margin-bottom:14px;">
+    <span class="badge partial">Partial</span>
+    <div class="chart-title">Menu Item Highlights</div>
+    <div class="card-sub" style="margin-bottom:10px;"><span class="source-tag">OakVineMenuTopSeller · TopProducts · OakVineMenuBottom10Products</span> — currently one-off cards, would need orchestration into a row of 5 labelled KPIs.</div>
+    <div class="row cols-5" style="margin-bottom:0;">
+      <div class="highlight-item" style="border-color:#2563eb;"><div class="hi-label" style="color:#2563eb;">Top Revenue Item</div><div class="hi-value">Chicken Burger</div><div class="hi-meta">Sales £18,940 · 14.8% of total</div></div>
+      <div class="highlight-item" style="border-color:#8b5cf6;"><div class="hi-label" style="color:#8b5cf6;">Highest GP% Item</div><div class="hi-value">Caesar Salad</div><div class="hi-meta">GP% 74.1% · 22% of total</div></div>
+      <div class="highlight-item" style="border-color:#06b6d4;"><div class="hi-label" style="color:#06b6d4;">Most Sold Item</div><div class="hi-value">Soft Drinks</div><div class="hi-meta">Qty Sold 3,609 · 32% of total</div></div>
+      <div class="highlight-item" style="border-color:#16a34a;"><div class="hi-label" style="color:#16a34a;">Fastest Growing Item</div><div class="hi-value">Margherita Pizza</div><div class="hi-meta">YoY Growth +18.2% · 15% of total</div></div>
+      <div class="highlight-item" style="border-color:#dc2626;"><div class="hi-label" style="color:#dc2626;">Lowest Performer</div><div class="hi-value">Soup of the Day</div><div class="hi-meta">Sales £1,240 · 2% of total</div></div>
+    </div>
+    <div class="gap-note"><strong>Gap:</strong> &quot;Fastest Growing&quot; needs prior-period comparison per item — not currently exposed as a vis query.</div>
+  </div>
+
+  <!-- Menu Perf + Profitability -->
+  <div class="row cols-2-3">
+    <div class="card chart-card tall">
+      <span class="badge avail">Available</span>
+      <div class="chart-title">Menu Performance Overview</div>
+      <div class="card-sub">Sales Mix by Category (Revenue) · <span class="source-tag">OakVineMenuFoodDrinksSplit · PieChartCard</span> + <span class="source-tag">ProductComparison · CustomDataGrid</span></div>
+      <!-- Donut SVG -->
+      <svg viewBox="0 0 320 240" width="100%" height="220">
+        <g transform="translate(110,120)">
+          <circle r="80" fill="none" stroke="#2563eb" stroke-width="34" stroke-dasharray="225 502" stroke-dashoffset="0" transform="rotate(-90)"/>
+          <circle r="80" fill="none" stroke="#16a34a" stroke-width="34" stroke-dasharray="62 502" stroke-dashoffset="-225" transform="rotate(-90)"/>
+          <circle r="80" fill="none" stroke="#f59e0b" stroke-width="34" stroke-dasharray="68 502" stroke-dashoffset="-287" transform="rotate(-90)"/>
+          <circle r="80" fill="none" stroke="#8b5cf6" stroke-width="34" stroke-dasharray="59 502" stroke-dashoffset="-355" transform="rotate(-90)"/>
+          <circle r="80" fill="none" stroke="#06b6d4" stroke-width="34" stroke-dasharray="88 502" stroke-dashoffset="-414" transform="rotate(-90)"/>
+          <text text-anchor="middle" y="-2" font-size="20" font-weight="700" fill="#111827">128,340</text>
+          <text text-anchor="middle" y="16" font-size="11" fill="#6b7280">Total Revenue</text>
+        </g>
+        <g transform="translate(215,40)" font-size="11">
+          <g><rect width="10" height="10" fill="#16a34a"/><text x="15" y="9">Mains 44.8%</text></g>
+          <g transform="translate(0,18)"><rect width="10" height="10" fill="#06b6d4"/><text x="15" y="9">Drinks 17.5%</text></g>
+          <g transform="translate(0,36)"><rect width="10" height="10" fill="#f59e0b"/><text x="15" y="9">Sides 13.6%</text></g>
+          <g transform="translate(0,54)"><rect width="10" height="10" fill="#2563eb"/><text x="15" y="9">Starters 12.4%</text></g>
+          <g transform="translate(0,72)"><rect width="10" height="10" fill="#8b5cf6"/><text x="15" y="9">Desserts 11.7%</text></g>
+        </g>
+      </svg>
+    </div>
+    <div class="card chart-card tall">
+      <span class="badge avail">Available</span>
+      <div class="chart-title">Category Breakdown</div>
+      <div class="card-sub"><span class="source-tag">ProductComparison · CustomDataGrid</span></div>
+      <table class="mock-table">
+        <tr><th>Category</th><th>Revenue</th><th>Var vs Prior</th><th>Total Cost</th><th>Profit %</th><th>Mix %</th></tr>
+        <tr><td><span class="dot" style="background:#2563eb"></span>Starters</td><td>15,868</td><td class="delta-up">▲ 8.2%</td><td>5,642</td><td>64.5%</td><td>12.4%</td></tr>
+        <tr><td><span class="dot" style="background:#16a34a"></span>Mains</td><td>57,439</td><td class="delta-up">▲ 6.5%</td><td>22,816</td><td>60.3%</td><td>44.8%</td></tr>
+        <tr><td><span class="dot" style="background:#f59e0b"></span>Sides</td><td>17,436</td><td class="delta-up">▲ 4.1%</td><td>6,102</td><td>65.0%</td><td>13.6%</td></tr>
+        <tr><td><span class="dot" style="background:#8b5cf6"></span>Desserts</td><td>15,001</td><td class="delta-up">▲ 3.2%</td><td>5,121</td><td>65.8%</td><td>11.7%</td></tr>
+        <tr><td><span class="dot" style="background:#06b6d4"></span>Drinks</td><td>22,596</td><td class="delta-up">▲ 4.3%</td><td>7,684</td><td>66.0%</td><td>17.5%</td></tr>
+        <tr class="total-row"><td>Total</td><td>128,340</td><td class="delta-up">▲ 5.8%</td><td>47,365</td><td>61.7%</td><td>100.0%</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Overall menu profitability -->
+  <div class="row">
+    <div class="card chart-card tall">
+      <span class="badge missing">Missing</span>
+      <div class="chart-title">Overall Menu Profitability</div>
+      <div class="card-sub">Stacked area: Margin / Cost / Discounts over time · <span class="source-tag">— no exact dataset —</span></div>
+      <div class="row cols-4" style="margin: 12px 0;">
+        <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Avg Net Profit %</div><div class="card-value" style="font-size:22px;">61.8%</div><div class="card-sub">vs Previous Week <span class="delta-up">▲ 3.6pp</span></div></div>
+        <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Avg Cost %</div><div class="card-value" style="font-size:22px;">31.7%</div><div class="card-sub">vs Previous Week <span class="delta-down">▼ 2.1pp</span></div></div>
+        <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Avg Discount %</div><div class="card-value" style="font-size:22px;">6.5%</div><div class="card-sub">vs Previous Week <span class="delta-up">▼ 0.4pp</span></div></div>
+        <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Avg Net Profit %</div><div class="card-value" style="font-size:22px;">61.8%</div><div class="card-sub">vs Previous Week <span class="delta-up">▲ 3.6pp</span></div></div>
+      </div>
+      <!-- Stacked area mock -->
+      <svg viewBox="0 0 800 220" preserveAspectRatio="none" style="width:100%; height:200px;">
+        <defs>
+          <pattern id="grid2" width="100" height="44" patternUnits="userSpaceOnUse">
+            <path d="M 100 0 L 0 0 0 44" fill="none" stroke="#f3f4f6"/>
+          </pattern>
+        </defs>
+        <rect width="800" height="200" fill="url(#grid2)"/>
+        <!-- Margin (blue) top -->
+        <polygon points="40,40 160,50 280,42 400,38 520,40 640,52 760,46 760,90 40,90" fill="#93c5fd"/>
+        <!-- Cost (yellow) middle -->
+        <polygon points="40,90 160,100 280,95 400,92 520,94 640,108 760,100 760,170 40,170" fill="#fcd34d"/>
+        <!-- Discounts (red) bottom -->
+        <polygon points="40,170 160,178 280,175 400,172 520,176 640,182 760,178 760,200 40,200" fill="#fca5a5"/>
+        <!-- x labels -->
+        <text x="40" y="215" class="label">12 May</text>
+        <text x="160" y="215" class="label">13 May</text>
+        <text x="280" y="215" class="label">14 May</text>
+        <text x="400" y="215" class="label">15 May</text>
+        <text x="520" y="215" class="label">16 May</text>
+        <text x="640" y="215" class="label">17 May</text>
+        <text x="760" y="215" class="label">18 May</text>
+        <!-- legend -->
+        <g transform="translate(280,5)" font-size="11">
+          <rect width="10" height="10" fill="#93c5fd"/><text x="14" y="9">Margin</text>
+          <rect x="70" width="10" height="10" fill="#fcd34d"/><text x="84" y="9">Cost</text>
+          <rect x="140" width="10" height="10" fill="#fca5a5"/><text x="154" y="9">Discounts</text>
+        </g>
+      </svg>
+      <div class="miss-note"><strong>Gap:</strong> No stacked-area dataset combining margin/cost/discount over time. Closest is <span class="source-tag">OakVineMarginByCategory</span> (combined chart). Margin + Cost over time is straightforward from F_LINEITEM_15MIN × Growyze NET_COST. <strong>Discounts:</strong> Growyze does not break out DISCOUNT line items — it provides aggregate <code>totalSales</code> (net) per order but no per-line discount detail. Best we can do: Margin / Cost two-series stacked area, or imply discount as (Gross − Net) at order header level if needed.</div>
+    </div>
+  </div>
+
+  <!-- Menu Item Performance + Menu Engineering -->
+  <div class="row cols-3-2">
+    <div class="card chart-card tall">
+      <span class="badge avail">Available</span>
+      <div class="chart-title">Menu Item Performance Comparison</div>
+      <div class="card-sub">Var to Prior Period compares Sales to the same period in the previous period · <span class="source-tag">ProductComparison · CustomDataGrid</span> + Location filter (<span class="source-tag">ProductsComp · FilterList</span>)</div>
+      <table class="mock-table">
+        <tr><th>Menu Item</th><th>Category</th><th>Sales (vs Prior)</th><th>Sold Qty (vs Prior)</th><th>Cost of Menu Item</th><th>Total Cost</th><th>Profit %</th><th>CoS %</th></tr>
+        <tr><td><span class="dot" style="background:#16a34a"></span>Chicken Burger</td><td>Burgers</td><td>24,531 <span class="delta-up">▲ 14.6%</span></td><td>1,842 <span class="delta-up">▲ 12.3%</span></td><td>7,812</td><td>9,623</td><td class="delta-up">60.7%</td><td>39.3%</td></tr>
+        <tr><td><span class="dot" style="background:#2563eb"></span>Steak Sandwich</td><td>Sandwiches</td><td>18,732 <span class="delta-up">▲ 9.8%</span></td><td>1,276 <span class="delta-up">▲ 8.4%</span></td><td>8,324</td><td>10,672</td><td class="delta-up">57.0%</td><td>43.0%</td></tr>
+        <tr><td><span class="dot" style="background:#f59e0b"></span>Truffle Pasta</td><td>Pastas</td><td>11,842 <span class="delta-up">▲ 18.7%</span></td><td>722 <span class="delta-up">▲ 15.2%</span></td><td>3,273</td><td>4,185</td><td class="delta-up">64.7%</td><td>35.3%</td></tr>
+        <tr><td><span class="dot" style="background:#dc2626"></span>Fish &amp; Chips</td><td>Mains</td><td>7,128 <span class="delta-down">▼ 3.4%</span></td><td>468 <span class="delta-down">▼ 1.7%</span></td><td>3,698</td><td>4,892</td><td class="delta-down">31.4%</td><td>68.6%</td></tr>
+        <tr><td><span class="dot" style="background:#dc2626"></span>Vegan Buddha Bowl</td><td>Bowls</td><td>6,199 <span class="delta-down">▼ 8.2%</span></td><td>392 <span class="delta-down">▼ 6.1%</span></td><td>3,553</td><td>4,278</td><td class="delta-down">31.0%</td><td>69.0%</td></tr>
+      </table>
+    </div>
+
+    <div class="card chart-card tall">
+      <span class="badge missing">Missing</span>
+      <div class="chart-title">Menu Engineering Quadrant</div>
+      <div class="card-sub">Analyse menu items by profitability and popularity · <span class="source-tag">— no scatter card type —</span></div>
+      <!-- Quadrant SVG -->
+      <svg viewBox="0 0 360 320" style="width:100%; height:280px;">
+        <line x1="180" y1="20" x2="180" y2="280" stroke="#d1d5db" stroke-dasharray="3,3"/>
+        <line x1="40" y1="150" x2="340" y2="150" stroke="#d1d5db" stroke-dasharray="3,3"/>
+        <rect x="40" y="20"  width="140" height="130" fill="#fef9c3" opacity="0.4"/>
+        <rect x="180" y="20" width="160" height="130" fill="#dcfce7" opacity="0.5"/>
+        <rect x="40" y="150" width="140" height="130" fill="#fee2e2" opacity="0.4"/>
+        <rect x="180" y="150" width="160" height="130" fill="#dbeafe" opacity="0.5"/>
+
+        <text x="60" y="40" font-weight="700" fill="#a16207" font-size="11">★ PUZZLES</text>
+        <text x="60" y="52" font-size="9" fill="#9a3412">High Profit / Low Popularity</text>
+
+        <text x="200" y="40" font-weight="700" fill="#166534" font-size="11">★ STARS</text>
+        <text x="200" y="52" font-size="9" fill="#166534">High Profit / High Popularity</text>
+
+        <text x="60" y="170" font-weight="700" fill="#991b1b" font-size="11">✖ DOGS</text>
+        <text x="60" y="182" font-size="9" fill="#991b1b">Low Profit / Low Popularity</text>
+
+        <text x="200" y="170" font-weight="700" fill="#1d4ed8" font-size="11">⚒ WORKHORSES</text>
+        <text x="200" y="182" font-size="9" fill="#1d4ed8">Low Profit / High Popularity</text>
+
+        <!-- dots -->
+        <circle cx="100" cy="80" r="4" fill="#f59e0b"/><text x="108" y="83" font-size="9">Truffle Pasta</text>
+        <circle cx="130" cy="105" r="4" fill="#f59e0b"/><text x="138" y="108" font-size="9">Halloumi</text>
+        <circle cx="90"  cy="135" r="4" fill="#f59e0b"/><text x="98" y="138" font-size="9">Quinoa Bowl</text>
+
+        <circle cx="280" cy="75"  r="4" fill="#16a34a"/><text x="288" y="78" font-size="9">Chicken Burger</text>
+        <circle cx="240" cy="100" r="4" fill="#16a34a"/><text x="248" y="103" font-size="9">Margherita Pizza</text>
+        <circle cx="260" cy="130" r="4" fill="#16a34a"/><text x="268" y="133" font-size="9">Grilled Chicken Wrap</text>
+
+        <circle cx="100" cy="220" r="4" fill="#dc2626"/><text x="108" y="223" font-size="9">Soup of the Day</text>
+        <circle cx="130" cy="240" r="4" fill="#dc2626"/><text x="138" y="243" font-size="9">Steamed Veg</text>
+        <circle cx="120" cy="260" r="4" fill="#dc2626"/><text x="128" y="263" font-size="9">Brown Rice Bowl</text>
+
+        <circle cx="280" cy="225" r="4" fill="#2563eb"/><text x="288" y="228" font-size="9">Soft Drinks</text>
+        <circle cx="270" cy="245" r="4" fill="#2563eb"/><text x="278" y="248" font-size="9">French Fries</text>
+        <circle cx="260" cy="265" r="4" fill="#2563eb"/><text x="268" y="268" font-size="9">Iced Tea</text>
+
+        <!-- axes -->
+        <text x="30" y="290" font-size="9" fill="#6b7280">Low</text>
+        <text x="330" y="290" font-size="9" fill="#16a34a">High</text>
+        <text x="180" y="300" text-anchor="middle" font-size="10" fill="#374151">Popularity (Quantity Sold)</text>
+        <text x="20" y="20" font-size="9" fill="#374151">High</text>
+        <text x="20" y="295" font-size="9" fill="#374151">Low</text>
+        <text x="10" y="150" transform="rotate(-90,10,150)" font-size="10" fill="#374151">Profitability</text>
+      </svg>
+      <div class="miss-note"><strong>Gap:</strong> XMS BI has no ScatterChartCard / QuadrantCard. Closest extant card is BarChartCard which can't represent two-axis positional data. Either <strong>(a)</strong> build a new ScatterChartCard component, or <strong>(b)</strong> approximate via a CustomDataGrid that labels each item with its quadrant classification (computed in SQL via CASE on median splits of qty &amp; GP%).</div>
+    </div>
+  </div>
+
+  <!-- Heatmap -->
+  <div class="row">
+    <div class="card chart-card tall">
+      <span class="badge partial">Partial</span>
+      <div class="chart-title">Top 10 Sold Products Heatmap</div>
+      <div class="card-sub">Quantity sold by Day and Time of Day · <span class="source-tag">ProductGC · HeatmapCard</span> or <span class="source-tag">OakVineMenuSalesByHour · HeatmapCard</span></div>
+      <div class="gap-note" style="margin-top:6px; margin-bottom:6px;"><strong>Granularity caveat:</strong> Growyze line items carry <code>OPEN_TIME</code> from the parent sale window (DL_SALES.from), not exact pour time. Day-of-week splits are accurate; time-of-day buckets reflect the sale-session window (e.g. trading session) rather than per-line precision. Acceptable for the day × time-of-day heatmap pattern shown.</div>
+      <table class="mock-table" style="font-size:10px;">
+        <tr><th rowspan="2" style="vertical-align:middle;">Product (Top 10)</th><th colspan="3">Mon</th><th colspan="3">Tue</th><th colspan="3">Wed</th><th colspan="3">Thu</th><th colspan="3">Fri</th><th colspan="3">Sat</th><th colspan="3">Sun</th></tr>
+        <tr><th>8-11AM</th><th>11AM-2PM</th><th>2-5PM</th><th>8-11AM</th><th>11AM-2PM</th><th>2-5PM</th><th>8-11AM</th><th>11AM-2PM</th><th>2-5PM</th><th>8-11AM</th><th>11AM-2PM</th><th>2-5PM</th><th>8-11AM</th><th>11AM-2PM</th><th>2-5PM</th><th>8-11AM</th><th>11AM-2PM</th><th>2-5PM</th><th>8-11AM</th><th>11AM-2PM</th><th>2-5PM</th></tr>
+        <tbody id="heatmap-body"></tbody>
+      </table>
+      <div style="margin-top:10px; font-size:11px;">
+        <strong>Qty Sold:</strong>
+        <span style="display:inline-block; width:30px; height:10px; background:#fef9c3; vertical-align:middle;"></span> Very Low
+        <span style="display:inline-block; width:30px; height:10px; background:#fde047; vertical-align:middle; margin-left:8px;"></span> Low
+        <span style="display:inline-block; width:30px; height:10px; background:#a3e635; vertical-align:middle; margin-left:8px;"></span> Medium
+        <span style="display:inline-block; width:30px; height:10px; background:#65a30d; vertical-align:middle; margin-left:8px;"></span> High
+        <span style="display:inline-block; width:30px; height:10px; background:#15803d; vertical-align:middle; margin-left:8px;"></span> Very High
+      </div>
+      <div class="gap-note" style="background:#f0fdf4; border-color:#86efac; color:#166534;">
+        <strong>Insight:</strong> Weekends (Fri &amp; Sat) show the highest demand in the evening (5-10 PM) for most items, while Caesar Salad and Iced Coffee perform best during lunch hours.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ INVENTORY CONTROL ============================ -->
+<div class="dashboard" id="inventory">
+  <h2>Inventory Control</h2>
+  <div class="subtitle">Stocktake values, deliveries, waste, and ingredient-level movement</div>
+
+  <div class="filter-bar">
+    <div class="pill"><span class="lbl">Period:</span><span class="val">1 Mar – 31 Mar 2026</span></div>
+    <div class="pill"><span class="lbl">Venues:</span><span class="val">All</span></div>
+    <div class="pill"><span class="lbl">Categories:</span><span class="val">All</span></div>
+  </div>
+
+  <!-- 4 KPIs -->
+  <div class="row cols-4">
+    <div class="card"><span class="badge avail">Available</span><div class="card-title">Theoretical stock on hand</div><div class="card-value">£73,300</div><div class="card-sub">vs prior period <span class="delta-up">▲ 5.9%</span></div><div class="card-sub"><span class="source-tag">OakVineInvTotalCost</span></div></div>
+    <div class="card"><span class="badge missing">Missing</span><div class="card-title">Active stocktakes</div><div class="card-value">7 / 9</div><div class="card-sub">venues counted · 78%</div>
+      <div class="miss-note">No &quot;X of Y&quot; ratio SingleKPICard. Build from F_INV_COUNTS_DAY: COUNT DISTINCT venue with stocktake-in-period / COUNT total venues.</div>
+    </div>
+    <div class="card"><span class="badge partial">Partial</span><div class="card-title">Deliveries (value)</div><div class="card-value">£28,450</div><div class="card-sub">in period <span class="delta-up">▲ 12.7%</span></div>
+      <div class="gap-note">Pending scripts 05-07 deploy (F_PURCHASES_DAY).</div>
+    </div>
+    <div class="card"><span class="badge avail">Available</span><div class="card-title">Waste (value)</div><div class="card-value">£5,120</div><div class="card-sub">in period <span class="delta-down">▲ 6.4%</span></div><div class="card-sub"><span class="source-tag">InvWasteCost</span></div></div>
+  </div>
+
+  <!-- Stock value by venue -->
+  <div class="row cols-3-2">
+    <div class="card chart-card tall">
+      <span class="badge avail">Available</span>
+      <div class="chart-title">Stock Value by Venue Over Time (Theoretical)</div>
+      <div class="card-sub">Theoretical stocktake history by venue and category · <span class="source-tag">InvStockActivity · StackedBarChartCard</span></div>
+      <svg viewBox="0 0 600 260" style="width:100%;">
+        <!-- gridlines -->
+        <g class="grid">
+          <line x1="40" y1="40" x2="580" y2="40"/>
+          <line x1="40" y1="80" x2="580" y2="80"/>
+          <line x1="40" y1="120" x2="580" y2="120"/>
+          <line x1="40" y1="160" x2="580" y2="160"/>
+          <line x1="40" y1="200" x2="580" y2="200"/>
+        </g>
+        <text x="35" y="200" text-anchor="end" class="label">0</text>
+        <text x="35" y="160" text-anchor="end" class="label">5K</text>
+        <text x="35" y="120" text-anchor="end" class="label">10K</text>
+        <text x="35" y="80" text-anchor="end" class="label">15K</text>
+        <text x="35" y="40" text-anchor="end" class="label">20K</text>
+        <text x="35" y="22" text-anchor="end" class="label">25K</text>
+
+        <!-- bars: 6 stacked, simulating each stocktake -->
+        <!-- 1 May Venue 1: 22K -->
+        <rect x="65" y="120" width="40" height="80" fill="#2563eb"/>
+        <rect x="65" y="40"  width="40" height="80" fill="#16a34a"/>
+        <text x="85" y="220" text-anchor="middle" class="label">01 May</text>
+        <text x="85" y="232" text-anchor="middle" class="label" style="font-weight:700; fill:#2563eb;">Venue 1</text>
+
+        <!-- 3 May Venue 2: 18K -->
+        <rect x="155" y="160" width="40" height="40" fill="#2563eb"/>
+        <rect x="155" y="80"  width="40" height="80" fill="#f59e0b"/>
+        <text x="175" y="220" text-anchor="middle" class="label">03 May</text>
+        <text x="175" y="232" text-anchor="middle" class="label" style="font-weight:700; fill:#f59e0b;">Venue 2</text>
+
+        <!-- 5 May Venue 1 -->
+        <rect x="245" y="120" width="40" height="80" fill="#2563eb"/>
+        <rect x="245" y="40"  width="40" height="80" fill="#16a34a"/>
+        <text x="265" y="220" text-anchor="middle" class="label">05 May</text>
+        <text x="265" y="232" text-anchor="middle" class="label" style="font-weight:700; fill:#2563eb;">Venue 1</text>
+
+        <!-- 7 May Venue 2 -->
+        <rect x="335" y="160" width="40" height="40" fill="#2563eb"/>
+        <rect x="335" y="80"  width="40" height="80" fill="#f59e0b"/>
+        <text x="355" y="220" text-anchor="middle" class="label">07 May</text>
+        <text x="355" y="232" text-anchor="middle" class="label" style="font-weight:700; fill:#f59e0b;">Venue 2</text>
+
+        <!-- 7 May Venue 3 -->
+        <rect x="425" y="140" width="40" height="60" fill="#8b5cf6"/>
+        <rect x="425" y="120" width="40" height="20" fill="#2563eb"/>
+        <text x="445" y="220" text-anchor="middle" class="label">07 May</text>
+        <text x="445" y="232" text-anchor="middle" class="label" style="font-weight:700; fill:#dc2626;">Venue 3</text>
+
+        <!-- 28 May Venue 3 -->
+        <rect x="515" y="80" width="40" height="120" fill="#16a34a"/>
+        <text x="535" y="220" text-anchor="middle" class="label">28 May</text>
+        <text x="535" y="232" text-anchor="middle" class="label" style="font-weight:700; fill:#dc2626;">Venue 3</text>
+
+        <!-- legend -->
+        <g transform="translate(280,5)" font-size="10">
+          <rect width="10" height="10" fill="#2563eb"/><text x="14" y="9">Food</text>
+          <rect x="60" width="10" height="10" fill="#16a34a"/><text x="74" y="9">Drinks</text>
+          <rect x="130" width="10" height="10" fill="#f59e0b"/><text x="144" y="9">Other</text>
+          <rect x="195" width="10" height="10" fill="#8b5cf6"/><text x="209" y="9">Cleaning</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="card chart-card tall">
+      <span class="badge partial">Partial</span>
+      <div class="chart-title">Theoretical Stock Value Summary</div>
+      <div class="card-sub"><span class="source-tag">InvKPIGrouped · CustomGroupedDataGrid</span> covers totals; venue extremes need a new query.</div>
+      <div class="row cols-1-1" style="margin-top:10px;">
+        <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Total Theoretical Stock Value</div><div class="card-value" style="font-size:22px; color:#2563eb;">105,000</div></div>
+        <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Average per Venue</div><div class="card-value" style="font-size:22px; color:#2563eb;">21,000</div></div>
+        <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Highest Venue</div><div class="card-value" style="font-size:18px; color:#16a34a;">Venue 1</div><div class="card-sub">44,000</div></div>
+        <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Lowest Venue</div><div class="card-value" style="font-size:18px; color:#8b5cf6;">Venue 4</div><div class="card-sub">0</div></div>
+      </div>
+      <div class="gap-note" style="margin-top:14px;"><strong>Gap:</strong> &quot;Highest/Lowest Venue&quot; pattern not currently used. Easy to build from F_INV_COUNTS_DAY with a TOP 1 / BOTTOM 1 SingleKPICard returning the venue name + value.</div>
+    </div>
+  </div>
+
+  <!-- Stock value tables -->
+  <div class="row cols-1-1">
+    <div class="card">
+      <span class="badge avail">Available</span>
+      <div class="chart-title">Total Theoretical Stock Value by Venue and Category</div>
+      <div class="card-sub"><span class="source-tag">InvKPIGrouped · CustomGroupedDataGrid</span></div>
+      <table class="mock-table">
+        <tr><th>Venue</th><th>Food</th><th>Drinks</th><th>Other</th><th>Cleaning</th><th>Total</th></tr>
+        <tr><td>Venue 1</td><td>20,000</td><td>24,000</td><td>0</td><td>0</td><td>44,000</td></tr>
+        <tr><td>Venue 2</td><td>10,000</td><td>0</td><td>26,000</td><td>0</td><td>36,000</td></tr>
+        <tr><td>Venue 3</td><td>3,000</td><td>15,000</td><td>0</td><td>7,000</td><td>25,000</td></tr>
+        <tr><td>Venue 4</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+        <tr><td>Venue 5</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+        <tr class="total-row"><td>Total</td><td>33,000</td><td>39,000</td><td>26,000</td><td>7,000</td><td>105,000</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <span class="badge avail">Available</span>
+      <div class="chart-title">Total Theoretical Stock Value by Category (All Venues)</div>
+      <div class="card-sub"><span class="source-tag">InvCOGSByCategory · PieChartCard</span> + companion grid</div>
+      <table class="mock-table">
+        <tr><th>Category</th><th>Total Theoretical Stock Value</th><th>% of Total</th></tr>
+        <tr><td><span class="dot" style="background:#2563eb"></span>Food</td><td>33,000</td><td>31.4%</td></tr>
+        <tr><td><span class="dot" style="background:#16a34a"></span>Drinks</td><td>39,000</td><td>37.1%</td></tr>
+        <tr><td><span class="dot" style="background:#f59e0b"></span>Other</td><td>26,000</td><td>24.8%</td></tr>
+        <tr><td><span class="dot" style="background:#8b5cf6"></span>Cleaning</td><td>7,000</td><td>6.7%</td></tr>
+        <tr class="total-row"><td>Total</td><td>105,000</td><td>100.0%</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Inventory items movement -->
+  <div class="row">
+    <div class="card">
+      <span class="badge partial">Partial</span>
+      <div class="chart-title">Inventory Items Movement (by Value)</div>
+      <div class="card-sub">Detailed movement of key inventory items since the last stocktake (30 Apr 2025) · <span class="source-tag">InvUseAnalisys · CustomDataGrid</span> + <span class="source-tag">InvKPIGrouped</span></div>
+      <table class="mock-table">
+        <tr><th>Inventory Item</th><th>Opening Stock<br><small>(Actual / Theoretical)</small></th><th>Deliveries</th><th>Transfers<br><small>(in / out)</small></th><th>Sales</th><th>Waste</th><th>Current Theoretical Stock on Hand</th></tr>
+        <tr><td>Vodka 700ml</td><td>8,900</td><td>4,200</td><td class="delta-down">-300</td><td class="delta-down">-3,100</td><td class="delta-down">-220</td><td style="background:#dcfce7;">9,480</td></tr>
+        <tr><td>Beef Rump (kg)</td><td>6,160</td><td>3,200</td><td class="delta-up">+20</td><td class="delta-down">-2,100</td><td class="delta-down">-210</td><td style="background:#dcfce7;">7,070</td></tr>
+        <tr><td>Chicken Breast (kg)</td><td>4,790</td><td>2,600</td><td class="delta-down">-100</td><td class="delta-down">-1,950</td><td class="delta-down">-180</td><td style="background:#dcfce7;">5,160</td></tr>
+        <tr><td>Olive Oil 1L</td><td>3,420</td><td>1,200</td><td>0</td><td class="delta-down">-1,000</td><td class="delta-down">-60</td><td style="background:#dcfce7;">2,560</td></tr>
+        <tr><td>Gin 700ml</td><td>3,730</td><td>1,800</td><td class="delta-down">-50</td><td class="delta-down">-1,900</td><td class="delta-down">-90</td><td style="background:#dcfce7;">1,490</td></tr>
+        <tr class="total-row"><td>Total</td><td>27,000</td><td>13,000</td><td class="delta-down">-430</td><td class="delta-down">-10,050</td><td class="delta-down">-760</td><td>28,760</td></tr>
+      </table>
+      <div class="gap-note"><strong>Partial:</strong> Opening/Sales/Waste/Closing columns map cleanly to F_INV_USAGE_DAY + F_INV_COUNTS_DAY. <strong>Transfers</strong> are tracked at DV layer (STOCKEVENT EVENT_TYPE='TRANSFER') but no presentation column currently aggregates them. <strong>Opening: Actual vs Theoretical</strong> dual value isn't in current InvUseAnalisys output — requires a column rename/addition.</div>
+    </div>
+  </div>
+
+  <!-- Ingredient Based Sales -->
+  <div class="row">
+    <div class="card">
+      <span class="badge missing">Missing</span>
+      <div class="chart-title">Ingredient Based Sales</div>
+      <div class="card-sub">Track ingredient usage based on sales and convert to supplier units</div>
+
+      <div class="filter-bar" style="margin: 10px 0;">
+        <div class="pill"><span class="lbl">Ingredient:</span><span class="val">Chicken Breast</span></div>
+        <div class="pill"><span class="lbl">Day of Week:</span><span class="val">Tuesday</span></div>
+        <div class="pill"><span class="lbl">Venue:</span><span class="val">All Venues</span></div>
+        <div class="pill"><span class="lbl">Start:</span><span class="val">13 Feb 2024</span></div>
+        <div class="pill"><span class="lbl">End:</span><span class="val">07 May 2024</span></div>
+        <div class="pill"><span class="lbl">Supplier Unit:</span><span class="val">2kg Pack</span></div>
+      </div>
+
+      <div class="row cols-3-2" style="margin-bottom:0;">
+        <div>
+          <div style="font-weight:600; font-size:13px; margin-bottom:6px;">Chicken Breast Sales (2kg Packs) on Tuesdays</div>
+          <div class="card-sub">Based on sales from 13 Feb 2024 to 07 May 2024</div>
+          <svg viewBox="0 0 600 220" style="width:100%;">
+            <g class="grid">
+              <line x1="40" y1="40" x2="580" y2="40"/>
+              <line x1="40" y1="80" x2="580" y2="80"/>
+              <line x1="40" y1="120" x2="580" y2="120"/>
+              <line x1="40" y1="160" x2="580" y2="160"/>
+            </g>
+            <text x="35" y="200" text-anchor="end" class="label">0</text>
+            <text x="35" y="160" text-anchor="end" class="label">2</text>
+            <text x="35" y="120" text-anchor="end" class="label">4</text>
+            <text x="35" y="80"  text-anchor="end" class="label">6</text>
+            <text x="35" y="40"  text-anchor="end" class="label">8</text>
+            <line x1="60" y1="115" x2="580" y2="115" stroke="#94a3b8" stroke-dasharray="4,4"/>
+            <text x="585" y="118" font-size="10" fill="#94a3b8">avg 4.9</text>
+
+            <polyline fill="none" stroke="#2563eb" stroke-width="2.5"
+              points="60,125 100,108 140,118 180,80 220,116 260,112 300,82 340,108 380,86 420,118 460,90 500,108 540,125" />
+
+            <!-- markers + labels -->
+            <g fill="#2563eb">
+              <circle cx="60" cy="125" r="3"/><text x="60" y="115" text-anchor="middle" font-size="9">4.2</text>
+              <circle cx="100" cy="108" r="3"/><text x="100" y="98" text-anchor="middle" font-size="9">5.1</text>
+              <circle cx="140" cy="118" r="3"/><text x="140" y="108" text-anchor="middle" font-size="9">4.8</text>
+              <circle cx="180" cy="80" r="3"/><text x="180" y="70" text-anchor="middle" font-size="9">6.3</text>
+              <circle cx="220" cy="116" r="3"/><text x="220" y="106" text-anchor="middle" font-size="9">5.6</text>
+              <circle cx="260" cy="112" r="3"/><text x="260" y="102" text-anchor="middle" font-size="9">4.9</text>
+              <circle cx="300" cy="82" r="3"/><text x="300" y="72" text-anchor="middle" font-size="9">5.8</text>
+              <circle cx="340" cy="108" r="3"/><text x="340" y="98" text-anchor="middle" font-size="9">6.2</text>
+              <circle cx="380" cy="86" r="3"/><text x="380" y="76" text-anchor="middle" font-size="9">5.0</text>
+              <circle cx="420" cy="118" r="3"/><text x="420" y="108" text-anchor="middle" font-size="9">4.7</text>
+              <circle cx="460" cy="90" r="3"/><text x="460" y="80" text-anchor="middle" font-size="9">6.0</text>
+              <circle cx="500" cy="108" r="3"/><text x="500" y="98" text-anchor="middle" font-size="9">5.3</text>
+              <circle cx="540" cy="125" r="3"/><text x="540" y="115" text-anchor="middle" font-size="9">4.2</text>
+            </g>
+            <text x="60" y="215" text-anchor="middle" class="label">13 Feb</text>
+            <text x="180" y="215" text-anchor="middle" class="label">05 Mar</text>
+            <text x="300" y="215" text-anchor="middle" class="label">02 Apr</text>
+            <text x="420" y="215" text-anchor="middle" class="label">30 Apr</text>
+            <text x="540" y="215" text-anchor="middle" class="label">07 May</text>
+          </svg>
+        </div>
+
+        <div class="row" style="grid-template-columns: 1fr 1fr; margin:0;">
+          <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Average Tuesday Usage</div><div class="card-value" style="font-size:22px; color:#2563eb;">4.9</div><div class="card-sub">2kg Packs</div></div>
+          <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Highest Tuesday Usage</div><div class="card-value" style="font-size:22px; color:#16a34a;">6.3</div><div class="card-sub">05 Mar 2024</div></div>
+          <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Lowest Tuesday Usage</div><div class="card-value" style="font-size:22px; color:#dc2626;">4.2</div><div class="card-sub">13 Feb 2024</div></div>
+          <div class="card" style="padding:10px;"><div class="card-title" style="font-size:11px;">Total Tuesday Usage</div><div class="card-value" style="font-size:22px; color:#8b5cf6;">63.7</div><div class="card-sub">2kg Packs</div></div>
+        </div>
+      </div>
+
+      <div class="row cols-1-1" style="margin-top:14px;">
+        <div>
+          <div style="font-weight:600; font-size:13px;">Tuesday Sales Breakdown (By Date)</div>
+          <table class="mock-table">
+            <tr><th>Date (Tuesday)</th><th>Chicken Burgers Sold (Units)</th><th>Chicken Breast Used (kg)</th><th>2kg Packs Sold (Supplier Units)</th></tr>
+            <tr><td>13 Feb 2024</td><td>84</td><td>8.4</td><td>4.2</td></tr>
+            <tr><td>20 Feb 2024</td><td>102</td><td>10.2</td><td>5.1</td></tr>
+            <tr><td>27 Feb 2024</td><td>96</td><td>9.6</td><td>4.8</td></tr>
+            <tr><td>05 Mar 2024</td><td>126</td><td>12.6</td><td>6.3</td></tr>
+            <tr class="total-row"><td>Total</td><td>1,278</td><td>127.4</td><td>63.7</td></tr>
+          </table>
+        </div>
+        <div>
+          <div style="font-weight:600; font-size:13px;">Ingredient Contribution to Sales (By Value)</div>
+          <table class="mock-table">
+            <tr><th>Ingredient</th><th>Sales Value</th><th>% of Total Sales</th></tr>
+            <tr><td><span class="dot" style="background:#2563eb"></span>Chicken Breast</td><td>48,760</td><td>41.6%</td></tr>
+            <tr><td><span class="dot" style="background:#16a34a"></span>Beef Patty</td><td>28,320</td><td>24.1%</td></tr>
+            <tr><td><span class="dot" style="background:#f59e0b"></span>Cheese</td><td>15,240</td><td>13.0%</td></tr>
+            <tr><td><span class="dot" style="background:#8b5cf6"></span>Lettuce</td><td>6,890</td><td>5.9%</td></tr>
+            <tr><td><span class="dot" style="background:#06b6d4"></span>Sauce</td><td>5,760</td><td>4.9%</td></tr>
+            <tr><td><span class="dot" style="background:#dc2626"></span>Other Ingredients</td><td>12,230</td><td>10.4%</td></tr>
+            <tr class="total-row"><td>Total Sales</td><td>117,200</td><td>100.0%</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="miss-note">
+        <strong>Gap (large):</strong> This panel requires <strong>ingredient-level theoretical-usage</strong> data (recipe × menu item sold), filtered by day-of-week, with supplier-unit conversion. XMS BI currently provides:
+        <ul style="margin:6px 0 0 18px; padding:0;">
+          <li>Recipe cost rollup at <strong>product level</strong> (F_INV_SALES_DAY) — not per ingredient broken out</li>
+          <li>No day-of-week aggregation built into existing vis queries</li>
+          <li>No supplier-unit conversion exposed in presentation (UOM_COST is per base UOM, not per supplier pack)</li>
+          <li>&quot;Ingredient Contribution to Sales&quot; (%) needs an ingredient-to-sales-revenue allocation — needs new build step</li>
+        </ul>
+        <strong>To close:</strong> new Tier-2 presentation table joining LINEITEM × Recipe × INVITEM with day-of-week + supplier-pack-size, plus 4-5 new vis queries (filter list, line chart, 4 KPIs, 2 grids).
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ GAP SUMMARY ============================ -->
+<div class="dashboard" id="gaps">
+  <h2>Gap Summary</h2>
+  <div class="subtitle">What's needed to fully reproduce Kati's wishlist in XMS BI</div>
+
+  <div class="summary-box">
+    <h3>At a Glance</h3>
+    <div class="summary-stat"><div class="num" style="color:#16a34a;">~24</div><div class="lbl">Available now</div></div>
+    <div class="summary-stat"><div class="num" style="color:#f59e0b;">~14</div><div class="lbl">After P1 / pending deploy / minor wiring</div></div>
+    <div class="summary-stat"><div class="num" style="color:#dc2626;">~7</div><div class="lbl">Genuine new build needed</div></div>
+  </div>
+
+  <div class="summary-box" style="background:#eff6ff; border-color:#bfdbfe;">
+    <h3 style="color:#1e40af;">Growyze data feeds — corrected understanding</h3>
+    <div style="font-size:13px; color:#1e3a8a; line-height:1.6;">
+      Growyze provides <strong>both</strong> inventory <em>and</em> sales data, plus product cost from the menu catalogue:
+      <ul style="margin:8px 0 0 18px; padding:0;">
+        <li><strong>Sales:</strong> <code>DL_SALES</code> (order headers — totalSales, OPEN/CLOSE time window) + <code>DL_SALESDETAIL</code> (line items — items_soldQty, items_totalValue, items_posId). Staged into <code>GRYZ_LINEITEM</code> at <strong>product-level</strong> granularity.</li>
+        <li><strong>Menu / cost:</strong> <code>DL_DISHES</code> with <code>salePrice</code> + <code>totalCost</code> per dish. Profit / GP% therefore works <em>without</em> a separate recipe-ingest pipeline.</li>
+        <li><strong>Inventory:</strong> stocktakes, deliveries, waste, transfers — handled by the StockEvent pipeline.</li>
+      </ul>
+      <strong>Caveats vs a true POS feed:</strong> no modifier-level lines, no tender/payment breakdown, no per-second timestamps (time comes from the sale window).
+    </div>
+  </div>
+
+  <div class="gap-summary">
+    <h3>Critical Path — Blockers to Close First</h3>
+    <table>
+      <tr><th>#</th><th>Item</th><th>Affected Dashboards</th><th>Status</th><th>Effort</th></tr>
+      <tr>
+        <td>1</td>
+        <td><strong>P1 — F_LINEITEM_15MIN / F_PRODUCT_MARGIN_DAY filter widening</strong><br><small>Current: <code>IntegrationType = 'POS'</code>. Needs: <code>IN ('POS','INVENTORY')</code></small></td>
+        <td>Overview, Sales &amp; Profitability</td>
+        <td><span class="status-badge missing">Not deployed</span></td>
+        <td>Small — single MERGE; script <code>reporting_queries/08_presentation_filter_fix.sql</code></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>P2 — Map LINEITEM_TIMESTAMP from Growyze sale window</strong><br><small>Without it, F_LINEITEM_15MIN can't bucket by time-of-day. Source: DL_SALES.from (already staged as OPEN_TIME).</small></td>
+        <td>Sales &amp; Profitability heatmap, hourly trend</td>
+        <td><span class="status-badge missing">Pending</span></td>
+        <td>Small — add OPEN_TIME → LINEITEM_TIMESTAMP to GRYZ_LINEITEM staging + entity mapping #9. ~10 lines of SQL.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>P3 + P4 — F_PURCHASES_DAY (Deliveries fact)</strong><br><small>Scripts 05, 06, 07 ready in ClaudeDevelopment</small></td>
+        <td>Overview, Inventory Control</td>
+        <td><span class="status-badge partial">Built, not deployed</span></td>
+        <td>Small — deploy + rebuild</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>Recipe-level cost (Growyze recipes / RECIPE_PRODUCT)</strong><br><small>Only needed for ingredient-level analysis. Product-level Profit / GP% does NOT need this — DL_DISHES.totalCost is sufficient.</small></td>
+        <td>Ingredient Based Sales panel only</td>
+        <td><span class="status-badge missing">Not wired</span></td>
+        <td>Medium — Growyze recipe endpoint, RECIPE entity mapping, ingredient cost rollup. Defer to Phase 2.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="gap-summary">
+    <h3>New Cards / Datasets Required</h3>
+    <table>
+      <tr><th>Card</th><th>Dashboard</th><th>Closest Existing</th><th>What to Build</th></tr>
+      <tr><td>Active stocktakes (X / Y)</td><td>Overview, Inv Control</td><td>—</td><td>New SingleKPICard returning ratio; source F_INV_COUNTS_DAY DISTINCT venues with count-in-period / total venues</td></tr>
+      <tr><td>Category trend callouts (+£ / %)</td><td>Overview</td><td>InvStockActivity</td><td>Delta-summary SingleKPICard per category (latest stocktake − earliest in window)</td></tr>
+      <tr><td>Avg Cost Spend per item sold</td><td>Sales &amp; Profitability</td><td>—</td><td>SingleKPICard: SUM(RECIPE_COST) / SUM(QUANTITY) from F_INV_SALES_DAY</td></tr>
+      <tr><td>Best Performing Category KPI</td><td>Sales &amp; Profitability</td><td>OakVineMenuTopSeller</td><td>Variant of TopSeller pattern — returns category name + secondary GP% metric</td></tr>
+      <tr><td>Menu Item Highlights (5-slot strip)</td><td>Sales &amp; Profitability</td><td>OakVineMenuTopSeller, TopProducts, OakVineMenuBottom10Products</td><td>Orchestrate 5 SingleKPICards into one row; add &quot;Fastest Growing&quot; (needs prior-period comparison per item)</td></tr>
+      <tr><td>Overall Menu Profitability stacked area</td><td>Sales &amp; Profitability</td><td>OakVineMarginByCategory (combined)</td><td>New stacked-area dataset: Margin / Cost / Discounts per day from F_LINEITEM_15MIN × F_INV_SALES_DAY</td></tr>
+      <tr><td>Menu Engineering Quadrant (BCG matrix)</td><td>Sales &amp; Profitability</td><td>—</td><td>Either new ScatterChartCard component OR CustomDataGrid that classifies items by quadrant via SQL CASE on median splits</td></tr>
+      <tr><td>Inventory Items Movement — Transfers column</td><td>Inv Control</td><td>InvUseAnalisys</td><td>Aggregate STOCKEVENT EVENT_TYPE='TRANSFER' (in/out) into F_INV_USAGE_DAY or sibling fact</td></tr>
+      <tr><td>Highest / Lowest Venue KPIs</td><td>Inv Control</td><td>OakVineInvTotalCost</td><td>SingleKPICard returning venue name + value (TOP 1 ASC / DESC)</td></tr>
+      <tr><td><strong>Ingredient Based Sales panel</strong> (entire section)</td><td>Inv Control</td><td>InvAvgUsage (item-level)</td><td>Significant: new Tier-2 presentation table — LINEITEM × Recipe × INVITEM with day-of-week + supplier-pack conversion; ~5 new vis queries (filter list + line chart + 4 KPIs + 2 grids)</td></tr>
+    </table>
+  </div>
+
+  <div class="gap-summary">
+    <h3>Already-Available (Just Need Wiring on the Growyze Dashboard)</h3>
+    <table>
+      <tr><th>Wishlist Card</th><th>XMS BI Dataset</th></tr>
+      <tr><td>Theoretical stock on hand KPI</td><td><code>OakVineInvTotalCost · SingleKPICard</code></td></tr>
+      <tr><td>Waste (value) KPI</td><td><code>InvWasteCost · SingleKPICard</code> / <code>OakVineInvWasteCost</code></td></tr>
+      <tr><td>Stock Value Over Time by Category (lines)</td><td><code>InvStockActivity · MultiLineChartCard</code></td></tr>
+      <tr><td>Stock Value by Venue Over Time (stacked bars)</td><td><code>InvStockActivity · StackedBarChartCard</code></td></tr>
+      <tr><td>Total Stock Value by Venue × Category (grid)</td><td><code>InvKPIGrouped · CustomGroupedDataGrid</code></td></tr>
+      <tr><td>Total Stock Value by Category (pie + grid)</td><td><code>InvCOGSByCategory · PieChartCard</code></td></tr>
+      <tr><td>Menu Performance Overview — donut + table</td><td><code>OakVineMenuFoodDrinksSplit · PieChartCard</code> + <code>ProductComparison · CustomDataGrid</code></td></tr>
+      <tr><td>Menu Item Performance Comparison table</td><td><code>ProductComparison · CustomDataGrid</code></td></tr>
+      <tr><td>Top 10 Sold Products Heatmap</td><td><code>ProductGC · HeatmapCard</code> / <code>OakVineMenuSalesByHour · HeatmapCard</code></td></tr>
+      <tr><td>Inventory Items Movement (most columns)</td><td><code>InvUseAnalisys · CustomDataGrid</code></td></tr>
+      <tr><td>Net Sales KPI (after P1)</td><td><code>NetSales · SingleKPICard</code></td></tr>
+      <tr><td>Profit / Profit % (after P1 + recipe cost)</td><td><code>OakVineCostGrossMargin / OakVineCostFoodCostPct</code></td></tr>
+    </table>
+  </div>
+
+  <div class="gap-summary">
+    <h3>Recommendations</h3>
+    <ol style="font-size:13px; line-height:1.6;">
+      <li><strong>Quick wins (1-2 days):</strong> deploy scripts 05-08 + P1 filter widening + add LINEITEM_TIMESTAMP mapping. Unlocks the majority of Overview, Inventory Control, and Sales &amp; Profitability.</li>
+      <li><strong>Sales &amp; Profitability is viable for Growyze-only orgs:</strong> Padel Social and Dirty Sixth get product-level sales, mix, GP%, top items, and heatmaps from Growyze alone. Caveats are sub-product detail (modifiers / tenders / discounts) and exact timestamps — these are sale-window-based.</li>
+      <li><strong>Menu Engineering Quadrant:</strong> ship as a CustomDataGrid with a quadrant classification column (CASE on median splits of qty &amp; GP%) in v1 — few hours of SQL. Build a real ScatterChartCard later if it proves valuable.</li>
+      <li><strong>Ingredient Based Sales:</strong> defer to Phase 2. Needs Growyze recipe ingest (RECIPE_PRODUCT mapping) + supplier-unit conversion + a new Tier-2 presentation table + ~5 vis queries. Scope separately with Kati once Growyze recipe data quality is confirmed.</li>
+      <li><strong>Avg Cost Spend / Best Performing Category KPIs:</strong> small new vis queries on top of existing facts. Should be included in the v1 default Growyze dashboard pack.</li>
+      <li><strong>Discounts series:</strong> if Kati's stakeholders want discount visibility, raise with Growyze — order-header net/gross delta is the best available proxy.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+  // tab switching
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.dashboard').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById(t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // heatmap rendering
+  const products = ['Chicken Burger','Margherita Pizza','Caesar Salad','Soft Drinks','Fish & Chips','Garlic Bread','Chicken Wings','Brownie','Pasta Alfredo','Iced Coffee'];
+  const colors = ['#fef9c3','#fde047','#a3e635','#65a30d','#15803d'];
+  const tbody = document.getElementById('heatmap-body');
+  if (tbody) {
+    products.forEach((p, pi) => {
+      let row = `<tr><td style="font-weight:600;">${p}</td>`;
+      for (let i = 0; i < 21; i++) {
+        // weighted: weekends + evenings darker, weekdays lighter
+        const dayIdx = Math.floor(i / 3);
+        const timeIdx = i % 3;
+        let base = 1;
+        if (dayIdx >= 4) base += 1.5;      // Fri/Sat/Sun
+        if (timeIdx === 2) base += 1;      // evening
+        if (timeIdx === 1) base += 0.5;    // lunch
+        if (p === 'Caesar Salad' && timeIdx === 1) base += 1;
+        if (p === 'Iced Coffee' && timeIdx === 1) base += 1;
+        if (p === 'Soft Drinks') base += 0.5;
+        const colorIdx = Math.min(4, Math.max(0, Math.floor(base + (pi % 3) * 0.2)));
+        row += `<td style="background:${colors[colorIdx]}; width:24px; height:18px;"></td>`;
+      }
+      row += '</tr>';
+      tbody.insertAdjacentHTML('beforeend', row);
+    });
+  }
+</script>
+
+</body>
+</html>

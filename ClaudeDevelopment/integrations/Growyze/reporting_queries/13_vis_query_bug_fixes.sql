@@ -6,7 +6,11 @@
 
     Bug 1: InvConsumption BarChartCard — NULL TotalValue
         The header metadata returns NULL AS TotalValue, causing the KPI chip to display "0.00".
-        Fix: Replace with a correlated subquery that computes the total consumption quantity.
+        Fix: Replace with a subquery that computes the total consumption quantity.
+        IMPORTANT: The subquery must use the SAME table aliases as the data query
+        (FU, C, location, invitem) — not suffixed aliases (FU2, C2, etc.) — because
+        @FilterClause is replaced globally and the filter expressions reference those
+        exact aliases. Using different aliases causes a 500 error.
 
     Bug 2: InvMargeBrut CustomGroupedDataGrid — Parent/child column mismatch
         Child rows put Usage metrics (Purchases/Consumption/Waste) in Column1-3.
@@ -48,12 +52,12 @@ SELECT ''Item'' AS XAxisLabel, ''Consumption Quantity'' AS YAxisLabel,
     ''Top 20 Items by Consumption'' AS Title,
     ''Volume-based ranking (units consumed via sales)'' AS Description,
     NULL AS Trend,
-    (SELECT FORMAT(SUM(ABS(ISNULL(FU2.[SALE_QTY],0))),''N0'')
-     FROM [presentation].[F_INV_USAGE_DAY] FU2
-     INNER JOIN [presentation].[CALENDAR] C2 ON FU2.[COUNT_DATE] = C2.[DATE]
-     LEFT JOIN [presentation].[D_LOCATION] location2 ON FU2.LOCATION_HUB_ID = location2.BOTTOM_HUB_ID
-     LEFT JOIN [presentation].[D_INVITEM] invitem2 ON FU2.INVITEM_HUB_ID = invitem2.BOTTOM_HUB_ID
-     WHERE 1=1 AND invitem2.BOTTOM_INVITEM_NAME IS NOT NULL @FilterClause) AS TotalValue,
+    (SELECT FORMAT(SUM(ABS(ISNULL(FU.[SALE_QTY],0))),''N0'')
+     FROM [presentation].[F_INV_USAGE_DAY] FU
+     INNER JOIN [presentation].[CALENDAR] C ON FU.[COUNT_DATE] = C.[DATE]
+     LEFT JOIN [presentation].[D_LOCATION] location ON FU.LOCATION_HUB_ID = location.BOTTOM_HUB_ID
+     LEFT JOIN [presentation].[D_INVITEM] invitem ON FU.INVITEM_HUB_ID = invitem.BOTTOM_HUB_ID
+     WHERE 1=1 AND invitem.BOTTOM_INVITEM_NAME IS NOT NULL @FilterClause) AS TotalValue,
     NULL AS Chip',
     ModifiedDate = GETDATE()
 WHEN NOT MATCHED THEN INSERT
@@ -79,12 +83,12 @@ SELECT ''Item'' AS XAxisLabel, ''Consumption Quantity'' AS YAxisLabel,
     ''Top 20 Items by Consumption'' AS Title,
     ''Volume-based ranking (units consumed via sales)'' AS Description,
     NULL AS Trend,
-    (SELECT FORMAT(SUM(ABS(ISNULL(FU2.[SALE_QTY],0))),''N0'')
-     FROM [presentation].[F_INV_USAGE_DAY] FU2
-     INNER JOIN [presentation].[CALENDAR] C2 ON FU2.[COUNT_DATE] = C2.[DATE]
-     LEFT JOIN [presentation].[D_LOCATION] location2 ON FU2.LOCATION_HUB_ID = location2.BOTTOM_HUB_ID
-     LEFT JOIN [presentation].[D_INVITEM] invitem2 ON FU2.INVITEM_HUB_ID = invitem2.BOTTOM_HUB_ID
-     WHERE 1=1 AND invitem2.BOTTOM_INVITEM_NAME IS NOT NULL @FilterClause) AS TotalValue,
+    (SELECT FORMAT(SUM(ABS(ISNULL(FU.[SALE_QTY],0))),''N0'')
+     FROM [presentation].[F_INV_USAGE_DAY] FU
+     INNER JOIN [presentation].[CALENDAR] C ON FU.[COUNT_DATE] = C.[DATE]
+     LEFT JOIN [presentation].[D_LOCATION] location ON FU.LOCATION_HUB_ID = location.BOTTOM_HUB_ID
+     LEFT JOIN [presentation].[D_INVITEM] invitem ON FU.INVITEM_HUB_ID = invitem.BOTTOM_HUB_ID
+     WHERE 1=1 AND invitem.BOTTOM_INVITEM_NAME IS NOT NULL @FilterClause) AS TotalValue,
     NULL AS Chip',
     N'{"LocationList":"COALESCE(location.[BOTTOM_MICROSERVICE_NAME],location.[BOTTOM_LOCATION_NAME])","StartDate":"C.[DATE]","EndDate":"C.[DATE]"}',
     N'{"Channels":{"column":"","type":"IN","dataType":"VARCHAR"},"DayOfWeek":{"column":"","type":"IN","dataType":"VARCHAR"},"Deals":{"column":"","type":"IN","dataType":"VARCHAR"},"DealToggle":{"column":"","type":"IN","dataType":"VARCHAR"},"Discounts":{"column":"","type":"IN","dataType":"VARCHAR"},"Distributors":{"column":"","type":"IN","dataType":"VARCHAR"},"Integrations":{"column":"","type":"IN","dataType":"VARCHAR"},"InvItems":{"column":"COALESCE(invitem.[BOTTOM_MICROSERVICE_NAME],invitem.[BOTTOM_INVITEM_NAME])","type":"IN","dataType":"VARCHAR"},"Locations":{"column":"COALESCE(location.[BOTTOM_MICROSERVICE_NAME],location.[BOTTOM_LOCATION_NAME])","type":"IN","dataType":"VARCHAR"},"Mods":{"column":"","type":"IN","dataType":"VARCHAR"},"Occasions":{"column":"","type":"IN","dataType":"VARCHAR"},"ProductCategories":{"column":"COALESCE(invitem.[TOP_MICROSERVICE_NAME],invitem.[TOP_NAME])","type":"IN","dataType":"VARCHAR"},"Products":{"column":"","type":"IN","dataType":"VARCHAR"},"ProductsComp":{"column":"","type":"IN","dataType":"VARCHAR"},"RevenueCentres":{"column":"","type":"IN","dataType":"VARCHAR"},"ServiceCharges":{"column":"","type":"IN","dataType":"VARCHAR"},"Suppliers":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilter":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilterAge":{"column":"","type":"IN","dataType":"VARCHAR"},"Tax":{"column":"","type":"IN","dataType":"VARCHAR"},"Tenders":{"column":"","type":"IN","dataType":"VARCHAR"}}',
