@@ -1,14 +1,50 @@
 Mews001 DV Mapping - Deploy Order (DEV)
-Target: core database (01-03), then org DB load (04 checks)
+Target: core database (01-03, 05-A), org DB (05-B, load, 04 checks)
 
-1. 01_staging_control.sql      -- SSMS vs core. Expect: 17 rows in core.int_mews001.StagingControl (step_type='Staging')
-2. 02_entity_mappings.sql      -- SSMS vs core. Expect: 25 rows in core.int_mews001.EntityMappings
-3. 03_upload_load_steps.sql    -- SSMS vs core. Expect: 25 Load rows added to StagingControl
-4. Run the load for org 19 (Three Rocks Hotel):
+REVISED 2026-07-03 (second revision), two changes:
+
+(a) 8156 fix - core.UploadEntityMappings supports exactly ONE EntityMappings
+    row per entity; the original 3-rows-per-entity design for LINEITEM and
+    CUSTORDER_LINEITEM tripled the generated load column list (SQL 8156,
+    surfaced as 2754 via the sp_DataVaultLoad error-masking re-raise) and,
+    independently, collapsed to a single last-source-wins load step. Fix:
+    tier-2 staging step 'Mews Line Item Combined' unions PROD/TAX/DISCOUNT
+    into stage.MEWS_LINEITEM_ALL; single mapping rows point at it.
+
+(b) GDPR removal - guest names, home addresses, and email/phone contacts are
+    personal data with no current Mews reporting need. The CRM lane
+    (INDIVIDUAL/ADDRESS/CONTACT hubs, ADDRESS_INDIVIDUAL/CONTACT_INDIVIDUAL
+    links, staging steps Mews Customer/Address/Contact) is removed from
+    01/02, and 05_remove_crm_pii.sql deletes the deployed control rows and
+    purges the rows already loaded by the 2026-07-03 runs.
+
+Deploy order (already-deployed DEV environment and fresh deploys alike):
+1. 01_staging_control.sql       -- SSMS vs core
+2. 02_entity_mappings.sql       -- SSMS vs core (also deletes the obsolete per-type LINEITEM rows)
+3. 05_remove_crm_pii.sql        -- Section A vs core, Section B in the org DB.
+                                   MUST run BEFORE 03, otherwise 03 regenerates
+                                   the CRM load steps from the still-present mappings.
+                                   Expect after A: staging=15, load=16*, mappings=16, crm rows=0
+                                   (*16 after step 4 regenerates; A only deletes the 5 CRM load steps)
+                                   Expect after B: all purge counts 0
+4. 03_upload_load_steps.sql     -- SSMS vs core. Expect: 16 Load rows
+5. Run the load for org 19 (Three Rocks Hotel):
      USE [20260413_XMS_B4E2F7A8-3C91-4D6E-9F05-8A1D2B5E7C43];
      EXEC [core].[sp_DataVaultLoad] @SchemaList = N'int_mews001';
-5. 04_verification.sql sections B-E -- SSMS vs org DB (or hand to Claude for MCP verification)
-Rollback: UPDATE core.int_mews001.StagingControl SET exclude = 1;
-          UPDATE core.int_mews001.EntityMappings SET is_active = 0;
-          (config-only change - no DDL to reverse; stage tables are DROP/SELECT INTO)
-All scripts are idempotent MERGE upserts - safe to re-run.
+6. 04_verification.sql sections A-E -- SSMS vs core (A) / org DB (B-E), or hand
+   to Claude for MCP verification. Section A expects 15/16/16 + guards PASS.
+
+Rollback: the 8156 fix and load-step config are flag-reversible
+          (StagingControl.exclude = 1 / EntityMappings.is_active = 0).
+          The GDPR removal is deliberately NOT flag-reversible - control rows
+          are deleted and loaded PII purged; restore from git history only
+          with an explicit ruling that the CRM lane is wanted again (and note
+          fullName must be SPLIT into FORENAME/SURNAME/MIDDLE_NAMES - the
+          original step discarded surnames).
+
+NOTE for fetcher team: [int_mews001].[DL_CUSTOMERS] (landing layer) still
+holds raw fullName/email/phone/address and re-lands on every fetch. Recommend
+removing the customers endpoint from the Mews fetch config and clearing the
+DL table - outside the scope of these scripts.
+
+All scripts are idempotent (MERGE upserts + guarded DELETEs) - safe to re-run.

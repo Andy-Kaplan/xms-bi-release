@@ -372,95 +372,15 @@ WHEN NOT MATCHED THEN
             GETDATE(), GETDATE());
 GO
 
--- Step 13: Mews Customer
-MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
-USING (VALUES (N'Mews Customer')) AS src (step_name)
-ON tgt.step_name = src.step_name
-WHEN MATCHED THEN
-    UPDATE SET
-        staging_table    = N'MEWS_CUSTOMER',
-        query_sql        = N'IF OBJECT_ID(''stage.MEWS_CUSTOMER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CUSTOMER]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_CUSTOMER] FROM ( SELECT id AS HUB_ID, fullName AS FORENAME, NULL AS SURNAME, NULL AS MIDDLE_NAMES, NULL AS TITLE, NULL AS GENDER, dateOfBirth AS DOB FROM deduped WHERE rn = 1 ) AS source_query;',
-        tier             = 1,
-        step_type        = N'Staging',
-        exclude          = 0,
-        description      = N'Stages Mews guest profiles as individuals. Mews has a single fullName field mapped to FORENAME.',
-        depends_on_steps = NULL,
-        retry_count      = 3,
-        timeout_minutes  = 30,
-        staging_columns  = N'["HUB_ID", "FORENAME", "SURNAME", "MIDDLE_NAMES", "TITLE", "GENDER", "DOB"]',
-        updated_at       = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
-            description, depends_on_steps, retry_count, timeout_minutes,
-            staging_columns, created_at, updated_at)
-    VALUES (N'Mews Customer', N'MEWS_CUSTOMER',
-            N'IF OBJECT_ID(''stage.MEWS_CUSTOMER'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CUSTOMER]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_CUSTOMER] FROM ( SELECT id AS HUB_ID, fullName AS FORENAME, NULL AS SURNAME, NULL AS MIDDLE_NAMES, NULL AS TITLE, NULL AS GENDER, dateOfBirth AS DOB FROM deduped WHERE rn = 1 ) AS source_query;',
-            1, N'Staging', 0,
-            N'Stages Mews guest profiles as individuals. Mews has a single fullName field mapped to FORENAME.',
-            NULL, 3, 30,
-            N'["HUB_ID", "FORENAME", "SURNAME", "MIDDLE_NAMES", "TITLE", "GENDER", "DOB"]',
-            GETDATE(), GETDATE());
-GO
-
--- Step 14: Mews Address
-MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
-USING (VALUES (N'Mews Address')) AS src (step_name)
-ON tgt.step_name = src.step_name
-WHEN MATCHED THEN
-    UPDATE SET
-        staging_table    = N'MEWS_ADDRESS',
-        query_sql        = N'IF OBJECT_ID(''stage.MEWS_ADDRESS'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_ADDRESS]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_ADDRESS] FROM ( SELECT CONCAT(id, ''-HOME'') AS HUB_ID, CONCAT_WS('', '', NULLIF(address1, ''''), NULLIF(address2, '''')) AS ADDRESS, postalCode AS POSTCODE, state AS REGION, country AS COUNTRY, city AS TOWN, id AS CUSTOMER_KEY FROM deduped WHERE rn = 1 AND COALESCE(NULLIF(address1, ''''), NULLIF(address2, ''''), NULLIF(city, ''''), NULLIF(postalCode, '''')) IS NOT NULL ) AS source_query;',
-        tier             = 1,
-        step_type        = N'Staging',
-        exclude          = 0,
-        description      = N'Stages customer home addresses (key {customerId}-HOME); customers with no address component are excluded',
-        depends_on_steps = NULL,
-        retry_count      = 3,
-        timeout_minutes  = 30,
-        staging_columns  = N'["HUB_ID", "ADDRESS", "POSTCODE", "REGION", "COUNTRY", "TOWN", "CUSTOMER_KEY"]',
-        updated_at       = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
-            description, depends_on_steps, retry_count, timeout_minutes,
-            staging_columns, created_at, updated_at)
-    VALUES (N'Mews Address', N'MEWS_ADDRESS',
-            N'IF OBJECT_ID(''stage.MEWS_ADDRESS'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_ADDRESS]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_ADDRESS] FROM ( SELECT CONCAT(id, ''-HOME'') AS HUB_ID, CONCAT_WS('', '', NULLIF(address1, ''''), NULLIF(address2, '''')) AS ADDRESS, postalCode AS POSTCODE, state AS REGION, country AS COUNTRY, city AS TOWN, id AS CUSTOMER_KEY FROM deduped WHERE rn = 1 AND COALESCE(NULLIF(address1, ''''), NULLIF(address2, ''''), NULLIF(city, ''''), NULLIF(postalCode, '''')) IS NOT NULL ) AS source_query;',
-            1, N'Staging', 0,
-            N'Stages customer home addresses (key {customerId}-HOME); customers with no address component are excluded',
-            NULL, 3, 30,
-            N'["HUB_ID", "ADDRESS", "POSTCODE", "REGION", "COUNTRY", "TOWN", "CUSTOMER_KEY"]',
-            GETDATE(), GETDATE());
-GO
-
--- Step 15: Mews Contact
-MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
-USING (VALUES (N'Mews Contact')) AS src (step_name)
-ON tgt.step_name = src.step_name
-WHEN MATCHED THEN
-    UPDATE SET
-        staging_table    = N'MEWS_CONTACT',
-        query_sql        = N'IF OBJECT_ID(''stage.MEWS_CONTACT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CONTACT]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_CONTACT] FROM ( SELECT CONCAT(id, ''-EMAIL'') AS HUB_ID, email AS CONTACT, ''EMAIL'' AS CONTACT_TYPE, id AS CUSTOMER_KEY FROM deduped WHERE rn = 1 AND NULLIF(email, '''') IS NOT NULL UNION ALL SELECT CONCAT(id, ''-PHONE''), COALESCE(NULLIF(phone, ''''), NULLIF(mobile, '''')), ''PHONE'', id FROM deduped WHERE rn = 1 AND COALESCE(NULLIF(phone, ''''), NULLIF(mobile, '''')) IS NOT NULL ) AS source_query;',
-        tier             = 1,
-        step_type        = N'Staging',
-        exclude          = 0,
-        description      = N'Stages customer email and phone contacts, one row per contact (keys {customerId}-EMAIL / {customerId}-PHONE)',
-        depends_on_steps = NULL,
-        retry_count      = 3,
-        timeout_minutes  = 30,
-        staging_columns  = N'["HUB_ID", "CONTACT", "CONTACT_TYPE", "CUSTOMER_KEY"]',
-        updated_at       = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
-            description, depends_on_steps, retry_count, timeout_minutes,
-            staging_columns, created_at, updated_at)
-    VALUES (N'Mews Contact', N'MEWS_CONTACT',
-            N'IF OBJECT_ID(''stage.MEWS_CONTACT'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_CONTACT]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_mews001].[DL_CUSTOMERS] ) SELECT * INTO [stage].[MEWS_CONTACT] FROM ( SELECT CONCAT(id, ''-EMAIL'') AS HUB_ID, email AS CONTACT, ''EMAIL'' AS CONTACT_TYPE, id AS CUSTOMER_KEY FROM deduped WHERE rn = 1 AND NULLIF(email, '''') IS NOT NULL UNION ALL SELECT CONCAT(id, ''-PHONE''), COALESCE(NULLIF(phone, ''''), NULLIF(mobile, '''')), ''PHONE'', id FROM deduped WHERE rn = 1 AND COALESCE(NULLIF(phone, ''''), NULLIF(mobile, '''')) IS NOT NULL ) AS source_query;',
-            1, N'Staging', 0,
-            N'Stages customer email and phone contacts, one row per contact (keys {customerId}-EMAIL / {customerId}-PHONE)',
-            NULL, 3, 30,
-            N'["HUB_ID", "CONTACT", "CONTACT_TYPE", "CUSTOMER_KEY"]',
-            GETDATE(), GETDATE());
-GO
+-- Steps 13-15 (Mews Customer / Mews Address / Mews Contact) REMOVED 2026-07-03.
+-- GDPR ruling: guest names, home addresses, and email/phone contacts are
+-- personal data with no current reporting need for the Mews integration, so
+-- the whole CRM lane (INDIVIDUAL/ADDRESS/CONTACT + their links) is excluded
+-- from staging and the DV load. 05_remove_crm_pii.sql deletes the deployed
+-- control rows and purges the already-loaded data.
+-- If this lane is ever re-enabled, note that DL_CUSTOMERS.fullName must be
+-- SPLIT (first token=FORENAME, last=SURNAME, middle=MIDDLE_NAMES) — the
+-- original step dumped fullName into FORENAME, discarding surnames.
 
 -- Step 16: Mews Order Revenue Center Link
 MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
@@ -519,5 +439,40 @@ WHEN NOT MATCHED THEN
             N'Link staging: discount-to-line pairs from MEWS_LINEITEM_DISCOUNT with NULL promo keys filtered out',
             N'Mews Line Item Discount', 3, 30,
             N'["SRC_KEY", "DISCOUNT_KEY"]',
+            GETDATE(), GETDATE());
+GO
+
+-- Step 18: Mews Line Item Combined
+-- The DV load generator (UploadEntityMappings) supports exactly ONE
+-- EntityMappings row per entity. LINEITEM and CUSTORDER_LINEITEM ingest
+-- PROD + TAX + DISCOUNT lines, so those three tier-1 tables are unioned
+-- here into a single stage table (NCRAloha precedent: NCR_LINE_ITEM_DETAIL).
+-- Tier 2 guarantees the three tier-1 line item steps have completed.
+MERGE INTO [core].[int_mews001].[StagingControl] AS tgt
+USING (VALUES (N'Mews Line Item Combined')) AS src (step_name)
+ON tgt.step_name = src.step_name
+WHEN MATCHED THEN
+    UPDATE SET
+        staging_table    = N'MEWS_LINEITEM_ALL',
+        query_sql        = N'IF OBJECT_ID(''stage.MEWS_LINEITEM_ALL'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_LINEITEM_ALL]; SELECT * INTO [stage].[MEWS_LINEITEM_ALL] FROM ( SELECT SRC_KEY, HEADER_ID, LINEITEM_TYPE, GROSS_VALUE, TAX_VALUE, NET_VALUE, QUANTITY, VOID_FLAG, LINEITEM_TIMESTAMP, ITEM_DATE, ORDER_DATE, TRADING_DATE, LINE_ID, LINE_ORDER FROM [stage].[MEWS_LINEITEM] UNION ALL SELECT SRC_KEY, HEADER_ID, LINEITEM_TYPE, GROSS_VALUE, TAX_VALUE, NET_VALUE, QUANTITY, VOID_FLAG, LINEITEM_TIMESTAMP, ITEM_DATE, ORDER_DATE, TRADING_DATE, LINE_ID, LINE_ORDER FROM [stage].[MEWS_LINEITEM_TAX] UNION ALL SELECT SRC_KEY, HEADER_ID, LINEITEM_TYPE, GROSS_VALUE, TAX_VALUE, NET_VALUE, QUANTITY, VOID_FLAG, LINEITEM_TIMESTAMP, ITEM_DATE, ORDER_DATE, TRADING_DATE, LINE_ID, LINE_ORDER FROM [stage].[MEWS_LINEITEM_DISCOUNT] ) AS source_query;',
+        tier             = 2,
+        step_type        = N'Staging',
+        exclude          = 0,
+        description      = N'Unions PROD/TAX/DISCOUNT line items into one stage table for the LINEITEM hub and CUSTORDER_LINEITEM link (the DV load generator supports one mapping row per entity). SRC_KEY is unique across types via the PROD/TAX/DISCOUNT suffix.',
+        depends_on_steps = NULL,
+        retry_count      = 3,
+        timeout_minutes  = 30,
+        staging_columns  = N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER"]',
+        updated_at       = GETDATE()
+WHEN NOT MATCHED THEN
+    INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
+            description, depends_on_steps, retry_count, timeout_minutes,
+            staging_columns, created_at, updated_at)
+    VALUES (N'Mews Line Item Combined', N'MEWS_LINEITEM_ALL',
+            N'IF OBJECT_ID(''stage.MEWS_LINEITEM_ALL'', ''U'') IS NOT NULL DROP TABLE [stage].[MEWS_LINEITEM_ALL]; SELECT * INTO [stage].[MEWS_LINEITEM_ALL] FROM ( SELECT SRC_KEY, HEADER_ID, LINEITEM_TYPE, GROSS_VALUE, TAX_VALUE, NET_VALUE, QUANTITY, VOID_FLAG, LINEITEM_TIMESTAMP, ITEM_DATE, ORDER_DATE, TRADING_DATE, LINE_ID, LINE_ORDER FROM [stage].[MEWS_LINEITEM] UNION ALL SELECT SRC_KEY, HEADER_ID, LINEITEM_TYPE, GROSS_VALUE, TAX_VALUE, NET_VALUE, QUANTITY, VOID_FLAG, LINEITEM_TIMESTAMP, ITEM_DATE, ORDER_DATE, TRADING_DATE, LINE_ID, LINE_ORDER FROM [stage].[MEWS_LINEITEM_TAX] UNION ALL SELECT SRC_KEY, HEADER_ID, LINEITEM_TYPE, GROSS_VALUE, TAX_VALUE, NET_VALUE, QUANTITY, VOID_FLAG, LINEITEM_TIMESTAMP, ITEM_DATE, ORDER_DATE, TRADING_DATE, LINE_ID, LINE_ORDER FROM [stage].[MEWS_LINEITEM_DISCOUNT] ) AS source_query;',
+            2, N'Staging', 0,
+            N'Unions PROD/TAX/DISCOUNT line items into one stage table for the LINEITEM hub and CUSTORDER_LINEITEM link (the DV load generator supports one mapping row per entity). SRC_KEY is unique across types via the PROD/TAX/DISCOUNT suffix.',
+            NULL, 3, 30,
+            N'["SRC_KEY", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "VOID_FLAG", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "TRADING_DATE", "LINE_ID", "LINE_ORDER"]',
             GETDATE(), GETDATE());
 GO

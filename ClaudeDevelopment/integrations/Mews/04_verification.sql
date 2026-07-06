@@ -42,29 +42,46 @@
    When: before deployment (expect 0/0/0, all FAIL - this is the correct
          pre-deploy observation) and again immediately after 01_staging_
          control.sql + 02_entity_mappings.sql + 03_upload_load_steps.sql are
-         deployed (expect 17/25/25, all PASS)
+         deployed (expect 15/16/16, all PASS)
+   Note: counts revised twice on 2026-07-03.
+         (a) 8156 fix: LINEITEM and CUSTORDER_LINEITEM map once each from the
+             tier-2 union table MEWS_LINEITEM_ALL (the load generator supports
+             one mapping row per entity; the original 3-rows-per-entity design
+             caused error 8156).
+         (b) GDPR removal: INDIVIDUAL/ADDRESS/CONTACT hubs + ADDRESS_INDIVIDUAL/
+             CONTACT_INDIVIDUAL links and their 3 staging steps removed
+             (05_remove_crm_pii.sql purges deployed rows and loaded data).
+         Net: staging steps 15, entity mappings 16, load steps 16.
    ============================================================================ */
 
-SELECT 'staging_steps' AS check_name, '17' AS expected,
+SELECT 'staging_steps' AS check_name, '15' AS expected,
        CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 17 THEN 'PASS' ELSE 'FAIL' END AS status
+       CASE WHEN COUNT(*) = 15 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [core].[int_mews001].[StagingControl] WHERE step_type = 'Staging' AND exclude = 0;
 
-SELECT 'load_steps_generated' AS check_name, '25' AS expected,
+SELECT 'load_steps_generated' AS check_name, '16' AS expected,
        CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 25 THEN 'PASS' ELSE 'FAIL' END AS status
+       CASE WHEN COUNT(*) = 16 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [core].[int_mews001].[StagingControl] WHERE step_type = 'Load' AND exclude = 0;
 
-SELECT 'entity_mappings' AS check_name, '25' AS expected,
+SELECT 'entity_mappings' AS check_name, '16' AS expected,
        CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 25 THEN 'PASS' ELSE 'FAIL' END AS status
+       CASE WHEN COUNT(*) = 16 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [core].[int_mews001].[EntityMappings] WHERE is_active = 1;
+
+-- Guard: the load generator emits corrupt SQL if any entity has >1 mapping row
+SELECT 'one_mapping_row_per_entity' AS check_name, '0 dups' AS expected,
+       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
+       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
+FROM (SELECT entity_name FROM [core].[int_mews001].[EntityMappings]
+      WHERE is_active = 1
+      GROUP BY entity_name HAVING COUNT(*) > 1) dups;
 
 
 /* ============================================================================
    SECTION B: Stage table counts
    Run in: the organisation's own database
-   When: after sp_Staging has executed all 17 Mews staging steps
+   When: after sp_Staging has executed all 15 Mews staging steps
    ============================================================================ */
 
 -- Dimensions (tier 1)
@@ -176,52 +193,31 @@ SELECT 'stage_MEWS_LINEITEM_DISCOUNT' AS check_name, '0' AS expected,
        CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [stage].[MEWS_LINEITEM_DISCOUNT];
 
--- CRM (tier 1)
-SELECT 'stage_MEWS_CUSTOMER' AS check_name, '364' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 364 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [stage].[MEWS_CUSTOMER];
-
--- ADDRESS: genuine source gap, not a failure. No Mews customer currently has
--- any address component populated. The check PASSES on equality with the
--- DL-side derivation (both sides are 0 today; if Mews starts returning
--- address data both sides will move together). DL_CUSTOMERS is deduped via
--- rn = 1 exactly as step 14 does, mirroring its filter so a re-fetch cannot
--- inflate the expected count.
-WITH deduped AS (
-    SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn
-    FROM [int_mews001].[DL_CUSTOMERS]
+-- Tier-2 union feeding the LINEITEM hub / CUSTORDER_LINEITEM link: must equal
+-- the sum of the three per-type tables it unions.
+WITH parts AS (
+    SELECT (SELECT COUNT(*) FROM [stage].[MEWS_LINEITEM])
+         + (SELECT COUNT(*) FROM [stage].[MEWS_LINEITEM_TAX])
+         + (SELECT COUNT(*) FROM [stage].[MEWS_LINEITEM_DISCOUNT]) AS n
 ),
-dl AS (
-    SELECT COUNT(*) AS n
-    FROM deduped
-    WHERE rn = 1
-      AND COALESCE(NULLIF(address1, ''), NULLIF(address2, ''),
-                    NULLIF(city, ''), NULLIF(postalCode, '')) IS NOT NULL
-),
-st AS (
-    SELECT COUNT(*) AS n FROM [stage].[MEWS_ADDRESS]
+combined AS (
+    SELECT COUNT(*) AS n FROM [stage].[MEWS_LINEITEM_ALL]
 )
-SELECT 'stage_MEWS_ADDRESS' AS check_name,
-       CAST(dl.n AS VARCHAR(10)) AS expected,
-       CAST(st.n AS VARCHAR(10)) AS actual,
-       CASE WHEN dl.n = st.n THEN 'PASS' ELSE 'FAIL' END AS status
-FROM dl CROSS JOIN st;
+SELECT 'stage_MEWS_LINEITEM_ALL' AS check_name,
+       CAST(parts.n AS VARCHAR(10)) AS expected,
+       CAST(combined.n AS VARCHAR(10)) AS actual,
+       CASE WHEN parts.n = combined.n THEN 'PASS' ELSE 'FAIL' END AS status
+FROM parts CROSS JOIN combined;
 
-SELECT 'stage_MEWS_CONTACT_total' AS check_name, '257' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 257 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [stage].[MEWS_CONTACT]
-UNION ALL
-SELECT 'stage_MEWS_CONTACT_EMAIL', '185',
-       CAST(COUNT(*) AS VARCHAR(10)),
-       CASE WHEN COUNT(*) = 185 THEN 'PASS' ELSE 'FAIL' END
-FROM [stage].[MEWS_CONTACT] WHERE CONTACT_TYPE = 'EMAIL'
-UNION ALL
-SELECT 'stage_MEWS_CONTACT_PHONE', '72',
-       CAST(COUNT(*) AS VARCHAR(10)),
-       CASE WHEN COUNT(*) = 72 THEN 'PASS' ELSE 'FAIL' END
-FROM [stage].[MEWS_CONTACT] WHERE CONTACT_TYPE = 'PHONE';
+-- CRM lane GDPR-removed 2026-07-03: the stage tables must NOT exist (dropped
+-- by 05_remove_crm_pii.sql; steps no longer in StagingControl).
+SELECT 'gdpr_crm_stage_tables_absent' AS check_name, '0' AS expected,
+       CAST(CASE WHEN OBJECT_ID('stage.MEWS_CUSTOMER', 'U') IS NULL THEN 0 ELSE 1 END
+          + CASE WHEN OBJECT_ID('stage.MEWS_ADDRESS', 'U') IS NULL THEN 0 ELSE 1 END
+          + CASE WHEN OBJECT_ID('stage.MEWS_CONTACT', 'U') IS NULL THEN 0 ELSE 1 END AS VARCHAR(10)) AS actual,
+       CASE WHEN OBJECT_ID('stage.MEWS_CUSTOMER', 'U') IS NULL
+             AND OBJECT_ID('stage.MEWS_ADDRESS', 'U') IS NULL
+             AND OBJECT_ID('stage.MEWS_CONTACT', 'U') IS NULL THEN 'PASS' ELSE 'FAIL' END AS status;
 
 -- Tier-2 link staging (both expected empty on current data)
 SELECT 'stage_MEWS_CUSTORDER_REVCENTER_LNK' AS check_name, '0' AS expected,
@@ -360,20 +356,23 @@ SELECT 'hub_HUB_LINEITEM' AS check_name,
             THEN 'PASS' ELSE 'FAIL' END AS status
 FROM stage_total;
 
-SELECT 'hub_HUB_INDIVIDUAL' AS check_name, '364' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 364 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[HUB_INDIVIDUAL];
-
-SELECT 'hub_HUB_ADDRESS' AS check_name, '0' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[HUB_ADDRESS];
-
-SELECT 'hub_HUB_CONTACT' AS check_name, '257' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 257 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[HUB_CONTACT];
+-- CRM lane GDPR-removed 2026-07-03: no Mews-sourced rows may remain in the
+-- INDIVIDUAL / ADDRESS / CONTACT hubs or satellites (purged by
+-- 05_remove_crm_pii.sql; tables themselves are shared platform entities).
+SELECT 'gdpr_crm_hub_sat_purged' AS check_name, '0' AS expected,
+       CAST((SELECT COUNT(*) FROM [datavault].[HUB_INDIVIDUAL] WHERE SRC = 'int_mews001')
+          + (SELECT COUNT(*) FROM [datavault].[SAT_INDIVIDUAL] WHERE SRC = 'int_mews001')
+          + (SELECT COUNT(*) FROM [datavault].[HUB_ADDRESS] WHERE SRC = 'int_mews001')
+          + (SELECT COUNT(*) FROM [datavault].[SAT_ADDRESS] WHERE SRC = 'int_mews001')
+          + (SELECT COUNT(*) FROM [datavault].[HUB_CONTACT] WHERE SRC = 'int_mews001')
+          + (SELECT COUNT(*) FROM [datavault].[SAT_CONTACT] WHERE SRC = 'int_mews001') AS VARCHAR(10)) AS actual,
+       CASE WHEN (SELECT COUNT(*) FROM [datavault].[HUB_INDIVIDUAL] WHERE SRC = 'int_mews001')
+               + (SELECT COUNT(*) FROM [datavault].[SAT_INDIVIDUAL] WHERE SRC = 'int_mews001')
+               + (SELECT COUNT(*) FROM [datavault].[HUB_ADDRESS] WHERE SRC = 'int_mews001')
+               + (SELECT COUNT(*) FROM [datavault].[SAT_ADDRESS] WHERE SRC = 'int_mews001')
+               + (SELECT COUNT(*) FROM [datavault].[HUB_CONTACT] WHERE SRC = 'int_mews001')
+               + (SELECT COUNT(*) FROM [datavault].[SAT_CONTACT] WHERE SRC = 'int_mews001') = 0
+            THEN 'PASS' ELSE 'FAIL' END AS status;
 
 -- SAT current-flag counts must equal their hub counts (SCD Type 2: exactly
 -- one CURRENT_FLAG=1 row per hub member)
@@ -404,13 +403,6 @@ SELECT 'sat_SAT_LINEITEM_current' AS check_name,
        CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_LINEITEM])
             THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [datavault].[SAT_LINEITEM] WHERE CURRENT_FLAG = 1;
-
-SELECT 'sat_SAT_INDIVIDUAL_current' AS check_name,
-       CAST((SELECT COUNT(*) FROM [datavault].[HUB_INDIVIDUAL]) AS VARCHAR(10)) AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_INDIVIDUAL])
-            THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[SAT_INDIVIDUAL] WHERE CURRENT_FLAG = 1;
 
 SELECT 'sat_SAT_MOD_current' AS check_name,
        CAST((SELECT COUNT(*) FROM [datavault].[HUB_MOD]) AS VARCHAR(10)) AS expected,
@@ -453,20 +445,6 @@ SELECT 'sat_SAT_REVCENTER_current' AS check_name,
        CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_REVCENTER])
             THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [datavault].[SAT_REVCENTER] WHERE CURRENT_FLAG = 1;
-
-SELECT 'sat_SAT_ADDRESS_current' AS check_name,
-       CAST((SELECT COUNT(*) FROM [datavault].[HUB_ADDRESS]) AS VARCHAR(10)) AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_ADDRESS])
-            THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[SAT_ADDRESS] WHERE CURRENT_FLAG = 1;
-
-SELECT 'sat_SAT_CONTACT_current' AS check_name,
-       CAST((SELECT COUNT(*) FROM [datavault].[HUB_CONTACT]) AS VARCHAR(10)) AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = (SELECT COUNT(*) FROM [datavault].[HUB_CONTACT])
-            THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[SAT_CONTACT] WHERE CURRENT_FLAG = 1;
 
 -- Link counts. LNK_CUSTORDER_LINEITEM is derived to equal HUB_LINEITEM
 -- (every line item, tax line, and discount line links back to its order).
@@ -518,15 +496,13 @@ SELECT 'lnk_LNK_CUSTORDER_LOCATION' AS check_name, '19' AS expected,
        CASE WHEN COUNT(*) = 19 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [datavault].[LNK_CUSTORDER_LOCATION];
 
-SELECT 'lnk_LNK_CONTACT_INDIVIDUAL' AS check_name, '257' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 257 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[LNK_CONTACT_INDIVIDUAL];
-
-SELECT 'lnk_LNK_ADDRESS_INDIVIDUAL' AS check_name, '0' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[LNK_ADDRESS_INDIVIDUAL];
+-- CRM lane GDPR-removed 2026-07-03: no Mews-sourced link rows may remain.
+SELECT 'gdpr_crm_links_purged' AS check_name, '0' AS expected,
+       CAST((SELECT COUNT(*) FROM [datavault].[LNK_CONTACT_INDIVIDUAL] WHERE SRC = 'int_mews001')
+          + (SELECT COUNT(*) FROM [datavault].[LNK_ADDRESS_INDIVIDUAL] WHERE SRC = 'int_mews001') AS VARCHAR(10)) AS actual,
+       CASE WHEN (SELECT COUNT(*) FROM [datavault].[LNK_CONTACT_INDIVIDUAL] WHERE SRC = 'int_mews001')
+               + (SELECT COUNT(*) FROM [datavault].[LNK_ADDRESS_INDIVIDUAL] WHERE SRC = 'int_mews001') = 0
+            THEN 'PASS' ELSE 'FAIL' END AS status;
 
 SELECT 'lnk_LNK_DISCOUNT_LINEITEM' AS check_name, '0' AS expected,
        CAST(COUNT(*) AS VARCHAR(10)) AS actual,
@@ -538,11 +514,11 @@ SELECT 'lnk_LNK_CUSTORDER_REVCENTER' AS check_name, '0' AS expected,
        CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
 FROM [datavault].[LNK_CUSTORDER_REVCENTER];
 
--- Orphan-link checks (the Dirty Sixth bug pattern): both sides of all 8
--- distinct Mews link tables must resolve to an existing hub member. Note the
--- 10 EntityMappings link rows (#16-#25) collapse into 8 distinct LNK tables
--- because CUSTORDER_LINEITEM is fed by three source tables (MEWS_LINEITEM,
--- MEWS_LINEITEM_TAX, MEWS_LINEITEM_DISCOUNT) into one link.
+-- Orphan-link checks (the Dirty Sixth bug pattern): both sides of all 6
+-- remaining Mews link tables must resolve to an existing hub member.
+-- (CUSTORDER_LINEITEM ingests PROD/TAX/DISCOUNT lines via the tier-2 union
+-- table MEWS_LINEITEM_ALL; ADDRESS_INDIVIDUAL and CONTACT_INDIVIDUAL were
+-- GDPR-removed 2026-07-03.)
 
 SELECT 'orphan_LNK_CUSTORDER_LOCATION_CUSTORDER' AS check_name, '0' AS expected,
        CAST(COUNT(*) AS VARCHAR(10)) AS actual,
@@ -616,29 +592,8 @@ SELECT 'orphan_LNK_CUSTORDER_REVCENTER_REVCENTER' AS check_name, '0' AS expected
 FROM [datavault].[LNK_CUSTORDER_REVCENTER] l
 WHERE NOT EXISTS (SELECT 1 FROM [datavault].[HUB_REVCENTER] h WHERE h.HUB_ID = l.REVCENTER_HUB_ID);
 
-SELECT 'orphan_LNK_ADDRESS_INDIVIDUAL_ADDRESS' AS check_name, '0' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[LNK_ADDRESS_INDIVIDUAL] l
-WHERE NOT EXISTS (SELECT 1 FROM [datavault].[HUB_ADDRESS] h WHERE h.HUB_ID = l.ADDRESS_HUB_ID);
-
-SELECT 'orphan_LNK_ADDRESS_INDIVIDUAL_INDIVIDUAL' AS check_name, '0' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[LNK_ADDRESS_INDIVIDUAL] l
-WHERE NOT EXISTS (SELECT 1 FROM [datavault].[HUB_INDIVIDUAL] h WHERE h.HUB_ID = l.INDIVIDUAL_HUB_ID);
-
-SELECT 'orphan_LNK_CONTACT_INDIVIDUAL_CONTACT' AS check_name, '0' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[LNK_CONTACT_INDIVIDUAL] l
-WHERE NOT EXISTS (SELECT 1 FROM [datavault].[HUB_CONTACT] h WHERE h.HUB_ID = l.CONTACT_HUB_ID);
-
-SELECT 'orphan_LNK_CONTACT_INDIVIDUAL_INDIVIDUAL' AS check_name, '0' AS expected,
-       CAST(COUNT(*) AS VARCHAR(10)) AS actual,
-       CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS status
-FROM [datavault].[LNK_CONTACT_INDIVIDUAL] l
-WHERE NOT EXISTS (SELECT 1 FROM [datavault].[HUB_INDIVIDUAL] h WHERE h.HUB_ID = l.INDIVIDUAL_HUB_ID);
+-- (ADDRESS_INDIVIDUAL / CONTACT_INDIVIDUAL orphan checks removed 2026-07-03
+--  with the GDPR CRM-lane removal - covered by gdpr_crm_links_purged above.)
 
 
 /* ============================================================================

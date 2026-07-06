@@ -2,7 +2,8 @@
    Mews Integration - Entity Mappings (Hub rows)
    Target: [core].[int_mews001].[EntityMappings]
 
-   15 hub entity mappings (#1-#15) translated by UploadEntityMappings (Task 5)
+   10 hub entity mappings (#1-#15; #11/#12 retired, #13-#15 GDPR-removed)
+   translated by UploadEntityMappings (Task 5)
    into Data Vault Load steps. All statements use MERGE upsert pattern
    (natural key: entity_name + source_table) for idempotent re-runs.
    `id` is omitted throughout (DEFAULT NEWID()).
@@ -17,12 +18,14 @@
      #7  CHANNEL     from MEWS_CHANNEL
      #8  REVCENTER   from MEWS_REVCENTER
      #9  CUSTORDER   from MEWS_CUSTORDER
-     #10 LINEITEM    from MEWS_LINEITEM
-     #11 LINEITEM    from MEWS_LINEITEM_TAX
-     #12 LINEITEM    from MEWS_LINEITEM_DISCOUNT
-     #13 INDIVIDUAL  from MEWS_CUSTOMER
-     #14 ADDRESS     from MEWS_ADDRESS
-     #15 CONTACT     from MEWS_CONTACT
+     #10 LINEITEM    from MEWS_LINEITEM_ALL (tier-2 union of PROD/TAX/DISCOUNT)
+     (#11/#12 retired 2026-07-03: UploadEntityMappings supports ONE mapping
+      row per entity - multiple rows triple the generated column list, error
+      8156. PROD/TAX/DISCOUNT now union in staging step 'Mews Line Item
+      Combined' -> stage.MEWS_LINEITEM_ALL, NCRAloha precedent.)
+     (#13/#14/#15 INDIVIDUAL/ADDRESS/CONTACT removed 2026-07-03 - GDPR:
+      guest PII not required for current Mews reporting; purge via
+      05_remove_crm_pii.sql)
 
    Spec: .superpowers/sdd/task-4-brief.md (+ plan-preamble.md for shared
    constraints)
@@ -245,9 +248,16 @@ WHEN NOT MATCHED THEN
             GETDATE(), GETDATE(), 1);
 GO
 
--- #10: LINEITEM from MEWS_LINEITEM
+-- #10: LINEITEM from MEWS_LINEITEM_ALL (tier-2 union of PROD/TAX/DISCOUNT)
+-- Retire the three per-type mapping rows first (deployed 2026-07-03, caused
+-- error 8156: UploadEntityMappings tripled the generated column list).
+DELETE FROM [core].[int_mews001].[EntityMappings]
+WHERE entity_name = N'LINEITEM'
+  AND source_table IN (N'MEWS_LINEITEM', N'MEWS_LINEITEM_TAX', N'MEWS_LINEITEM_DISCOUNT');
+GO
+
 MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'LINEITEM', N'MEWS_LINEITEM')) AS src (entity_name, source_table)
+USING (VALUES (N'LINEITEM', N'MEWS_LINEITEM_ALL')) AS src (entity_name, source_table)
 ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
 WHEN MATCHED THEN
     UPDATE SET
@@ -262,146 +272,31 @@ WHEN NOT MATCHED THEN
     INSERT (entity_name, source_table, source_columns, entity_columns,
             type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
             created_at, updated_at, is_active)
-    VALUES (N'LINEITEM', N'MEWS_LINEITEM',
+    VALUES (N'LINEITEM', N'MEWS_LINEITEM_ALL',
             N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 0}, {"name": "LINEITEM_TYPE", "hash": 0}, {"name": "GROSS_VALUE", "hash": 0}, {"name": "TAX_VALUE", "hash": 0}, {"name": "NET_VALUE", "hash": 0}, {"name": "QUANTITY", "hash": 0}, {"name": "LINEITEM_TIMESTAMP", "hash": 0}, {"name": "ITEM_DATE", "hash": 0}, {"name": "ORDER_DATE", "hash": 0}, {"name": "VOID_FLAG", "hash": 0}, {"name": "LINE_ID", "hash": 0}, {"name": "LINE_ORDER", "hash": 0}, {"name": "TRADING_DATE", "hash": 0}, {"name": "SRC_KEY", "hash": 0}]',
             N'["HUB_ID", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "VOID_FLAG", "LINE_ID", "LINE_ORDER", "TRADING_DATE", "SRC_KEY"]',
             NULL, NULL, NULL, 0,
             GETDATE(), GETDATE(), 1);
 GO
 
--- #11: LINEITEM from MEWS_LINEITEM_TAX
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'LINEITEM', N'MEWS_LINEITEM_TAX')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 0}, {"name": "LINEITEM_TYPE", "hash": 0}, {"name": "GROSS_VALUE", "hash": 0}, {"name": "TAX_VALUE", "hash": 0}, {"name": "NET_VALUE", "hash": 0}, {"name": "QUANTITY", "hash": 0}, {"name": "LINEITEM_TIMESTAMP", "hash": 0}, {"name": "ITEM_DATE", "hash": 0}, {"name": "ORDER_DATE", "hash": 0}, {"name": "VOID_FLAG", "hash": 0}, {"name": "LINE_ID", "hash": 0}, {"name": "LINE_ORDER", "hash": 0}, {"name": "TRADING_DATE", "hash": 0}, {"name": "SRC_KEY", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "VOID_FLAG", "LINE_ID", "LINE_ORDER", "TRADING_DATE", "SRC_KEY"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'LINEITEM', N'MEWS_LINEITEM_TAX',
-            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 0}, {"name": "LINEITEM_TYPE", "hash": 0}, {"name": "GROSS_VALUE", "hash": 0}, {"name": "TAX_VALUE", "hash": 0}, {"name": "NET_VALUE", "hash": 0}, {"name": "QUANTITY", "hash": 0}, {"name": "LINEITEM_TIMESTAMP", "hash": 0}, {"name": "ITEM_DATE", "hash": 0}, {"name": "ORDER_DATE", "hash": 0}, {"name": "VOID_FLAG", "hash": 0}, {"name": "LINE_ID", "hash": 0}, {"name": "LINE_ORDER", "hash": 0}, {"name": "TRADING_DATE", "hash": 0}, {"name": "SRC_KEY", "hash": 0}]',
-            N'["HUB_ID", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "VOID_FLAG", "LINE_ID", "LINE_ORDER", "TRADING_DATE", "SRC_KEY"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
-GO
-
--- #12: LINEITEM from MEWS_LINEITEM_DISCOUNT
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'LINEITEM', N'MEWS_LINEITEM_DISCOUNT')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 0}, {"name": "LINEITEM_TYPE", "hash": 0}, {"name": "GROSS_VALUE", "hash": 0}, {"name": "TAX_VALUE", "hash": 0}, {"name": "NET_VALUE", "hash": 0}, {"name": "QUANTITY", "hash": 0}, {"name": "LINEITEM_TIMESTAMP", "hash": 0}, {"name": "ITEM_DATE", "hash": 0}, {"name": "ORDER_DATE", "hash": 0}, {"name": "VOID_FLAG", "hash": 0}, {"name": "LINE_ID", "hash": 0}, {"name": "LINE_ORDER", "hash": 0}, {"name": "TRADING_DATE", "hash": 0}, {"name": "SRC_KEY", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "VOID_FLAG", "LINE_ID", "LINE_ORDER", "TRADING_DATE", "SRC_KEY"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'LINEITEM', N'MEWS_LINEITEM_DISCOUNT',
-            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 0}, {"name": "LINEITEM_TYPE", "hash": 0}, {"name": "GROSS_VALUE", "hash": 0}, {"name": "TAX_VALUE", "hash": 0}, {"name": "NET_VALUE", "hash": 0}, {"name": "QUANTITY", "hash": 0}, {"name": "LINEITEM_TIMESTAMP", "hash": 0}, {"name": "ITEM_DATE", "hash": 0}, {"name": "ORDER_DATE", "hash": 0}, {"name": "VOID_FLAG", "hash": 0}, {"name": "LINE_ID", "hash": 0}, {"name": "LINE_ORDER", "hash": 0}, {"name": "TRADING_DATE", "hash": 0}, {"name": "SRC_KEY", "hash": 0}]',
-            N'["HUB_ID", "HEADER_ID", "LINEITEM_TYPE", "GROSS_VALUE", "TAX_VALUE", "NET_VALUE", "QUANTITY", "LINEITEM_TIMESTAMP", "ITEM_DATE", "ORDER_DATE", "VOID_FLAG", "LINE_ID", "LINE_ORDER", "TRADING_DATE", "SRC_KEY"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
-GO
-
--- #13: INDIVIDUAL from MEWS_CUSTOMER
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'INDIVIDUAL', N'MEWS_CUSTOMER')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "FORENAME", "hash": 0}, {"name": "SURNAME", "hash": 0}, {"name": "MIDDLE_NAMES", "hash": 0}, {"name": "TITLE", "hash": 0}, {"name": "GENDER", "hash": 0}, {"name": "DOB", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "FORENAME", "SURNAME", "MIDDLE_NAMES", "TITLE", "GENDER", "DOB"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'INDIVIDUAL', N'MEWS_CUSTOMER',
-            N'[{"name": "HUB_ID", "hash": 1}, {"name": "FORENAME", "hash": 0}, {"name": "SURNAME", "hash": 0}, {"name": "MIDDLE_NAMES", "hash": 0}, {"name": "TITLE", "hash": 0}, {"name": "GENDER", "hash": 0}, {"name": "DOB", "hash": 0}]',
-            N'["HUB_ID", "FORENAME", "SURNAME", "MIDDLE_NAMES", "TITLE", "GENDER", "DOB"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
-GO
-
--- #14: ADDRESS from MEWS_ADDRESS
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'ADDRESS', N'MEWS_ADDRESS')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "ADDRESS", "hash": 0}, {"name": "POSTCODE", "hash": 0}, {"name": "REGION", "hash": 0}, {"name": "COUNTRY", "hash": 0}, {"name": "TOWN", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "ADDRESS", "POSTCODE", "REGION", "COUNTRY", "TOWN"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'ADDRESS', N'MEWS_ADDRESS',
-            N'[{"name": "HUB_ID", "hash": 1}, {"name": "ADDRESS", "hash": 0}, {"name": "POSTCODE", "hash": 0}, {"name": "REGION", "hash": 0}, {"name": "COUNTRY", "hash": 0}, {"name": "TOWN", "hash": 0}]',
-            N'["HUB_ID", "ADDRESS", "POSTCODE", "REGION", "COUNTRY", "TOWN"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
-GO
-
--- #15: CONTACT from MEWS_CONTACT
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'CONTACT', N'MEWS_CONTACT')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "CONTACT", "hash": 0}, {"name": "CONTACT_TYPE", "hash": 0}]',
-        entity_columns      = N'["HUB_ID", "CONTACT", "CONTACT_TYPE"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'CONTACT', N'MEWS_CONTACT',
-            N'[{"name": "HUB_ID", "hash": 1}, {"name": "CONTACT", "hash": 0}, {"name": "CONTACT_TYPE", "hash": 0}]',
-            N'["HUB_ID", "CONTACT", "CONTACT_TYPE"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
-GO
+-- #13/#14/#15 (INDIVIDUAL / ADDRESS / CONTACT) REMOVED 2026-07-03.
+-- GDPR ruling: guest names, home addresses, and email/phone contacts are
+-- personal data with no current Mews reporting need — the CRM lane is not
+-- staged or loaded. 05_remove_crm_pii.sql deletes the deployed control rows
+-- and purges the already-loaded rows from the org database.
 
 /* ----------------------------------------------------------------------------
-   Link entity mappings (#16-#25)
+   Link entity mappings (#16-#25; #18/#19 retired, #24/#25 GDPR-removed -> 6 rows)
 
      #16 CUSTORDER_LOCATION  from MEWS_CUSTORDER
-     #17 CUSTORDER_LINEITEM  from MEWS_LINEITEM
-     #18 CUSTORDER_LINEITEM  from MEWS_LINEITEM_TAX
-     #19 CUSTORDER_LINEITEM  from MEWS_LINEITEM_DISCOUNT
+     #17 CUSTORDER_LINEITEM  from MEWS_LINEITEM_ALL (tier-2 union)
+     (#18/#19 retired 2026-07-03 - same one-row-per-entity fix as #11/#12)
      #20 LINEITEM_PRODUCT    from MEWS_LINEITEM
      #21 LINEITEM_TAX        from MEWS_LINEITEM_TAX
      #22 DISCOUNT_LINEITEM   from MEWS_DISCOUNT_LINEITEM_LNK
      #23 CUSTORDER_REVCENTER from MEWS_CUSTORDER_REVCENTER_LNK
-     #24 ADDRESS_INDIVIDUAL  from MEWS_ADDRESS
-     #25 CONTACT_INDIVIDUAL  from MEWS_CONTACT
+     (#24/#25 ADDRESS_INDIVIDUAL/CONTACT_INDIVIDUAL removed 2026-07-03 -
+      GDPR CRM-lane removal)
 
    Spec: .superpowers/sdd/task-5-brief.md (+ plan-preamble.md for shared
    constraints)
@@ -431,33 +326,15 @@ WHEN NOT MATCHED THEN
             GETDATE(), GETDATE(), 1);
 GO
 
--- #17: CUSTORDER_LINEITEM from MEWS_LINEITEM
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
-        entity_columns      = N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM',
-            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
-            N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
+-- #17: CUSTORDER_LINEITEM from MEWS_LINEITEM_ALL (tier-2 union of PROD/TAX/DISCOUNT)
+-- Retire the three per-type mapping rows first (same 8156 fix as #10).
+DELETE FROM [core].[int_mews001].[EntityMappings]
+WHERE entity_name = N'CUSTORDER_LINEITEM'
+  AND source_table IN (N'MEWS_LINEITEM', N'MEWS_LINEITEM_TAX', N'MEWS_LINEITEM_DISCOUNT');
 GO
 
--- #18: CUSTORDER_LINEITEM from MEWS_LINEITEM_TAX
 MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_TAX')) AS src (entity_name, source_table)
+USING (VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_ALL')) AS src (entity_name, source_table)
 ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
 WHEN MATCHED THEN
     UPDATE SET
@@ -472,31 +349,7 @@ WHEN NOT MATCHED THEN
     INSERT (entity_name, source_table, source_columns, entity_columns,
             type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
             created_at, updated_at, is_active)
-    VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_TAX',
-            N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
-            N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
-GO
-
--- #19: CUSTORDER_LINEITEM from MEWS_LINEITEM_DISCOUNT
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_DISCOUNT')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
-        entity_columns      = N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_DISCOUNT',
+    VALUES (N'CUSTORDER_LINEITEM', N'MEWS_LINEITEM_ALL',
             N'[{"name": "SRC_KEY", "hash": 1}, {"name": "HEADER_ID", "hash": 1}]',
             N'["LINEITEM_HUB_ID", "CUSTORDER_HUB_ID"]',
             NULL, NULL, NULL, 0,
@@ -599,50 +452,6 @@ WHEN NOT MATCHED THEN
             GETDATE(), GETDATE(), 1);
 GO
 
--- #24: ADDRESS_INDIVIDUAL from MEWS_ADDRESS
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'ADDRESS_INDIVIDUAL', N'MEWS_ADDRESS')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "CUSTOMER_KEY", "hash": 1}]',
-        entity_columns      = N'["ADDRESS_HUB_ID", "INDIVIDUAL_HUB_ID"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'ADDRESS_INDIVIDUAL', N'MEWS_ADDRESS',
-            N'[{"name": "HUB_ID", "hash": 1}, {"name": "CUSTOMER_KEY", "hash": 1}]',
-            N'["ADDRESS_HUB_ID", "INDIVIDUAL_HUB_ID"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
-GO
-
--- #25: CONTACT_INDIVIDUAL from MEWS_CONTACT
-MERGE INTO [core].[int_mews001].[EntityMappings] AS tgt
-USING (VALUES (N'CONTACT_INDIVIDUAL', N'MEWS_CONTACT')) AS src (entity_name, source_table)
-ON tgt.entity_name = src.entity_name AND tgt.source_table = src.source_table
-WHEN MATCHED THEN
-    UPDATE SET
-        source_columns      = N'[{"name": "HUB_ID", "hash": 1}, {"name": "CUSTOMER_KEY", "hash": 1}]',
-        entity_columns      = N'["CONTACT_HUB_ID", "INDIVIDUAL_HUB_ID"]',
-        type2_columns       = NULL,
-        cdc_exclude_columns = NULL,
-        date_filter_column  = NULL,
-        track_deletions     = 0,
-        updated_at          = GETDATE()
-WHEN NOT MATCHED THEN
-    INSERT (entity_name, source_table, source_columns, entity_columns,
-            type2_columns, cdc_exclude_columns, date_filter_column, track_deletions,
-            created_at, updated_at, is_active)
-    VALUES (N'CONTACT_INDIVIDUAL', N'MEWS_CONTACT',
-            N'[{"name": "HUB_ID", "hash": 1}, {"name": "CUSTOMER_KEY", "hash": 1}]',
-            N'["CONTACT_HUB_ID", "INDIVIDUAL_HUB_ID"]',
-            NULL, NULL, NULL, 0,
-            GETDATE(), GETDATE(), 1);
-GO
+-- #24/#25 (ADDRESS_INDIVIDUAL / CONTACT_INDIVIDUAL) REMOVED 2026-07-03 with
+-- the GDPR CRM-lane removal (see #13-#15 note). Deployed rows are deleted and
+-- loaded link data purged by 05_remove_crm_pii.sql.
