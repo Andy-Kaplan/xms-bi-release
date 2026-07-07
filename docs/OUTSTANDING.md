@@ -4,7 +4,7 @@
 
 **Status tags:** `OPEN` = needs work, no fix yet · `DIAGNOSED` = root cause known, fix not actioned · `MONITOR` = fix applied, watching it · `BLOCKED` = waiting on someone else · `DOC-DEBT` = documentation gap.
 
-**Last updated:** 2026-07-03 (added O14 — Mews001 DV mapping built + reviewed, awaiting deployment)
+**Last updated:** 2026-07-07 (added O15–O17 — v1.0 Prod launch follow-through, UAT hygiene defects from the Prod deploy, credential rotation)
 
 ---
 
@@ -28,6 +28,9 @@
 | [O12](outstanding/O12-doc-debt.md) | Doc debt: DV diagram stat + audit findings §8-10 | Documentation | DOC-DEBT | Andy | Fix Live Links stat 39→40; address §8-10 |
 | [O13](outstanding/O13-uat-dashboard-groupmapping-empty.md) | UAT DashboardGroupMapping empty → dashboards invisible | Report DB / visibility | DIAGNOSED | Andy | Run 01_populate_uat_dashboard_groups.sql; verify Group Overview + Marge Brut navigable |
 | [O14](outstanding/O14-mews-dv-mapping-deploy.md) | Mews001 DV mapping: scripts built + reviewed, not deployed | Integrations / Mews POS | OPEN | Andy | Deploy per integrations/Mews/DEPLOY.txt (01→02→03 + sp_DataVaultLoad org 19), then Claude MCP-verifies 04 B–E |
+| [O15](outstanding/O15-prod-v1-launch-followthrough.md) | v1.0 Prod launch: deployed + validated 2026-07-06, follow-through remaining | Release / Prod launch | OPEN | Andy | Merge PR #2 → promote baseline to root + tag v1.0-baseline → real orgs, report-DB config, fetcher pointing |
+| [O16](outstanding/O16-uat-hygiene-prod-deploy-defects.md) | UAT hygiene: 3 defects surfaced by Prod deploy (widths/SP, extractor idempotency, RuleOverrides record) | UAT / deployment tooling | DIAGNOSED | Andy | Run 96 on UAT + patch UAT's sp_CreateIntegrationTables (regen-regression risk), then the 2 smaller fixes |
+| [O17](outstanding/O17-credential-rotation.md) | Rotate exposed ChickenShop credentials (storage key + Yooz password) | Security / integrations | BLOCKED | Andy | Regenerate chiknstorageaccount key + reset Yooz support@sixsevens password (Azure/Yooz admin, outside repo) |
 
 ---
 
