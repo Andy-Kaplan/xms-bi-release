@@ -347,15 +347,39 @@ PRINT 'MargeBrutCostRatioByGroup merged';
    rows / error until that table exists and its build step has run at least
    once. Flagging for Task 8/9/10 (report-DB config, org provisioning,
    go-live verification) to pick up as a deploy-order dependency.
+   REVIEW FIX: also join presentation.D_INVITEM (BOTTOM_HUB_ID unique per hub
+   -- confirmed via MCP, 1,625 rows / 1,625 distinct BOTTOM_HUB_ID on the
+   Growyze UAT proxy, so this join cannot fan out the fact) and filter to
+   BOTTOM_MICROSERVICE_NAME IS NOT NULL, the same F&B group set Task 5
+   (12_group_mapping.sql) assigns, so this chart is scoped on the same basis
+   as the rest of the dashboard rather than summing every F_PURCHASES_DAY
+   category regardless of type. NOTE: Task 5''s CASE has an ELSE ''Food''
+   catch-all, so on an org whose Growyze catalogue mixes F&B with non-F&B
+   stock (e.g. retail clothing/equipment -- see 12_group_mapping.sql''s own
+   comment on the Padel Social proxy), every invitem ends up non-NULL and this
+   filter does not yet exclude anything; it becomes a real scope once an org''s
+   catalogue either has no non-F&B admixture or gets a proper category source.
+   ============================================================================
+   TODO: F_PURCHASES_DAY.LINE_TOTAL (order qty x price, from Growyze purchase
+   orders) is a different measure and a different source pipeline than
+   F_MARGEBRUT_MONTH.PURCHASES (F_INV_COUNTS_DAY ORDER_QTY x UOM_COST, from
+   Growyze stock counts) -- this chart''s total is NOT guaranteed to reconcile
+   with MargeBrutPurchasesKPI on real data. MUST be validated at go-live: if
+   the two disagree materially, either point this chart at the same
+   F_INV_COUNTS_DAY-based measure as the KPI, or rename the title/description
+   to something scope-honest like "Supplier Spend" rather than implying it is
+   the same Purchases figure shown elsewhere on the dashboard.
    =========================================================================== */
 SET @sql = N'SELECT
   COALESCE(sup.BOTTOM_MICROSERVICE_NAME, sup.BOTTOM_SUPPLIER_NAME) AS BarLabel,
-  ROW_NUMBER() OVER (ORDER BY COALESCE(sup.BOTTOM_MICROSERVICE_NAME, sup.BOTTOM_SUPPLIER_NAME)) AS BarLabelSort,
+  ROW_NUMBER() OVER (ORDER BY SUM(p.LINE_TOTAL) DESC) AS BarLabelSort,
   CAST(SUM(p.LINE_TOTAL) AS DECIMAL(18,2)) AS BarValue,
   ROW_NUMBER() OVER (ORDER BY SUM(p.LINE_TOTAL) ASC) AS BarValueSort
 FROM presentation.F_PURCHASES_DAY p
 JOIN presentation.D_SUPPLIER sup ON sup.BOTTOM_HUB_ID = p.SUPPLIER_HUB_ID
+JOIN presentation.D_INVITEM inv ON inv.BOTTOM_HUB_ID = p.INVITEM_HUB_ID
 WHERE 1=1
+AND inv.BOTTOM_MICROSERVICE_NAME IS NOT NULL
 @FilterClause
 GROUP BY COALESCE(sup.BOTTOM_MICROSERVICE_NAME, sup.BOTTOM_SUPPLIER_NAME)
 
@@ -367,8 +391,10 @@ SELECT
   NULL AS Trend,
   (SELECT CAST(SUM(p.LINE_TOTAL) AS DECIMAL(18,2))
    FROM presentation.F_PURCHASES_DAY p
+   JOIN presentation.D_INVITEM inv ON inv.BOTTOM_HUB_ID = p.INVITEM_HUB_ID
    WHERE 1=1
-   @FilterClause) AS TotalValue,  -- BarChartCard parses TotalValue as numeric; reuses alias ''p'' so @FilterClause resolves in this subquery too
+   AND inv.BOTTOM_MICROSERVICE_NAME IS NOT NULL
+   @FilterClause) AS TotalValue,  -- BarChartCard parses TotalValue as numeric; reuses alias ''p''/''inv'' so @FilterClause resolves in this subquery too
   NULL AS Chip';
 MERGE INTO [core].[core].[VisualisationQueries] AS tgt
 USING (VALUES (N'MargeBrutPurchasesBySupplier', N'BarChartCard', N'LIVE')) AS src (DataSetName, VisualizationType, Status)
