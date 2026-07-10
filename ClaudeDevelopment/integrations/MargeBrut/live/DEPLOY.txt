@@ -1,0 +1,169 @@
+Marge Brut mock -> live build -- Deploy Order (UAT)
+====================================================
+
+Target org : NEW UAT org "Three Rocks Hotel" (does not exist yet -- step 1
+             creates it). Distinct from the mocked dashboard's host, The Oak
+             & Vine (OrgID 16), which is untouched by this folder.
+
+Execution method: PowerShell runner scripts (Invoke-Sqlcmd + XMS_BI_MANAGED_
+UAT_* env vars) per CLAUDE.md / docs/release-guide.md s6 -- NOT MCP, NOT
+hand-run in SSMS, except where a step says "run directly against report".
+Claude executes runners only with the user's explicit per-stage go-ahead.
+
+CORRECTED ASSUMPTION (2026-07-10, found while building step 1): the task
+brief this runbook was written against assumed Mews001 already existed on
+UAT alongside Growyze001. That is WRONG for Mews -- confirmed via MCP:
+UAT core.Integrations has 6 rows (Marketman001, NCRAloha001, TROaP001,
+SurveyHero001, Growyze001, TBTBookingMetrics001), no Mews. Mews001 was
+deployed straight to DEV by the fetcher team (IntegrationID 8) and never
+provisioned on UAT. Step 1 below now creates the Mews001 integration record
++ its landing-table (STAGE_DDL) config on UAT as part of provisioning --
+see 01_provision_uat_org.sql's header for the full explanation. Growyze001
+(IntegrationID 5) already exists on UAT and is left untouched.
+
+
+1. 01_provision_uat_org.sql
+   Server: xms-mssqlman-ne-uat (SQL MI)   DB: core   (PowerShell runner)
+   Creates organisation "Three Rocks Hotel" (core.AddOrganisation), creates
+   the Mews001 integration + seeds its 22-table STAGE_DDL config (does NOT
+   exist on UAT -- see above), then maps the org to both Mews001 and
+   Growyze001 (core.MapOrganisationToIntegration). The org<->integration
+   trigger provisions the int_mews001/int_growyze001 schemas + DL_* tables
+   in the new org's client database.
+   >>> CAPTURE the OrganisationCode (GUID) + DatabaseName from the
+       verification SELECT at the end of the script -- steps 6 and 7 below
+       and the sp_DataVaultLoad call in step 2 all need them. <<<
+
+
+2. Mews DV mapping to UAT (ledger O14)
+   Server: xms-mssqlman-ne-uat   DB: core (01/02/05) then the new org DB (load)
+   Run, in this exact order (05 before 03, or the CRM load steps regenerate --
+   see ../../Mews/DEPLOY.txt for the full rationale):
+     a. ../../Mews/01_staging_control.sql
+     b. ../../Mews/02_entity_mappings.sql
+     c. ../../Mews/05_remove_crm_pii.sql      (GDPR removal -- Section A only
+                                                applies here; Section B needs
+                                                data loaded first, so re-run
+                                                Section B after step d below
+                                                if any CRM rows land)
+     d. ../../Mews/03_upload_load_steps.sql
+     e. Run the DV load for the new org:
+          USE [<DatabaseName from step 1>];
+          EXEC [core].[sp_DataVaultLoad] @SchemaList = N'int_mews001';
+   Then verify with ../../Mews/04_verification.sql sections A-E against the
+   new org (expected counts will differ from the DEV baselines recorded
+   there -- re-derive from this org's DL tables, per that script's own
+   count-drift rule).
+
+
+3. FETCHER GATE (blocks all live verification below)
+   The fetcher team must land a REAL Growyze feed for "Three Rocks Hotel"
+   before the inventory/purchases side of Marge Brut has any data. Nothing
+   in steps 5-8 will show meaningful numbers until this lands.
+
+   Also deploy, if not already done (QUERY_STATUS #23/#24 -- registered but
+   NOT yet deployed anywhere):
+     ../../Growyze/06_purchases_presentation_table.sql   (F_PURCHASES_DAY table)
+     ../../Growyze/07_purchases_presentation_control.sql (its build step)
+   Without these, MargeBrutPurchasesBySupplier (Task 7) returns nothing --
+   it reads presentation.F_PURCHASES_DAY, which won't exist otherwise.
+
+
+4. Growyze data-quality gate (O5/O6) -- MUST be cleared before trusting numbers
+   - NULL LINEITEM_TIMESTAMP (silently voids time-windowed fact rows)
+   - UOM_COST pack-vs-unit inflation (16x-113x observed) -- directly corrupts
+     PURCHASES / OPENING / CLOSING / CONSUMPTION and therefore COST_PCT/GP_PCT
+   - D_PRODUCT category fall-through (affects the Mews side's product grouping)
+   These are pre-existing platform gaps (see memory/growyze-default-dashboards.md),
+   not something this folder's scripts fix. Treat Marge Brut's cost/consumption
+   percentages as provisional until they're cleared.
+
+
+5. Grouping + fact build (strict order)
+   a. 12_group_mapping.sql -- run against the new org's client database
+      (Task 5). This is a DATA script (UPDATEs MICROSERVICE_NAME on live
+      SAT_PRODUCT/SAT_INVITEM rows), not a control-table registration --
+      it needs Mews + Growyze data already loaded (steps 2 and 3-4) to have
+      anything to classify. Must complete BEFORE the presentation build
+      executes 13's SQL, because 13's `WHERE BOTTOM_MICROSERVICE_NAME IS
+      NOT NULL` filters depend on 12's catch-all classification.
+   b. 13_f_margebrut_month_control.sql (Task 6) -- registers the
+      presentation.F_MARGEBRUT_MONTH build step into core.core.PresentationControl.
+      Server: xms-mssqlman-ne-uat  DB: core.
+   c. 10_f_margebrut_month_table.sql (Task 1) -- registers the
+      presentation.F_MARGEBRUT_MONTH DDL into core.core.PresentationTables.
+      Server: xms-mssqlman-ne-uat  DB: core.
+      (b and c are independent MERGE upserts against control tables -- order
+      between them doesn't matter, both must be in place before the build.)
+   d. Run the presentation build for the new org (sp_DeployObjects /
+      DeployPresentationTables, then whatever normally triggers
+      PresentationControl tier execution for an org -- same mechanism used
+      for every other org's presentation rebuild).
+
+
+6. Global config
+   a. 14_margebrut_vis_queries.sql (Task 7)
+      Server: xms-mssqlman-ne-uat  DB: core.
+      Rewrites the 9 MargeBrut* core.core.VisualisationQueries records from
+      the mocked literal-VALUES version to live reads over
+      presentation.F_MARGEBRUT_MONTH (+ F_PURCHASES_DAY for the supplier
+      chart). GLOBAL, not org-specific -- affects every org with the Marge
+      Brut dashboard wired, including The Oak & Vine mock.
+      *** WARNING -- see the boxed note below before running this. ***
+   b. 11_reference_margebrut_manual.sql (Task 2)
+      Creates + seeds reference.MARGEBRUT_MANUAL in the new org's client DB
+      (provisions, staff-meal, comp-cost% inputs no feed supplies). Run
+      against the new org's database, not core.
+
+
+7. Report-DB wiring
+   15_report_config.sql (Task 8)
+   Server: xms-mssql-ne-uat (Azure SQL)   DB: report   -- run DIRECTLY
+   (MCP cannot reach this DB; SSMS / azure-data-studio). Set @OrgId and
+   @DbPrefix at the top of the script to the real GUID/prefix captured
+   from step 1 before running -- they are placeholders and the script
+   fails fast at the DECLARE if left unset. The verify block at the end
+   rolls back if any dashboard config ends up ungrouped/invisible.
+
+
+8. Verification + front-end check
+   99_verify.sql (Task 10, when authored) -- read-only go-live verification
+   SELECTs against the new org. Then log in as "Three Rocks Hotel" in the
+   UAT front end and open the "Marge Brut" dashboard: expect the KPI strip,
+   the Marge Brut grid, and the 4 supporting charts to render off real
+   data (subject to gates 3 and 4 above still being open at time of check).
+
+
+================================================================================
+*** WARNING -- shared MERGE key between the mock and the live vis queries ***
+================================================================================
+../02_margebrut_vis_queries.sql (mock, Oak & Vine) and
+live/14_margebrut_vis_queries.sql (this folder, live) MERGE-upsert the SAME
+9 core.core.VisualisationQueries rows on the SAME natural key
+(DataSetName, VisualizationType, Status). Whichever script ran LAST wins,
+GLOBALLY, for every org sharing the Marge Brut dashboard.
+
+NEVER re-run ../02_margebrut_vis_queries.sql after step 6a above has run --
+it will silently revert the dashboard back to mocked Oct-2025 data for ALL
+orgs, including this new live one, with no error or warning.
+
+
+================================================================================
+GO-LIVE RECONCILIATION TODO (carried from Task 7, not resolved by this runbook)
+================================================================================
+MargeBrutPurchasesBySupplier (sources presentation.F_PURCHASES_DAY.LINE_TOTAL)
+and MargeBrutPurchasesKPI (sources F_MARGEBRUT_MONTH.PURCHASES) are DIFFERENT
+measures from different pipelines with no guaranteed reconciliation. Once real
+data is flowing (post gates 3-4), compare the two totals for the same period;
+if they disagree, either fix the discrepancy or rename the supplier chart's
+label away from "Purchases" (e.g. "Supplier Spend") so it isn't read as a
+breakdown of the KPI total.
+
+
+Rollback: 01_provision_uat_org.sql is additive-only (new org + new
+integration + new mappings) -- no existing environment state is modified.
+Sections 1-5 are individually guarded (IF NOT EXISTS / MERGE), so re-running
+the whole file after a partial failure is safe. There is no automated
+rollback for org/integration creation; removing a wrongly-provisioned org
+is a manual core.Organisations / core.Integrations / core.OrganisationIntegrations
+cleanup (see memory/test-orgs.md for how prior test-org cleanups were done).
