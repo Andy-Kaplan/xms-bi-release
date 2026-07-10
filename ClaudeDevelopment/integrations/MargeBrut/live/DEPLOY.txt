@@ -30,9 +30,19 @@ see 01_provision_uat_org.sql's header for the full explanation. Growyze001
    Growyze001 (core.MapOrganisationToIntegration). The org<->integration
    trigger provisions the int_mews001/int_growyze001 schemas + DL_* tables
    in the new org's client database.
+   >>> SCAN the runner output for "Error executing DDL for Organisation ID"
+       PRINT lines around the mapping step, and confirm the script's own
+       Section 6 check prints "PASS: all 22 int_mews001.DL_* tables
+       present..." -- the mapping trigger only PRINTs on a failed CREATE
+       TABLE, it never raises, so a clean-looking run is not proof by
+       itself that all 22 landed. Section 6 RAISERRORs (halting a
+       halt-on-error runner) if the count is off; if it does, fix the
+       offending STAGE_DDL row and re-run (see the script's own comment
+       for how to force a re-fire if needed). <<<
    >>> CAPTURE the OrganisationCode (GUID) + DatabaseName from the
-       verification SELECT at the end of the script -- steps 6 and 7 below
-       and the sp_DataVaultLoad call in step 2 all need them. <<<
+       verification SELECT at the end of the script -- the sp_DataVaultLoad
+       call in step 2 and the report_config script in step 7 below both
+       need them. <<<
 
 
 2. Mews DV mapping to UAT (ledger O14)
@@ -68,6 +78,14 @@ see 01_provision_uat_org.sql's header for the full explanation. Growyze001
    Without these, MargeBrutPurchasesBySupplier (Task 7) returns nothing --
    it reads presentation.F_PURCHASES_DAY, which won't exist otherwise.
 
+   GDPR check: confirm with the fetcher team that the Mews customers
+   endpoint is NOT landed for this org. DL_CUSTOMERS re-lands raw
+   fullName/email/phone/address on every fetch regardless of the DV-side
+   GDPR removal (../../Mews/05_remove_crm_pii.sql only purges the
+   staging/datavault side, per its own note to the fetcher team) -- the
+   mitigation is the fetcher dropping the customers endpoint from this
+   org's fetch config, not anything run from this folder.
+
 
 4. Growyze data-quality gate (O5/O6) -- MUST be cleared before trusting numbers
    - NULL LINEITEM_TIMESTAMP (silently voids time-windowed fact rows)
@@ -87,33 +105,39 @@ see 01_provision_uat_org.sql's header for the full explanation. Growyze001
       anything to classify. Must complete BEFORE the presentation build
       executes 13's SQL, because 13's `WHERE BOTTOM_MICROSERVICE_NAME IS
       NOT NULL` filters depend on 12's catch-all classification.
-   b. 13_f_margebrut_month_control.sql (Task 6) -- registers the
+   b. 11_reference_margebrut_manual.sql (Task 2) -- run against the new
+      org's client database, not core. Creates + seeds
+      reference.MARGEBRUT_MANUAL (provisions, staff-meal, comp-cost%
+      inputs no feed supplies). MUST run before the build (step 5e): 13's
+      query LEFT JOINs reference.MARGEBRUT_MANUAL, and a LEFT JOIN to an
+      object that doesn't exist yet fails the whole build, not just that
+      join -- this is an objective dependency, not a preference (an
+      earlier revision of this runbook placed 11 after the build; that
+      was wrong -- corrected here).
+   c. 13_f_margebrut_month_control.sql (Task 6) -- registers the
       presentation.F_MARGEBRUT_MONTH build step into core.core.PresentationControl.
       Server: xms-mssqlman-ne-uat  DB: core.
-   c. 10_f_margebrut_month_table.sql (Task 1) -- registers the
+   d. 10_f_margebrut_month_table.sql (Task 1) -- registers the
       presentation.F_MARGEBRUT_MONTH DDL into core.core.PresentationTables.
       Server: xms-mssqlman-ne-uat  DB: core.
-      (b and c are independent MERGE upserts against control tables -- order
+      (c and d are independent MERGE upserts against control tables -- order
       between them doesn't matter, both must be in place before the build.)
-   d. Run the presentation build for the new org (sp_DeployObjects /
+   e. Run the presentation build for the new org (sp_DeployObjects /
       DeployPresentationTables, then whatever normally triggers
       PresentationControl tier execution for an org -- same mechanism used
-      for every other org's presentation rebuild).
+      for every other org's presentation rebuild). Requires b, c, and d
+      all complete first.
 
 
 6. Global config
-   a. 14_margebrut_vis_queries.sql (Task 7)
-      Server: xms-mssqlman-ne-uat  DB: core.
-      Rewrites the 9 MargeBrut* core.core.VisualisationQueries records from
-      the mocked literal-VALUES version to live reads over
-      presentation.F_MARGEBRUT_MONTH (+ F_PURCHASES_DAY for the supplier
-      chart). GLOBAL, not org-specific -- affects every org with the Marge
-      Brut dashboard wired, including The Oak & Vine mock.
-      *** WARNING -- see the boxed note below before running this. ***
-   b. 11_reference_margebrut_manual.sql (Task 2)
-      Creates + seeds reference.MARGEBRUT_MANUAL in the new org's client DB
-      (provisions, staff-meal, comp-cost% inputs no feed supplies). Run
-      against the new org's database, not core.
+   14_margebrut_vis_queries.sql (Task 7)
+   Server: xms-mssqlman-ne-uat  DB: core.
+   Rewrites the 9 MargeBrut* core.core.VisualisationQueries records from
+   the mocked literal-VALUES version to live reads over
+   presentation.F_MARGEBRUT_MONTH (+ F_PURCHASES_DAY for the supplier
+   chart). GLOBAL, not org-specific -- affects every org with the Marge
+   Brut dashboard wired, including The Oak & Vine mock.
+   *** WARNING -- see the boxed note below before running this. ***
 
 
 7. Report-DB wiring
@@ -143,7 +167,7 @@ live/14_margebrut_vis_queries.sql (this folder, live) MERGE-upsert the SAME
 (DataSetName, VisualizationType, Status). Whichever script ran LAST wins,
 GLOBALLY, for every org sharing the Marge Brut dashboard.
 
-NEVER re-run ../02_margebrut_vis_queries.sql after step 6a above has run --
+NEVER re-run ../02_margebrut_vis_queries.sql after step 6 above has run --
 it will silently revert the dashboard back to mocked Oct-2025 data for ALL
 orgs, including this new live one, with no error or warning.
 
@@ -162,8 +186,9 @@ breakdown of the KPI total.
 
 Rollback: 01_provision_uat_org.sql is additive-only (new org + new
 integration + new mappings) -- no existing environment state is modified.
-Sections 1-5 are individually guarded (IF NOT EXISTS / MERGE), so re-running
-the whole file after a partial failure is safe. There is no automated
+Sections 1-6 are individually guarded (IF NOT EXISTS / MERGE, or a hard
+RAISERROR stop for the Section 6 DL-table count check), so re-running the
+whole file after a partial failure is safe. There is no automated
 rollback for org/integration creation; removing a wrongly-provisioned org
 is a manual core.Organisations / core.Integrations / core.OrganisationIntegrations
 cleanup (see memory/test-orgs.md for how prior test-org cleanups were done).

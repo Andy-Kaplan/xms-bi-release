@@ -47,10 +47,15 @@
                                  (Category='STAGE_DDL') on 2026-07-10
      4. Look up IDs          -- OrganisationID / IntegrationID x2
      5. Map organisation     -- org -> Mews001, org -> Growyze001
-     6. Verification SELECT  -- prints the values later steps need
+     6. DL-table verification -- confirm all 22 int_mews001.DL_* tables
+                                 actually landed in the org's client DB
+                                 (the trigger only PRINTs on DDL failure --
+                                 it never RAISERRORs -- so Section 5
+                                 "succeeding" is not proof by itself)
+     7. Verification SELECT  -- prints the values later steps need
 
    Idempotent: guarded IF NOT EXISTS / MERGE throughout -- safe to re-run.
-   CAPTURE the OrganisationCode (GUID) + DatabaseName printed by Section 6:
+   CAPTURE the OrganisationCode (GUID) + DatabaseName printed by Section 7:
    they feed live/15_report_config.sql's @OrgId/@DbPrefix and the
    sp_DataVaultLoad call in this folder's DEPLOY.txt.
    ============================================================================= */
@@ -479,7 +484,38 @@ PRINT 'Mapped "Three Rocks Hotel" to Mews001 and Growyze001.';
 GO
 
 ----------------------------------------------------------------------
--- 6. Verification -- CAPTURE these values for later deploy steps
+-- 6. DL-table verification -- confirm the trigger actually created all
+--    22 int_mews001.DL_* tables in the NEW ORG'S CLIENT DATABASE, not
+--    just the mapping row. trg_OrganisationIntegrations_AfterInsert
+--    (7_IntegrationTrigger.sql) wraps each DDL EXEC in its own TRY/CATCH
+--    and only PRINTs on failure -- it never RAISERRORs -- so Section 5
+--    reporting no error is NOT proof the schema is complete; a single
+--    bad CREATE TABLE would silently leave the org short one DL_* table
+--    with nothing in the runner output but a PRINT line to notice it by.
+--    Dynamic SQL is required because the org's client database name
+--    isn't a compile-time literal (it's whatever Section 1 minted).
+----------------------------------------------------------------------
+DECLARE @ClientDbName sysname, @DLCheckSQL nvarchar(max), @DLTableCount int;
+
+SELECT @ClientDbName = [DatabaseName] FROM [core].[Organisations] WHERE [OrganisationName] = N'Three Rocks Hotel';
+
+SET @DLCheckSQL = N'SELECT @CountOut = COUNT(*) FROM ' + QUOTENAME(@ClientDbName) +
+    N'.sys.tables t JOIN ' + QUOTENAME(@ClientDbName) +
+    N'.sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = N''int_mews001'' AND t.name LIKE N''DL[_]%''';
+
+EXEC sp_executesql @DLCheckSQL, N'@CountOut int OUTPUT', @CountOut = @DLTableCount OUTPUT;
+
+IF @DLTableCount <> 22
+BEGIN
+    RAISERROR('FAIL: expected 22 int_mews001.DL_* tables in %s, found %d. Scan the runner output above (Section 5) for "Error executing DDL for Organisation ID..." PRINT lines to find which CREATE TABLE statement(s) failed, fix the offending STAGE_DDL row in Section 3, and re-run this file (Section 5 is safe to re-run against an existing mapping -- it just UPDATEs the row -- but will NOT retrigger DDL creation; re-map by deleting the OrganisationIntegrations row first if a genuine re-fire is needed).',
+        16, 1, @ClientDbName, @DLTableCount);
+END
+ELSE
+    PRINT 'PASS: all 22 int_mews001.DL_* tables present in ' + @ClientDbName;
+GO
+
+----------------------------------------------------------------------
+-- 7. Verification -- CAPTURE these values for later deploy steps
 ----------------------------------------------------------------------
 SELECT
     o.[OrganisationID],
