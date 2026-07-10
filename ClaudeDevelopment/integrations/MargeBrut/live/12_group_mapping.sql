@@ -32,6 +32,12 @@
 --     pulled into Soft Drinks.
 --   - ' ale' requires a leading space so it only matches "<word> Ale"/"Pale Ale", not "sale",
 --     "Female" etc.
+--   - 'beer'/' ale' both need a 'ginger' exclusion -- this catalogue carries plain "Ginger Ale"
+--     and "Ginger Beer" (non-alcoholic mixers), which would otherwise land in Bottled Beer; an
+--     explicit 'ginger beer'/'ginger ale'/'kombucha' -> Soft Drinks match routes them correctly.
+--   - 'rum' excludes 'crumble'/'drumstick' and 'corona' excludes 'coronation' -- defensive
+--     guards against menu items not present in this proxy's catalogue but plausible on the real
+--     org's menu (Apple Crumble, Drumsticks, Coronation Chicken).
 UPDATE s
 SET MICROSERVICE_NAME =
     CASE
@@ -54,10 +60,13 @@ SET MICROSERVICE_NAME =
           OR s.PRODUCT_NAME LIKE '%picpou%'
             THEN N'Wines'
         -- Bottled Beer: beer/lager/ale/cider styles + common bottled brands
-        WHEN s.PRODUCT_NAME LIKE '%beer%' OR s.PRODUCT_NAME LIKE '%lager%'
-          OR s.PRODUCT_NAME LIKE '% ale%' OR s.PRODUCT_NAME LIKE '%cider%'
+        WHEN (s.PRODUCT_NAME LIKE '%beer%' AND s.PRODUCT_NAME NOT LIKE '%ginger%')
+          OR s.PRODUCT_NAME LIKE '%lager%'
+          OR (s.PRODUCT_NAME LIKE '% ale%' AND s.PRODUCT_NAME NOT LIKE '%ginger%')
+          OR s.PRODUCT_NAME LIKE '%cider%'
           OR s.PRODUCT_NAME LIKE '%rekorderlig%' OR s.PRODUCT_NAME LIKE '%stella%'
-          OR s.PRODUCT_NAME LIKE '%guinness%' OR s.PRODUCT_NAME LIKE '%corona%'
+          OR s.PRODUCT_NAME LIKE '%guinness%'
+          OR (s.PRODUCT_NAME LIKE '%corona%' AND s.PRODUCT_NAME NOT LIKE '%coronation%')
           OR s.PRODUCT_NAME LIKE '%peroni%' OR s.PRODUCT_NAME LIKE '%modelo%'
           OR s.PRODUCT_NAME LIKE '%mahou%' OR s.PRODUCT_NAME LIKE '%camden%'
           OR s.PRODUCT_NAME LIKE '%budweiser%'
@@ -66,7 +75,8 @@ SET MICROSERVICE_NAME =
         WHEN s.PRODUCT_NAME LIKE '%vodka%'
           OR (s.PRODUCT_NAME LIKE '%gin%' AND s.PRODUCT_NAME NOT LIKE '%ginger%'
               AND s.PRODUCT_NAME NOT LIKE '%original%' AND s.PRODUCT_NAME NOT LIKE '%orginal%')
-          OR s.PRODUCT_NAME LIKE '%rum%' OR s.PRODUCT_NAME LIKE '%whisk%'
+          OR (s.PRODUCT_NAME LIKE '%rum%' AND s.PRODUCT_NAME NOT LIKE '%crumble%' AND s.PRODUCT_NAME NOT LIKE '%drumstick%')
+          OR s.PRODUCT_NAME LIKE '%whisk%'
           OR s.PRODUCT_NAME LIKE '%tequila%' OR s.PRODUCT_NAME LIKE '%mezcal%'
           OR s.PRODUCT_NAME LIKE '%brandy%' OR s.PRODUCT_NAME LIKE '%cognac%'
           OR s.PRODUCT_NAME LIKE '%liqueur%' OR s.PRODUCT_NAME LIKE '%bourbon%'
@@ -88,7 +98,8 @@ SET MICROSERVICE_NAME =
           OR s.PRODUCT_NAME LIKE '%redbull%' OR s.PRODUCT_NAME LIKE '%red bull%'
           OR s.PRODUCT_NAME LIKE '%tonic%' OR s.PRODUCT_NAME LIKE '%soda%'
           OR s.PRODUCT_NAME LIKE '%lemonade%' OR s.PRODUCT_NAME LIKE '%j2o%'
-          OR s.PRODUCT_NAME LIKE '%schweppes%'
+          OR s.PRODUCT_NAME LIKE '%schweppes%' OR s.PRODUCT_NAME LIKE '%kombucha%'
+          OR s.PRODUCT_NAME LIKE '%ginger beer%' OR s.PRODUCT_NAME LIKE '%ginger ale%'
             THEN N'Soft Drinks'
         -- Catch-all: food dishes, modifiers, allergen tags, portion/price sub-lines, anything
         -- with no beverage/breakfast signal in its name.
@@ -122,6 +133,12 @@ WHERE s.CURRENT_FLAG = 1;
 --     ORIGINAL would otherwise false-match on "ORIGINAL").
 --   - 'cola' needs the same chocolate exclusion (Cadbury's Drinking Chocolate, KIND Bar,
 --     Fulfil Protein Bar, Mallow & Marsh, etc. all contain "chocolate").
+--   - 'water' excludes 'watermelon' -- this catalogue carries "Fresh Watermelon" and "Monin
+--     Watermelon" (a fruit ingredient and a cocktail syrup, not standalone soft drinks), which
+--     would otherwise false-match on "water". "Rubicon Watermelon Juice" still correctly lands
+--     in Soft Drinks via its own 'juice' match.
+--   - 'rum' excludes 'crumble'/'drumstick' and 'corona' excludes 'coronation' -- same defensive
+--     guards as Block 1 (not present in this proxy's catalogue but plausible on the real menu).
 UPDATE i
 SET MICROSERVICE_NAME =
     CASE
@@ -143,20 +160,23 @@ SET MICROSERVICE_NAME =
           OR i.INVITEM_NAME LIKE '%cider%' OR i.INVITEM_NAME LIKE '%stella%'
           OR i.INVITEM_NAME LIKE '%guinness%' OR i.INVITEM_NAME LIKE '%modelo%'
           OR i.INVITEM_NAME LIKE '%mahou%' OR i.INVITEM_NAME LIKE '%camden%'
-          OR i.INVITEM_NAME LIKE '%corona%' OR i.INVITEM_NAME LIKE '%peroni%'
+          OR (i.INVITEM_NAME LIKE '%corona%' AND i.INVITEM_NAME NOT LIKE '%coronation%')
+          OR i.INVITEM_NAME LIKE '%peroni%'
           OR i.INVITEM_NAME LIKE '%budweiser%'
             THEN N'Bottled Beer'
         WHEN i.INVITEM_NAME LIKE '%vodka%'
           OR (i.INVITEM_NAME LIKE '%gin%' AND i.INVITEM_NAME NOT LIKE '%ginger%'
               AND i.INVITEM_NAME NOT LIKE '%original%' AND i.INVITEM_NAME NOT LIKE '%orginal%')
-          OR i.INVITEM_NAME LIKE '%rum%' OR i.INVITEM_NAME LIKE '%whisk%'
+          OR (i.INVITEM_NAME LIKE '%rum%' AND i.INVITEM_NAME NOT LIKE '%crumble%' AND i.INVITEM_NAME NOT LIKE '%drumstick%')
+          OR i.INVITEM_NAME LIKE '%whisk%'
           OR i.INVITEM_NAME LIKE '%tequila%' OR i.INVITEM_NAME LIKE '%mezcal%'
           OR i.INVITEM_NAME LIKE '%brandy%' OR i.INVITEM_NAME LIKE '%cognac%'
           OR i.INVITEM_NAME LIKE '%liqueur%' OR i.INVITEM_NAME LIKE '%bourbon%'
           OR i.INVITEM_NAME LIKE '%baileys%' OR i.INVITEM_NAME LIKE '%tanqueray%'
           OR i.INVITEM_NAME LIKE '%malfy%' OR i.INVITEM_NAME LIKE '%sambuca%'
             THEN N'Spirit'
-        WHEN i.INVITEM_NAME LIKE '%juice%' OR i.INVITEM_NAME LIKE '%water%'
+        WHEN i.INVITEM_NAME LIKE '%juice%'
+          OR (i.INVITEM_NAME LIKE '%water%' AND i.INVITEM_NAME NOT LIKE '%watermelon%')
           OR i.INVITEM_NAME LIKE '%rubicon%' OR i.INVITEM_NAME LIKE '%vitamin well%'
           OR i.INVITEM_NAME LIKE '%coke%'
           OR (i.INVITEM_NAME LIKE '%cola%' AND i.INVITEM_NAME NOT LIKE '%chocolat%')
