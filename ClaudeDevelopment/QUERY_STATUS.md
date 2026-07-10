@@ -1985,6 +1985,14 @@ See `test-cards/README.md` for deploy order, row-shape reference, and revert ins
 
 ---
 
+### `integrations/MargeBrut/live/` — Marge Brut mock -> live build (2026-07-10)
+
+Delta scripts wiring `MargeBrut*` off real Growyze/Bizon data instead of the mocked literal-VALUES queries above. Design: `.superpowers/sdd/` task briefs.
+
+- `live/10_f_margebrut_month_table.sql` — Task 1. MERGE-upsert of `presentation.F_MARGEBRUT_MONTH` DDL into `core.PresentationTables` on natural key `(table_name, version)` = `('F_MARGEBRUT_MONTH', 1)`. 15 columns: `GROUP_NAME NVARCHAR(50)` + `PERIOD_MONTH DATE` (PK), then 11 `DECIMAL(18,2)` money/qty columns (TURNOVER_INCL/EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION) + 2 `DECIMAL(9,4)` percentages (COST_PCT, GP_PCT). Column list for `core.PresentationTables` (`table_name`, `table_type`, `schema_name`, `ddl_script`, `column_definitions`, `description`, `business_owner`, `data_source`, `version`, `status`, `is_system_generated`, `created_by`/`updated_by`, `created_at`/`updated_at`) and its unique key confirmed via MCP `INFORMATION_SCHEMA.COLUMNS` + `sys.indexes` against UAT `core` — differs from the task brief's illustrative example (real columns are snake_case `table_name`/`ddl_script`, not `TableName`/`CreationScript`; unique key is `(table_name, version)` not `table_name` alone). **Authored, shape-verified, not deployed** (no execution — MERGE only, per MCP read-only rule).
+
+---
+
 ## Mews (int_mews001)
 
 All scripts in `integrations/Mews/`. Created 2026-07-03. Design/plan: `docs/superpowers/specs/2026-07-03-mews-dv-mapping-design.md` + `docs/superpowers/plans/2026-07-03-mews-dv-mapping.md`. Org: `20260413_XMS_B4E2F7A8-3C91-4D6E-9F05-8A1D2B5E7C43` (DEV).
