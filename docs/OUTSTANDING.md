@@ -12,25 +12,25 @@
 
 > **Each ID links to a detail file** under [`outstanding/`](outstanding/) holding that task's full context, **progress log**, and pick-up notes. Read the one file for the task you're picking up — detail files are deliberately *not* loaded at session start, so this board stays cheap to keep in context. This table is the only thing surfaced at session start.
 
-| ID | Item | Area | Status | Owner / decides | Next action |
-|---|---|---|---|---|---|
-| [O1](outstanding/O1-xmse944-marketman-load-failure.md) | XMSE-944: MarketMan dup-INVITEM_ID PK bug | MarketMan / DV load | MONITOR | Andy | Audit: 0 dupes — bug gone. Confirm & close; DEV pipeline dormant since ~Mar 10 |
-| [O2](outstanding/O2-inventory-variance-1315.md) | Inventory-variance fix: scripts 13-15 not deployed | Inventory / presentation | OPEN | Andy | Not DB-verifiable — confirm vs QUERY_STATUS/deploy log |
-| [O3](outstanding/O3-suggestion-redesign-xmse948.md) | Suggestion system redesign (XMSE-948): 01-07 not deployed | Suggestion / AI engine | OPEN | Andy | Audit confirms NOT deployed (both envs). Deploy 01-07 |
-| [O4](outstanding/O4-parent-org-1011.md) | Parent-org reporting: scripts 10-11 | Parent-org / reporting | MONITOR | Andy | Audit: UAT holds 21 Parent queries + tiers 100-102 — likely already deployed. Confirm 10-11 & close |
-| [O5](outstanding/O5-growyze-default-dashboards.md) | Growyze default dashboards rebuild | Growyze / presentation | DIAGNOSED | Andy | Audit: 2 of 3 blockers cleared. Build on ORDER_DATE grain; only intra-day cards blocked |
-| [O6](outstanding/O6-growyze-reporting-staging-fixes.md) | Growyze reporting + staging fixes | Growyze / staging | MONITOR | Andy | Audit: all 3 fixes observed live on UAT. Confirm & close |
-| [O7](outstanding/O7-xmse949-product-cost-matching.md) | XMSE-949: Product cost matching refactor | Presentation / margin | DIAGNOSED | Andy | Audit: cost-map is weak (95% NULL) AND fans out ~1.5× (= O10). Build PRODUCT_COST_MAP |
-| [O8](outstanding/O8-marge-brut-dashboard.md) | Marge Brut dashboard | Dashboard / vis + Report DB | MONITOR | Andy | Audit: deployed to UAT (9 queries + config). May be hidden by O13. Confirm & close |
-| [O9](outstanding/O9-demo-org-not-provisioned.md) | Demo org data generator: org not provisioned | Demo data / provisioning | OPEN | Andy | Audit confirms not provisioned (both envs). Provision via SP, load data |
-| [O10](outstanding/O10-threerocks-sales-double-count.md) | £580k Three Rocks sales over-count | Sales facts / correctness | DIAGNOSED | Andy | Audit: confirmed ~1.5× join fan-out in F_PRODUCT_MARGIN_DAY cost map (= O7). Dedup cost map |
-| [O11](outstanding/O11-square-integration-scripts.md) | Square integration: SQL scripts not built | Integrations / Square POS | OPEN | Andy | Build scripts from approved design + plan (not DB-audited) |
-| [O12](outstanding/O12-doc-debt.md) | Doc debt: DV diagram stat + audit findings §8-10 | Documentation | DOC-DEBT | Andy | Fix Live Links stat 39→40; address §8-10 |
-| [O13](outstanding/O13-uat-dashboard-groupmapping-empty.md) | UAT DashboardGroupMapping empty → dashboards invisible | Report DB / visibility | DIAGNOSED | Andy | Run 01_populate_uat_dashboard_groups.sql; verify Group Overview + Marge Brut navigable |
-| [O14](outstanding/O14-mews-dv-mapping-deploy.md) | Mews001 DV mapping: scripts built + reviewed, not deployed | Integrations / Mews POS | OPEN | Andy | Deploy per integrations/Mews/DEPLOY.txt (01→02→03 + sp_DataVaultLoad org 19), then Claude MCP-verifies 04 B–E |
-| [O15](outstanding/O15-prod-v1-launch-followthrough.md) | v1.0 Prod launch: deployed + validated 2026-07-06, follow-through remaining | Release / Prod launch | OPEN | Andy | Merge PR #2 → promote baseline to root + tag v1.0-baseline → real orgs, report-DB config, fetcher pointing |
-| [O16](outstanding/O16-uat-hygiene-prod-deploy-defects.md) | UAT hygiene: 3 defects surfaced by Prod deploy (widths/SP, extractor idempotency, RuleOverrides record) | UAT / deployment tooling | DIAGNOSED | Andy | Run 96 on UAT + patch UAT's sp_CreateIntegrationTables (regen-regression risk), then the 2 smaller fixes |
-| [O17](outstanding/O17-credential-rotation.md) | Rotate exposed ChickenShop credentials (storage key + Yooz password) | Security / integrations | BLOCKED | Andy | Regenerate chiknstorageaccount key + reset Yooz support@sixsevens password (Azure/Yooz admin, outside repo) |
+| ID | Pri | Item | Area | Status | Owner / decides | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| [O1](outstanding/O1-xmse944-marketman-load-failure.md) | 3 | XMSE-944: MarketMan dup-INVITEM_ID PK bug | MarketMan / DV load | MONITOR | Andy | Audit: 0 dupes — bug gone. Confirm & close; DEV pipeline dormant since ~Mar 10 |
+| [O2](outstanding/O2-inventory-variance-1315.md) | 3 | Inventory-variance fix: scripts 13-15 not deployed | Inventory / presentation | OPEN | Andy | Not DB-verifiable — confirm vs QUERY_STATUS/deploy log |
+| [O3](outstanding/O3-suggestion-redesign-xmse948.md) | 3 | Suggestion system redesign (XMSE-948): 01-07 not deployed | Suggestion / AI engine | OPEN | Andy | Audit confirms NOT deployed (both envs). Deploy 01-07 |
+| [O4](outstanding/O4-parent-org-1011.md) | 3 | Parent-org reporting: scripts 10-11 | Parent-org / reporting | MONITOR | Andy | Audit: UAT holds 21 Parent queries + tiers 100-102 — likely already deployed. Confirm 10-11 & close |
+| [O5](outstanding/O5-growyze-default-dashboards.md) | 3 | Growyze default dashboards rebuild | Growyze / presentation | DIAGNOSED | Andy | Audit: 2 of 3 blockers cleared. Build on ORDER_DATE grain; only intra-day cards blocked |
+| [O6](outstanding/O6-growyze-reporting-staging-fixes.md) | 3 | Growyze reporting + staging fixes | Growyze / staging | MONITOR | Andy | Audit: all 3 fixes observed live on UAT. Confirm & close |
+| [O7](outstanding/O7-xmse949-product-cost-matching.md) | 3 | XMSE-949: Product cost matching refactor | Presentation / margin | DIAGNOSED | Andy | Audit: cost-map is weak (95% NULL) AND fans out ~1.5× (= O10). Build PRODUCT_COST_MAP |
+| [O8](outstanding/O8-marge-brut-dashboard.md) | 3 | Marge Brut dashboard | Dashboard / vis + Report DB | MONITOR | Andy | Audit: deployed to UAT (9 queries + config). May be hidden by O13. Confirm & close |
+| [O9](outstanding/O9-demo-org-not-provisioned.md) | 3 | Demo org data generator: org not provisioned | Demo data / provisioning | OPEN | Andy | Audit confirms not provisioned (both envs). Provision via SP, load data |
+| [O10](outstanding/O10-threerocks-sales-double-count.md) | 3 | £580k Three Rocks sales over-count | Sales facts / correctness | DIAGNOSED | Andy | Audit: confirmed ~1.5× join fan-out in F_PRODUCT_MARGIN_DAY cost map (= O7). Dedup cost map |
+| [O11](outstanding/O11-square-integration-scripts.md) | 3 | Square integration: SQL scripts not built | Integrations / Square POS | OPEN | Andy | Build scripts from approved design + plan (not DB-audited) |
+| [O12](outstanding/O12-doc-debt.md) | 3 | Doc debt: DV diagram stat + audit findings §8-10 | Documentation | DOC-DEBT | Andy | Fix Live Links stat 39→40; address §8-10 |
+| [O13](outstanding/O13-uat-dashboard-groupmapping-empty.md) | 3 | UAT DashboardGroupMapping empty → dashboards invisible | Report DB / visibility | DIAGNOSED | Andy | Run 01_populate_uat_dashboard_groups.sql; verify Group Overview + Marge Brut navigable |
+| [O14](outstanding/O14-mews-dv-mapping-deploy.md) | 3 | Mews001 DV mapping: scripts built + reviewed, not deployed | Integrations / Mews POS | OPEN | Andy | Deploy per integrations/Mews/DEPLOY.txt (01→02→03 + sp_DataVaultLoad org 19), then Claude MCP-verifies 04 B–E |
+| [O15](outstanding/O15-prod-v1-launch-followthrough.md) | 3 | v1.0 Prod launch: deployed + validated 2026-07-06, follow-through remaining | Release / Prod launch | OPEN | Andy | Merge PR #2 → promote baseline to root + tag v1.0-baseline → real orgs, report-DB config, fetcher pointing |
+| [O16](outstanding/O16-uat-hygiene-prod-deploy-defects.md) | 3 | UAT hygiene: 3 defects surfaced by Prod deploy (widths/SP, extractor idempotency, RuleOverrides record) | UAT / deployment tooling | DIAGNOSED | Andy | Run 96 on UAT + patch UAT's sp_CreateIntegrationTables (regen-regression risk), then the 2 smaller fixes |
+| [O17](outstanding/O17-credential-rotation.md) | 3 | Rotate exposed ChickenShop credentials (storage key + Yooz password) | Security / integrations | BLOCKED | Andy | Regenerate chiknstorageaccount key + reset Yooz support@sixsevens password (Azure/Yooz admin, outside repo) |
 
 ---
 
