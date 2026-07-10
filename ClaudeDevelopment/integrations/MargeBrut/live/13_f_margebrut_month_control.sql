@@ -38,12 +38,10 @@
 --   Stock     : F_INV_COUNTS_DAY, grouped via D_INVITEM.
 --   Manual    : reference.MARGEBRUT_MANUAL (REV_PROV/NEW_PROV/STAFF_MEAL/
 --               COMP_COST_PCT) LEFT JOINed on (GROUP_NAME, PERIOD_MONTH).
---   COMP      : retail (GROSS) value of PROD lines carrying a real (non-sentinel)
---               DISCOUNT_HUB_ID x COMP_COST_PCT. No comp/discount lines exist in
---               the current feed (all DISCOUNT_HUB_ID are the -999 sentinel), so
---               COMP evaluates to 0 today. See the report's "COMP" concern: this
---               conflates all discounts with comps and awaits a comp-specific
---               signal before it should be trusted non-zero.
+--   COMP      : explicit literal 0 today. Awaits a COMP-SPECIFIC line signal (a comp/void
+--               reason code or a dedicated comp flag) - deliberately NOT the generic
+--               DISCOUNT_HUB_ID link, which would inflate GP% on the first non-comp
+--               discount. COMP_COST_PCT is kept in reference.MARGEBRUT_MANUAL for then.
 --
 -- Unqualified two-part table names only (no client DB prefix) - runs against
 -- any organisation database. MERGE upsert on step_name so it is re-runnable.
@@ -61,17 +59,12 @@ WITH turnover AS (
         d.BOTTOM_MICROSERVICE_NAME AS GROUP_NAME,
         DATEFROMPARTS(YEAR(f.ORDER_DATE), MONTH(f.ORDER_DATE), 1) AS PERIOD_MONTH,
         SUM(f.GROSS_VALUE) AS TURNOVER_INCL,
-        SUM(f.NET_VALUE)   AS TURNOVER_EXCL,
-        -- Comp signal: retail (GROSS) value of PROD lines with a real discount link.
-        -- DISCOUNT_HUB_ID is the -999 sentinel when no discount is linked, so a
-        -- non-sentinel value flags a discounted/comped line. All lines are sentinel
-        -- in the current feed, so COMP_RETAIL is 0. Treats ANY discount as a comp;
-        -- a comp-specific signal is needed to separate true comps from ordinary
-        -- discounts when real discount data arrives (see task-6-report.md).
-        SUM(CASE WHEN f.DISCOUNT_HUB_ID <> CONVERT(BINARY(32), -999) THEN f.GROSS_VALUE ELSE 0 END) AS COMP_RETAIL
+        SUM(f.NET_VALUE)   AS TURNOVER_EXCL
     FROM presentation.F_LINEITEM_15MIN f
     JOIN presentation.D_PRODUCT d ON d.BOTTOM_HUB_ID = f.PRODUCT_HUB_ID
     WHERE f.LI_TYPE = ''PROD''
+      -- Excludes products not yet grouped. DEPLOY-ORDER DEPENDENCY: Task 5
+      -- (12_group_mapping.sql, whose ELSE ''Food'' catch-all guarantees no NULLs) MUST run first.
       AND d.BOTTOM_MICROSERVICE_NAME IS NOT NULL
     GROUP BY d.BOTTOM_MICROSERVICE_NAME, DATEFROMPARTS(YEAR(f.ORDER_DATE), MONTH(f.ORDER_DATE), 1)
 ),
@@ -83,6 +76,7 @@ stock_base AS (
         c.COUNT_DATE, c.ACTUAL_COUNT, c.UOM_COST, c.ORDER_QTY
     FROM presentation.F_INV_COUNTS_DAY c
     JOIN presentation.D_INVITEM d ON d.BOTTOM_HUB_ID = c.INVITEM_HUB_ID
+    -- Excludes invitems not yet grouped; same Task 5 deploy-order dependency as above.
     WHERE d.BOTTOM_MICROSERVICE_NAME IS NOT NULL
 ),
 stock_bounds AS (
@@ -124,7 +118,13 @@ assembled AS (
         CAST(ISNULL(s.OPENING,0) + ISNULL(s.PURCHASES,0) - ISNULL(m.REV_PROV,0) + ISNULL(m.NEW_PROV,0) AS DECIMAL(18,2)) AS ALL_STOCK,
         s.CLOSING,
         m.STAFF_MEAL,
-        CAST(ISNULL(t.COMP_RETAIL,0) * ISNULL(m.COMP_COST_PCT,0) AS DECIMAL(18,2)) AS COMP
+        -- TODO: COMP awaits a COMP-SPECIFIC line signal (a comp/void reason code or a
+        -- dedicated comp flag), NOT a generic DISCOUNT_HUB_ID link. Applying the discount
+        -- link would jump COMP to (discounted retail x COMP_COST_PCT) and silently inflate
+        -- GP% the instant any non-comp discount (promo/markdown) lands - guaranteed wrong
+        -- on the first real discount. An explicit 0 is correct today (no comp lines) and
+        -- safe. COMP_COST_PCT stays in reference.MARGEBRUT_MANUAL for when a comp signal exists.
+        CAST(0 AS DECIMAL(18,2)) AS COMP
     FROM keys k
     LEFT JOIN turnover t ON t.GROUP_NAME = k.GROUP_NAME AND t.PERIOD_MONTH = k.PERIOD_MONTH
     LEFT JOIN stock    s ON s.GROUP_NAME = k.GROUP_NAME AND s.PERIOD_MONTH = k.PERIOD_MONTH
@@ -178,17 +178,12 @@ WITH turnover AS (
         d.BOTTOM_MICROSERVICE_NAME AS GROUP_NAME,
         DATEFROMPARTS(YEAR(f.ORDER_DATE), MONTH(f.ORDER_DATE), 1) AS PERIOD_MONTH,
         SUM(f.GROSS_VALUE) AS TURNOVER_INCL,
-        SUM(f.NET_VALUE)   AS TURNOVER_EXCL,
-        -- Comp signal: retail (GROSS) value of PROD lines with a real discount link.
-        -- DISCOUNT_HUB_ID is the -999 sentinel when no discount is linked, so a
-        -- non-sentinel value flags a discounted/comped line. All lines are sentinel
-        -- in the current feed, so COMP_RETAIL is 0. Treats ANY discount as a comp;
-        -- a comp-specific signal is needed to separate true comps from ordinary
-        -- discounts when real discount data arrives (see task-6-report.md).
-        SUM(CASE WHEN f.DISCOUNT_HUB_ID <> CONVERT(BINARY(32), -999) THEN f.GROSS_VALUE ELSE 0 END) AS COMP_RETAIL
+        SUM(f.NET_VALUE)   AS TURNOVER_EXCL
     FROM presentation.F_LINEITEM_15MIN f
     JOIN presentation.D_PRODUCT d ON d.BOTTOM_HUB_ID = f.PRODUCT_HUB_ID
     WHERE f.LI_TYPE = ''PROD''
+      -- Excludes products not yet grouped. DEPLOY-ORDER DEPENDENCY: Task 5
+      -- (12_group_mapping.sql, whose ELSE ''Food'' catch-all guarantees no NULLs) MUST run first.
       AND d.BOTTOM_MICROSERVICE_NAME IS NOT NULL
     GROUP BY d.BOTTOM_MICROSERVICE_NAME, DATEFROMPARTS(YEAR(f.ORDER_DATE), MONTH(f.ORDER_DATE), 1)
 ),
@@ -200,6 +195,7 @@ stock_base AS (
         c.COUNT_DATE, c.ACTUAL_COUNT, c.UOM_COST, c.ORDER_QTY
     FROM presentation.F_INV_COUNTS_DAY c
     JOIN presentation.D_INVITEM d ON d.BOTTOM_HUB_ID = c.INVITEM_HUB_ID
+    -- Excludes invitems not yet grouped; same Task 5 deploy-order dependency as above.
     WHERE d.BOTTOM_MICROSERVICE_NAME IS NOT NULL
 ),
 stock_bounds AS (
@@ -241,7 +237,13 @@ assembled AS (
         CAST(ISNULL(s.OPENING,0) + ISNULL(s.PURCHASES,0) - ISNULL(m.REV_PROV,0) + ISNULL(m.NEW_PROV,0) AS DECIMAL(18,2)) AS ALL_STOCK,
         s.CLOSING,
         m.STAFF_MEAL,
-        CAST(ISNULL(t.COMP_RETAIL,0) * ISNULL(m.COMP_COST_PCT,0) AS DECIMAL(18,2)) AS COMP
+        -- TODO: COMP awaits a COMP-SPECIFIC line signal (a comp/void reason code or a
+        -- dedicated comp flag), NOT a generic DISCOUNT_HUB_ID link. Applying the discount
+        -- link would jump COMP to (discounted retail x COMP_COST_PCT) and silently inflate
+        -- GP% the instant any non-comp discount (promo/markdown) lands - guaranteed wrong
+        -- on the first real discount. An explicit 0 is correct today (no comp lines) and
+        -- safe. COMP_COST_PCT stays in reference.MARGEBRUT_MANUAL for when a comp signal exists.
+        CAST(0 AS DECIMAL(18,2)) AS COMP
     FROM keys k
     LEFT JOIN turnover t ON t.GROUP_NAME = k.GROUP_NAME AND t.PERIOD_MONTH = k.PERIOD_MONTH
     LEFT JOIN stock    s ON s.GROUP_NAME = k.GROUP_NAME AND s.PERIOD_MONTH = k.PERIOD_MONTH
