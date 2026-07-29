@@ -1,12 +1,14 @@
 # ============================================================================
 # 93_backfill_uom_cost.ps1 - Backfill stuck Growyze UOM_COST satellite rows
 # ============================================================================
-# CDC does not hash UOM_COST, so inventory items whose other Growyze
-# attributes were byte-identical across the pack-size fix reload kept their
-# old, un-divided per-pack cost. Runs 21_invitem_uom_cost_backfill.sql
-# against each Growyze-mapped org's OWN database (not core - the satellite
-# lives in the org DB), then re-runs sp_DataVaultLoad so the presentation
-# layer (F_INV_COUNTS_DAY) picks up the corrected cost.
+# After the pack-size fix and a full reload, a small number of inventory
+# items on Ibis Gloucester Road still held their old, un-divided per-pack
+# cost - why those rows weren't refreshed is not established (see
+# 21_invitem_uom_cost_backfill.sql's header). Runs
+# 21_invitem_uom_cost_backfill.sql against each Growyze-mapped org's OWN
+# database (not core - the satellite lives in the org DB), then re-runs
+# sp_DataVaultLoad so the presentation layer (F_INV_COUNTS_DAY) picks up the
+# corrected cost.
 #
 # Spec: docs/superpowers/specs/2026-07-29-growyze-uom-cost-pack-size-design.md
 # Companion: 92_deploy_uom_cost_fix.ps1 (the staging-side fix this backfills)
