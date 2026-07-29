@@ -4,7 +4,7 @@
 
 **Status tags:** `OPEN` = needs work, no fix yet · `DIAGNOSED` = root cause known, fix not actioned · `MONITOR` = fix applied, watching it · `BLOCKED` = waiting on someone else · `DOC-DEBT` = documentation gap.
 
-**Last updated:** 2026-07-03 (added O14 — Mews001 DV mapping built + reviewed, awaiting deployment)
+**Last updated:** 2026-07-29 (O5 UOM_COST blocker fixed + deployed to UAT; O8 gate (b) cleared)
 
 ---
 
@@ -18,10 +18,10 @@
 | [O2](outstanding/O2-inventory-variance-1315.md) | Inventory-variance fix: scripts 13-15 not deployed | Inventory / presentation | OPEN | Andy | Not DB-verifiable — confirm vs QUERY_STATUS/deploy log |
 | [O3](outstanding/O3-suggestion-redesign-xmse948.md) | Suggestion system redesign (XMSE-948): 01-07 not deployed | Suggestion / AI engine | OPEN | Andy | Audit confirms NOT deployed (both envs). Deploy 01-07 |
 | [O4](outstanding/O4-parent-org-1011.md) | Parent-org reporting: scripts 10-11 | Parent-org / reporting | MONITOR | Andy | Audit: UAT holds 21 Parent queries + tiers 100-102 — likely already deployed. Confirm 10-11 & close |
-| [O5](outstanding/O5-growyze-default-dashboards.md) | Growyze default dashboards rebuild | Growyze / presentation | DIAGNOSED | Andy | Audit: 2 of 3 blockers cleared. Build on ORDER_DATE grain; only intra-day cards blocked |
+| [O5](outstanding/O5-growyze-default-dashboards.md) | Growyze default dashboards rebuild | Growyze / presentation | DIAGNOSED | Andy | UOM_COST blocker fixed + deployed to UAT 2026-07-29 (£762,277.46→£8,157.61). NULL LINEITEM_TIMESTAMP + D_PRODUCT fall-through remain |
 | [O6](outstanding/O6-growyze-reporting-staging-fixes.md) | Growyze reporting + staging fixes | Growyze / staging | MONITOR | Andy | Audit: all 3 fixes observed live on UAT. Confirm & close |
 | [O7](outstanding/O7-xmse949-product-cost-matching.md) | XMSE-949: Product cost matching refactor | Presentation / margin | DIAGNOSED | Andy | Audit: cost-map is weak (95% NULL) AND fans out ~1.5× (= O10). Build PRODUCT_COST_MAP |
-| [O8](outstanding/O8-marge-brut-dashboard.md) | Marge Brut dashboard (mock live; mock→live built) | Dashboard / vis + Report DB | OPEN | Andy | Merge branch `worktree-margebrut-live` (8 scripts, review-clean); then run `live/DEPLOY.txt` when Growyze feed + new UAT org ready. Gated on fetcher + O5 + org |
+| [O8](outstanding/O8-marge-brut-dashboard.md) | Marge Brut dashboard (mock live; mock→live built) | Dashboard / vis + Report DB | OPEN | Andy | Merge branch `worktree-margebrut-live` (8 scripts, review-clean); then run `live/DEPLOY.txt` when Growyze feed + new UAT org ready. O5 UOM_COST gate cleared 2026-07-29; gated on fetcher + org |
 | [O9](outstanding/O9-demo-org-not-provisioned.md) | Demo org data generator: org not provisioned | Demo data / provisioning | OPEN | Andy | Audit confirms not provisioned (both envs). Provision via SP, load data |
 | [O10](outstanding/O10-threerocks-sales-double-count.md) | £580k Three Rocks sales over-count | Sales facts / correctness | DIAGNOSED | Andy | Audit: confirmed ~1.5× join fan-out in F_PRODUCT_MARGIN_DAY cost map (= O7). Dedup cost map |
 | [O11](outstanding/O11-square-integration-scripts.md) | Square integration: SQL scripts not built | Integrations / Square POS | OPEN | Andy | Build scripts from approved design + plan (not DB-audited) |

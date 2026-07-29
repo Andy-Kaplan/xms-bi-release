@@ -2001,6 +2001,48 @@ Delta scripts wiring `MargeBrut*` off real Growyze/Bizon data instead of the moc
 
 ---
 
+## Growyze UOM_COST Pack-Size Fix (2026-07-29)
+
+All scripts in `integrations/Growyze/`. Design: `docs/superpowers/specs/2026-07-29-growyze-uom-cost-pack-size-design.md`. Ledger: [O5](../docs/outstanding/O5-growyze-default-dashboards.md) (owner), blocks [O8](../docs/outstanding/O8-marge-brut-dashboard.md). SDD record: `.superpowers/sdd/2026-07-29-growyze-uom-cost-pack-size/progress.md`.
+
+**Root cause:** `DL_PRODUCTS.price` is the price **per pack**, while stock quantities are stored in **base units** — the deployed count step stores `quantity × size`, and `14_dn_events_size_multiplier_fix.sql` applies the same multiplier to deliveries. Staging never divided cost by pack size, so `F_INV_COUNTS_DAY` multiplied per-ml/per-g quantities by a per-bottle/per-pack price — inflation of 16-113× per item, ~93× across a whole stocktake. This is the O5 `UOM_COST` blocker, previously (2026-07-02) marked "RESOLVED / not present" on the strength of `F_INV_USAGE_DAY` alone (where usage happened to already be in pack units); the defect lives specifically in `F_INV_COUNTS_DAY` and the earlier all-clear did not generalise — reopened 2026-07-29.
+
+### 86. `integrations/Growyze/19_invitem_uom_cost_pack_size.sql`
+
+**Purpose:** MERGE upsert (single `@sql` variable referenced by both the `WHEN MATCHED` UPDATE and `WHEN NOT MATCHED` INSERT branches, per this session's house-pattern ruling — no verbatim-duplicated query block) on the `Growyze Inventory Items` `StagingControl` step. Changes the leaf-item branch's `UOM_COST` from `TRY_CAST(price AS DECIMAL(38,10))` to `TRY_CAST(price AS DECIMAL(38,10)) / COALESCE(NULLIF(TRY_CAST(size AS DECIMAL(38,10)), 0), 1)` — cost per pack becomes cost per measure unit. Sub Category / Category branches keep `UOM_COST = NULL`. `staging_columns` and the INVITEM `EntityMappings` rows are unchanged. Presentation layer deliberately not touched — its existing `/ CONVERSION_FACTOR` division continues to carry measure → standardised base unit.
+
+**Scope:** `StagingControl` is environment-wide — corrects every Growyze organisation (Padel Social, Dirty Sixth, Ibis Heathrow, Ibis Gloucester Road). MarketMan is unaffected (separate step, derives `UOM_COST` from `BOMPrice`).
+
+**Status:** Deployed to UAT 2026-07-29 via `92_deploy_uom_cost_fix.ps1`, all 4 Growyze orgs. Measured result on Ibis Gloucester Road (`COUNT_DATE` 2026-06-30, 151 count lines): stock value **£762,277.46 → £8,157.61** (after the companion backfill below), 0 null costs. Padel Social and Dirty Sixth figures did **not** move — their catalogue items have `size = 1`, so `price / 1 = price` makes the division a no-op; only the Ibis orgs were materially affected.
+
+### 87. `integrations/Growyze/20_verify_uom_cost_pack_size.sql`
+
+**Purpose:** Read-only verification companion, run against each target organisation database (two-part names). Section A: headline stock-value reconciliation against `F_INV_COUNTS_DAY`. Section B: named spot checks (Hendricks, SALAMI SLICED MILANO 500G, ONE WATER STILL GLASS). Section C: cost coverage against current-flag leaf `SAT_INVITEM` rows. Section D: data-quality flag for `BOTTOM_ATTR_4` (pack size) `>= 100` — surfaces suspect `kg`-vs-`g` catalogue entries for review rather than attempting a SQL fix.
+
+**Status:** Run on UAT post-deploy, all 4 orgs. Ibis Gloucester Road (acceptance gate): **151 lines / £8,157.61 / 0 null costs** — matches the pre-computed target to the penny. Spot checks: Hendricks £27,655.60 → **£39.51**; SALAMI SLICED MILANO £46,620.00 → **£93.24**; ONE WATER STILL GLASS £53,460.00 → **£71.28**. Coverage: 501 leaf items, 0 null costs. Section D flags two known source-data residuals (catalogue errors, not SQL defects): ROCKET WILD (`kg` with `size` 500 meaning grams — reads too **low**) and CORONET WHITE SUGAR STICKS (`each`, size 1, £6.10 implying £6.10 per sugar stick — reads too **high**).
+
+### 88. `integrations/Growyze/21_invitem_uom_cost_backfill.sql`
+
+**Purpose:** Task 3b addition — targeted, idempotent UPDATE of current-flag (`CURRENT_FLAG = 1, BOTTOM_LEVEL = 1, SRC = 'int_growyze001'`) `SAT_INVITEM` leaf rows still holding the un-divided per-pack `UOM_COST`. **Second defect found during deployment:** `UOM_COST` does not participate in CDC change detection, so an inventory item whose other Growyze attributes were byte-identical between the pre-fix and post-fix batches produced "NC" (no change) — no new satellite row was written and the row kept its old, un-divided cost forever; script 19 + a reload alone never corrected it. The UPDATE only matches rows where the stored `UOM_COST` still equals `ATTR_5` (raw pack price) to within 1e-7 and `ATTR_4` (pack size) `> 1` — already-correct rows (including `size = 1` rows, where the fix is a no-op) are left untouched, so a second run matches 0 rows.
+
+**Status:** Deployed to UAT 2026-07-29 via `93_backfill_uom_cost.ps1`, all 4 orgs, each followed by a `sp_DataVaultLoad` reload. On Ibis Gloucester Road this backfilled 4 stuck items (EASY PEELERS alone had overstated stock value by £918.04). Post-backfill: **0 genuinely stuck rows across all 4 orgs** — initial raw counts of 10 (Padel), 5 (Heathrow), 1 (Dirty Sixth) were all zero-price artefacts (`price = 0` so `0 / size = 0 = price`, a false positive in the "still per-pack" detector, not real stuck rows). Ibis Gloucester Road: 501 leaf items, 0 null costs — acceptance gate passed (151 lines / £8,157.61). **Open risk, not fixed here:** this is a latent platform issue — any FUTURE Growyze cost-only change will also fail to propagate via CDC until `UOM_COST`'s exclusion from change detection is addressed at the entity/CDC level.
+
+### 89. `integrations/Growyze/92_deploy_uom_cost_fix.ps1`
+
+**Purpose:** PowerShell runner (house method) deploying script 19 to `{env}.core`, then re-running staging → `sp_DataVaultLoad @SchemaList = N'int_growyze001'` → presentation rebuild for every Growyze-mapped organisation (discovered data-driven from `core.Organisations` / `OrganisationIntegrations`, not hardcoded) so the corrected cost propagates. `-WhatIf` preflight, typed `DEPLOY` confirmation, `-OnlyOrg` scoping, `QueryTimeout = 0`, prod-name guard, halt-on-error with a per-run log.
+
+**Status:** Executed against UAT 2026-07-29, all 4 Growyze orgs (Padel Social 10, Dirty Sixth 18, Ibis Heathrow 20, Ibis Gloucester Road 21). Exit 0, no FAIL lines. This run alone under-corrected Ibis Gloucester Road (£9,075.65 vs the required £8,157.61) because of the CDC gap described under script 21 above — resolved by the companion backfill runner (90).
+
+### 90. `integrations/Growyze/93_backfill_uom_cost.ps1`
+
+**Purpose:** Companion PowerShell runner (Task 3b) — runs `21_invitem_uom_cost_backfill.sql` against each Growyze-mapped org's own database (the satellite lives in the org DB, not `core`), then re-runs `sp_DataVaultLoad` so the presentation layer picks up the corrected cost. Same guard pattern as 92 (`-WhatIf`, typed `DEPLOY`, `-OnlyOrg`, prod-name refusal, per-run log).
+
+**Status:** Executed against UAT 2026-07-29, all 4 orgs. Exit 0, no FAIL lines. Acceptance gate passed after this run — see script 21/87 above.
+
+**MarketMan regression:** PASS — untouched. Both runners target only Growyze-mapped orgs (10, 18, 20, 21); MarketMan orgs (1, 3, 4, 5, 6, 7, 16) were never in scope, and the backfill additionally filters `SRC = 'int_growyze001'`.
+
+---
+
 ## Mews (int_mews001)
 
 All scripts in `integrations/Mews/`. Created 2026-07-03. Design/plan: `docs/superpowers/specs/2026-07-03-mews-dv-mapping-design.md` + `docs/superpowers/plans/2026-07-03-mews-dv-mapping.md`. Org: `20260413_XMS_B4E2F7A8-3C91-4D6E-9F05-8A1D2B5E7C43` (DEV).
