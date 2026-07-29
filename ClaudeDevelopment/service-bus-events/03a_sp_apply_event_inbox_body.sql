@@ -159,8 +159,11 @@ BEGIN
                 ELSE A.T
             END) AS S;
 
+    -- Inlined rather than core.SHA256Hash (absent from org DBs). Semantically
+    -- identical: that function is exactly HASHBYTES('SHA2_256', CAST(@input AS VARBINARY(MAX))).
+    -- Unsalted on purpose - this is an identity hash, not a hub key.
     UPDATE #Ev
-    SET MicroserviceIdBin = core.SHA256Hash(MicroserviceId)
+    SET MicroserviceIdBin = HASHBYTES('SHA2_256', CAST(MicroserviceId AS VARBINARY(MAX)))
     WHERE MicroserviceId IS NOT NULL;
 
     ------------------------------------------------------------------
@@ -303,8 +306,14 @@ BEGIN
                 UPDATE S
                 SET ' + @SetList + N'
                 FROM ' + @SatObject + N' AS S
+                -- HUB_ID is the SALTED business-key hash the DV load builds:
+                --   HASHBYTES(''SHA2_256'', CONCAT_WS(''|'', <business key>, <integration schema>))
+                -- and SRC is that same integration schema. Verified on Dev: matches
+                -- 9/9 int_marketman001 and 6/6 int_ncraloha001 current SAT_LOCATION rows;
+                -- the un-salted form matches 0. core.SHA256Hash is deliberately NOT used:
+                -- it exists only in the core control DB, never in an org DB.
                 INNER JOIN core.MDM_RECORD AS R
-                    ON  S.HUB_ID = core.SHA256Hash(R.BusinessKey)
+                    ON  S.HUB_ID = HASHBYTES(''SHA2_256'', CAST(CONCAT_WS(''|'', R.BusinessKey, R.IntegrationSrc) AS VARBINARY(MAX)))
                     AND S.SRC    = R.IntegrationSrc
                 WHERE S.CURRENT_FLAG = 1
                   AND R.EntityName = @EntityIn
