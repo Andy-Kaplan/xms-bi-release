@@ -14,14 +14,20 @@
 # Usage:
 #   .\94_deploy_supplier_bottom_level.ps1 -Environment UAT -WhatIf
 #   .\94_deploy_supplier_bottom_level.ps1 -Environment UAT
-#   .\94_deploy_supplier_bottom_level.ps1 -Environment UAT -OnlyOrg 16
+#   .\94_deploy_supplier_bottom_level.ps1 -Environment UAT -OnlyOrg 16,21
+#
+# NOTE ON SCOPE: the staging step and SUPPLIER entity mapping edited by 22 live
+# in `core` and are shared by EVERY Growyze org. -OnlyOrg narrows which orgs are
+# RELOADED now; it does not make the control-plane change org-specific. Orgs left
+# out still receive the fix on their next scheduled load, just unattended and
+# without the verify gate below.
 # ============================================================================
 
 [CmdletBinding()]
 param(
     [Parameter()][ValidateSet('DEV','TEST','UAT')]
     [string]$Environment = 'UAT',
-    [int]$OnlyOrg = 0,
+    [int[]]$OnlyOrg = @(),
     [switch]$WhatIf,
     [switch]$Force
 )
@@ -86,10 +92,26 @@ WHERE o.DatabaseStatus IN ('ACTIVE','FAILED')
 ORDER BY o.OrganisationID;
 '@
 
-$orgs = @(Invoke-Sql -Database 'core' -Query $orgSql)
-if ($OnlyOrg -gt 0) { $orgs = @($orgs | Where-Object { $_.OrganisationID -eq $OnlyOrg }) }
+$allOrgs = @(Invoke-Sql -Database 'core' -Query $orgSql)
+if ($OnlyOrg.Count -gt 0) {
+    $orgs = @($allOrgs | Where-Object { $OnlyOrg -contains $_.OrganisationID })
+    # Fail loudly on a typo'd org id rather than silently reloading fewer orgs.
+    $missing = @($OnlyOrg | Where-Object { $_ -notin @($allOrgs | ForEach-Object { $_.OrganisationID }) })
+    if ($missing.Count -gt 0) { throw "Not Growyze-mapped org id(s): $($missing -join ', ')" }
+    $skipped = @($allOrgs | Where-Object { $OnlyOrg -notcontains $_.OrganisationID })
+}
+else {
+    $orgs = $allOrgs
+    $skipped = @()
+}
 if ($orgs.Count -eq 0) { throw "No Growyze-mapped organisations found." }
+Write-Log "RELOAD ($($orgs.Count)):"
 foreach ($o in $orgs) { Write-Log ("  org {0,-3} {1,-24} {2}" -f $o.OrganisationID, $o.OrganisationName, $o.DatabaseName) }
+if ($skipped.Count -gt 0) {
+    # Named explicitly so the log never reads as "all Growyze orgs were covered".
+    Write-Log "NOT RELOADED ($($skipped.Count)) - still receive the shared control-plane change on their next scheduled load:"
+    foreach ($o in $skipped) { Write-Log ("  org {0,-3} {1}" -f $o.OrganisationID, $o.OrganisationName) }
+}
 
 if ($WhatIf) {
     Write-Log '--- WHATIF: would deploy 22 to core, regenerate the SUPPLIER Load step, then reload + verify each org above ---'
