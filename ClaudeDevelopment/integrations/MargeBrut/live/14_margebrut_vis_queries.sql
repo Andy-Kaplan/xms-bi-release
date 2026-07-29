@@ -396,6 +396,7 @@ FROM presentation.F_PURCHASES_DAY p
 JOIN presentation.D_SUPPLIER sup ON sup.BOTTOM_HUB_ID = p.SUPPLIER_HUB_ID
 JOIN presentation.D_INVITEM inv ON inv.BOTTOM_HUB_ID = p.INVITEM_HUB_ID
 WHERE 1=1
+AND inv.BOTTOM_SRC LIKE N''int[_]growyze%''
 AND (   (inv.TOP_NAME = N''Beverages'' AND inv.MIDDLE_1_NAME IN (N''Soft Drinks'', N''Water'', N''Juices'', N''Spirits'', N''Spirit'', N''Wine'', N''Wines'', N''Bottled Beer'', N''Beer & Cider'', N''Draught Beer'', N''Hot Drinks'', N''Coffee'', N''Tea''))
      OR inv.TOP_NAME = N''Food'' )
 @FilterClause
@@ -411,7 +412,8 @@ SELECT
    FROM presentation.F_PURCHASES_DAY p
    JOIN presentation.D_INVITEM inv ON inv.BOTTOM_HUB_ID = p.INVITEM_HUB_ID
    WHERE 1=1
-   AND (   (inv.TOP_NAME = N''Beverages'' AND inv.MIDDLE_1_NAME IN (N''Soft Drinks'', N''Water'', N''Juices'', N''Spirits'', N''Spirit'', N''Wine'', N''Wines'', N''Bottled Beer'', N''Beer & Cider'', N''Draught Beer'', N''Hot Drinks'', N''Coffee'', N''Tea''))
+   AND inv.BOTTOM_SRC LIKE N''int[_]growyze%''
+AND (   (inv.TOP_NAME = N''Beverages'' AND inv.MIDDLE_1_NAME IN (N''Soft Drinks'', N''Water'', N''Juices'', N''Spirits'', N''Spirit'', N''Wine'', N''Wines'', N''Bottled Beer'', N''Beer & Cider'', N''Draught Beer'', N''Hot Drinks'', N''Coffee'', N''Tea''))
      OR inv.TOP_NAME = N''Food'' )
    @FilterClause) AS TotalValue,  -- BarChartCard parses TotalValue as numeric; reuses alias ''p''/''inv'' so @FilterClause resolves in this subquery too
   NULL AS Chip';

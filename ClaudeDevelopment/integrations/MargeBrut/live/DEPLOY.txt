@@ -1,50 +1,122 @@
 Marge Brut mock -> live build -- Deploy Order (UAT)
 ====================================================
 
-STATUS 2026-07-29: steps 1-6 COMPLETE on UAT against Ibis Gloucester Road
-(OrganisationID 21, OrganisationCode 67CA4E6F-9A7E-F111-B337-002248A1EC3D,
-DB 20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D). Steps 7-8 outstanding,
-blocked when the session's egress IP changed and both UAT servers began
-refusing connections (report DB returned an explicit firewall rejection for
-94.15.235.51; the MI public endpoint timed out).
+STATUS 2026-07-30: ALSO LIVE ON THE OAK & VINE (UAT OrganisationID 16, DB
+20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87), after Integrations loaded 90
+days of Mews + Growyze there (ledger O24). Two things had to be fixed first:
+
+  1. The Oak & Vine dashboard was ERRORING, not empty. Step 6 (14) is GLOBAL, so
+     it had already repointed that org's 9 mock cards at
+     presentation.F_MARGEBRUT_MONTH -- a table that existed only on Gloucester.
+     The mock's literal-VALUES bodies needed no tables; the live bodies do.
+     => A GLOBAL VIS-QUERY SWAP BREAKS EVERY ORG WIRED FOR THE DASHBOARD BUT
+        LACKING THE FACT TABLE. Deploy the table wherever the dashboard is wired,
+        in the same change. Create it from its registered ddl_script (never via
+        DeployPresentationTables -- see the gotchas below).
+
+  2. SOURCE COLLISION. The Oak & Vine carries four integrations (Mews + NCRAloha
+     POS, Growyze + MarketMan inventory). NCRAloha's D_PRODUCT.TOP_NAME is also
+     'Food', worth GBP 916,792.80 against the Mews Food group's GBP 281.62, so an
+     unscoped build reported cost of sales at roughly 0.5% -- a ~99% gross margin.
+     NCRAloha's 'Drinks' (GBP 448,913.60) escaped only because that name matches
+     nothing, and MarketMan's stock only because its invitems all sit under
+     'All INVITEMs'. Both were luck.
+     => 13 (and 14's supplier chart, and 99_verify's checks 2/3/4) now pin each
+        side to its own feed via BOTTOM_SRC: D_PRODUCT LIKE 'int[_]mews%' for
+        turnover, D_INVITEM LIKE 'int[_]growyze%' for stock and purchases. This
+        RETIRES the original design's "needs a dedicated Mews+Growyze-only org"
+        constraint -- the build is now correct on any organisation.
+
+  Rebuild both orgs after re-registering 13 (TRUNCATE first -- narrowing the key
+  set leaves orphans, see the gotchas). Results:
+    Ibis Gloucester Road  18 rows, UNCHANGED (June GBP 17,138.71 / 4,701.37 / 27.4%)
+    The Oak & Vine        24 rows, June cost 27.3% / GP 72.7%, all 9 cards execute
+  99_verify: 5 of 6 PASS on BOTH orgs, only the O23 supplier gap failing. On Oak &
+  Vine that check fails differently -- D_SUPPLIER has 7 rows because MarketMan DOES
+  set BOTTOM_LEVEL, but none match the Growyze purchase keys -- corroborating that
+  O23 is Growyze-specific.
+
+  CAVEATS on The Oak & Vine:
+    - It is a MIRROR of Gloucester's feed, not an independent business: June
+      turnover is identical to the penny (GBP 17,138.71) and stock differs by
+      GBP 24.48. Fine for a rendering/UI check; not a business number.
+    - The 90-day window does give it MORE history: 3 stocktakes (30 Apr, 31 May,
+      30 Jun) vs Gloucester's 2, so two computable months instead of one.
+    - BUT MAY IS NOT TRUSTWORTHY. Stock grew GBP 2,153 across May against GBP
+      20,157 of turnover, so consumption computes at GBP 834: Breakfast reads
+      2.1% cost / 97.9% GP and Soft Drinks goes NEGATIVE (-GBP 20.04 => GP
+      105.2%). The 30 Apr count is the first of the feed
+      (DAYS_SINCE_LAST_COUNT NULL) -- the same first-count anomaly that made
+      Gloucester's 31 May count carry a GBP 45,298.86 purchase backlog.
+      QUOTE JUNE ONLY on either org. A >100% GP will also render as a
+      broken-looking figure; decide whether the cards should suppress it.
+
+PRIOR STATUS 2026-07-29: COMPLETE on UAT against Ibis Gloucester Road (OrganisationID
+21, OrganisationCode 67CA4E6F-9A7E-F111-B337-002248A1EC3D, DB
+20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D). The dashboard is wired and
+renders off real data. ONE card is still empty for a reason outside this folder:
+see "KNOWN GAP" below.
 
   DONE  11a_reference_margebrut_manual_all_orgs.sql -> core
-        Empty reference.MARGEBRUT_MANUAL created in all 20 org DBs. All
-        reported PRESENT.
+        Empty reference.MARGEBRUT_MANUAL created in all 20 org DBs, all PRESENT.
   DONE  11_reference_margebrut_manual.sql -> Gloucester (6 Oct-2025 seed rows)
   DONE  10_f_margebrut_month_table.sql  -> core  (PresentationTables, live)
   DONE  13_f_margebrut_month_control.sql -> core (PresentationControl, tier 2)
-        REWRITTEN this session -- grouping is now inline, opening stock is the
-        previous month's closing count, purchases come from F_PURCHASES_DAY.
-        See the script header for the full rationale.
-  DONE  presentation.F_MARGEBRUT_MONTH created on Gloucester from the
-        registered DDL, then built via
+        REWRITTEN this session -- grouping inline off the source systems' own
+        categories, opening stock = previous month's closing count, purchases from
+        F_PURCHASES_DAY. See the script header for the full rationale.
+  DONE  presentation.F_MARGEBRUT_MONTH created on Gloucester from the registered
+        ddl_script, then built via
         EXEC core.sp_ProcessPresentation @TierFilter = 2, @StopOnError = 0
-        Result: 18 rows (2026-05..2026-07 x 6 groups); June 2026 complete --
+        Result: 18 rows (2026-05..07 x 6 groups). June 2026 complete --
         turnover ex-VAT GBP 17,138.71, opening GBP 10,175.54, purchases
         GBP 2,652.84, closing GBP 8,127.01, consumption GBP 4,701.37,
         cost 27.4% / GP 72.6%.
-  DONE  14_margebrut_vis_queries.sql -> core. All 9 MargeBrut* datasets now
-        read live. 8 of the 9 executed against Gloucester and returned correct
-        figures; MargeBrutPurchasesBySupplier returns 0 data rows (D_SUPPLIER
-        gap, see below).
-  TODO  Supplier Dimension build on Gloucester -- datavault.HUB_SUPPLIER has 8
-        rows but presentation.D_SUPPLIER holds only the "Unknown" sentinel, so
-        the supplier chart has nothing to join to. Not a Marge Brut defect.
-        Run only that step (a full tier-1 run would TRUNCATE and rebuild every
-        dimension and re-window every fact):
-           DECLARE @q NVARCHAR(MAX), @cm NVARCHAR(MAX);
-           SELECT @q = CAST(query_sql AS NVARCHAR(MAX)), @cm = column_mappings
-           FROM [core].[core].[PresentationControl]
-           WHERE step_name = N'Supplier Dimension';
-           EXEC [core].[sp_ExecuteQuery] @SourceQuery = @q,
-                @TargetTable = N'[presentation].D_SUPPLIER',
-                @ColumnMappingsJson = @cm, @TableType = N'Dimension',
-                @TimeSeriesTargetColumn = NULL;
-  TODO  15_report_config.sql -> report DB (xms-mssql-ne-uat). @OrgId/@DbPrefix
-        are already set to Gloucester. Needs the client IP allowed on the
-        Azure SQL firewall.
-  TODO  99_verify.sql -> Gloucester, then open the dashboard in the UAT UI.
+  DONE  14_margebrut_vis_queries.sql -> core. All 9 MargeBrut* datasets read live.
+        8 of 9 executed against Gloucester and returned correct figures.
+  DONE  15_report_config.sql -> report DB (xms-sql-fog-uat, db `report`), with
+        @OrgId/@DbPrefix set to Gloucester. Ran clean in one transaction:
+        audit trigger patched, BiConfig inserted, card types 1/3/9/10 granted,
+        9 datasets mapped, 12-col grid created, dashboard linked, 9 cards placed,
+        group mapping created. Verified independently: 1 dashboard "Marge Brut",
+        IconName Restaurant, 9 cards all MargeBrut*, 1 group mapping (visible).
+  DONE  99_verify.sql -> Gloucester. REVISED this session first (checks 2/3/4 were
+        written against the withdrawn MICROSERVICE_NAME grouping and produced
+        FALSE FAILs; check 1a validated a hero formula the dashboard no longer
+        uses). Current results:
+           reconciliation_fact_self_consistency  PASS  (27.4312%, both sides)
+           canonical_group_guard                 PASS  (0 non-canonical groups)
+           coverage_guard                        PASS  (GBP 0.04 of 33,144.54
+                                                       turnover excluded = one
+                                                       Tips line; GBP 0.00 of
+                                                       18,302.55 stock)
+           supplier_dimension_guard              FAIL  (see KNOWN GAP)
+           grain_sanity_turnover                 PASS  (fact = independent
+                                                       recompute, to the penny)
+           purchases_reconciliation              PASS on an equal window
+                                                       (2,652.84 = 2,652.84,
+                                                       delta 0.00) -> the Task 7
+                                                       reconciliation TODO is
+                                                       CLOSED; INFO with no
+                                                       window, by design.
+  TODO  Open the dashboard as Ibis Gloucester Road in the UAT front end and
+        confirm the KPI strip, grid and 4 charts render. Everything server-side
+        is verified; this is the last human step.
+
+KNOWN GAP -- MargeBrutPurchasesBySupplier renders empty (NOT a Marge Brut defect):
+  presentation.D_SUPPLIER on Gloucester holds only the CONVERT(BINARY(32), -999)
+  'Unknown' sentinel, so all 2,438 F_PURCHASES_DAY lines fail the supplier join.
+  Root cause: the "Supplier Dimension" PresentationControl step anchors its
+  recursive CTE on "WHERE BOTTOM_LEVEL = 1 AND CURRENT_FLAG = 1" against
+  datavault.SAT_SUPPLIER, but the Growyze "Growyze Suppliers" staging step never
+  populates BOTTOM_LEVEL -- its four sibling dimension steps (Growyze Inventory
+  Items, Growyze Location, Growyze Occasion, Growyze Product) all do. So
+  SAT_SUPPLIER.BOTTOM_LEVEL is NULL on all 8 rows, the anchor matches nothing,
+  and the dimension can only ever contain the sentinel. This affects EVERY
+  Growyze org and any supplier-based reporting, not just this dashboard. Re-running
+  the Supplier Dimension step does not help -- the fix must be upstream, in the
+  Growyze staging step + SUPPLIER entity mapping, followed by a Growyze DV reload
+  and then a D_SUPPLIER rebuild. Tracked as its own ledger item.
 
 DO NOT RUN, superseded:
   01_provision_uat_org.sql -- the "Three Rocks Hotel" org it creates was

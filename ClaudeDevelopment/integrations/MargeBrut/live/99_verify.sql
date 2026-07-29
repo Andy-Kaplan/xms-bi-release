@@ -2,16 +2,24 @@
    99_verify.sql
    -----------------------------------------------------------------------------
    Marge Brut go-live verification (Task 10). Read-only (SELECT/WITH only),
-   developer-run AFTER the FETCHER GATE in DEPLOY.txt step 3 has cleared and
-   the full build order in step 5 (12 -> 11 -> 13+10 -> presentation rebuild)
-   has completed for the new org ("Three Rocks Hotel"). Unqualified two-part
-   table names only -- run in the target organisation's own database.
+   developer-run AFTER the build order in DEPLOY.txt has completed for the target
+   org. Unqualified two-part table names only -- run in the org's own database.
+
+   ** REVISED 2026-07-29 to match the deployed design. ** Checks 2, 3 and 4 were
+   written against the withdrawn 12_group_mapping.sql / MICROSERVICE_NAME
+   grouping and the old F_INV_COUNTS_DAY-derived PURCHASES measure. Run unchanged
+   against the current build they produced FALSE FAILs (coverage_guard reported
+   88 products and 174 invitems "ungrouped" and grain_sanity recomputed NULL,
+   purely because nothing populates MICROSERVICE_NAME any more), and check 1a
+   silently validated a hero formula the dashboard no longer uses. All four now
+   mirror what 13 and 14 actually do.
 
    Every check emits a check_name column, its diagnostic value/count columns,
    and a check_result literal:
-     PASS / FAIL  - Checks 1a/1b/2/3 (hard gates; FAIL means don't trust the dashboard)
-     PASS / WARN / INFO - Check 4 (informational reconciliation, not a gate --
-                          see its own header for why)
+     PASS / FAIL  - Checks 1a/1b/3 (hard gates; FAIL means don't trust the dashboard)
+     PASS / WARN / FAIL - Check 2 (value-based thresholds, see its header)
+     PASS / FAIL  - Check 2b (supplier dimension prerequisite)
+     PASS / WARN / INFO - Check 4 (period-scope reconciliation, not a gate)
 
    Sections:
      1a. Reconciliation (fact self-consistency) - the hero KPI ratio recomputed
@@ -31,29 +39,29 @@
                                whole table with no such filter) must be 0 rows
                                -- otherwise the hero % and the grid's GRAND
                                TOTAL % genuinely diverge on real data.
-     2. Coverage guard       - products/invitems with real activity but no
-                               MICROSERVICE_NAME grouping (must be 0 rows --
-                               anything here is silently dropped from the fact
-                               by the two WHERE BOTTOM_MICROSERVICE_NAME IS NOT
-                               NULL filters in 13_f_margebrut_month_control.sql).
+     2. Coverage guard       - the turnover and stock VALUE that 13's grouping
+                               CASE maps to NULL and therefore excludes. Some
+                               exclusions are correct and permanent (Tips,
+                               Service Charge, Allergies; Growyze 'Other'/
+                               'Unknown'), so this is a monetary threshold, not
+                               a row count. See its own header.
+     2b. Supplier dimension guard - D_SUPPLIER must actually be built, or
+                               MargeBrutPurchasesBySupplier renders empty. Known
+                               to FAIL on Growyze orgs: SAT_SUPPLIER.BOTTOM_LEVEL
+                               is never populated by the Growyze Suppliers
+                               staging step, so the dimension's recursive anchor
+                               matches nothing.
      3. Grain sanity         - fact TURNOVER_INCL/EXCL vs a fresh recompute
                                straight from F_LINEITEM_15MIN + D_PRODUCT, to
                                catch join fan-out or a stale/failed rebuild.
-     4. Purchases reconciliation (WARN/INFO, carried-forward TODO from Task 7)
-                             - MargeBrutPurchasesBySupplier's source
-                               (F_PURCHASES_DAY) vs MargeBrutPurchasesKPI's
-                               source (F_MARGEBRUT_MONTH.PURCHASES) are
-                               different measures from different pipelines
-                               with no guaranteed reconciliation -- this
-                               reports both totals + the delta rather than
-                               hard-failing on a mismatch.
+     4. Purchases reconciliation (WARN/INFO) - the Task 7 measure-mismatch TODO
+                               is CLOSED (both sides now read
+                               F_PURCHASES_DAY.LINE_TOTAL); what remains is a
+                               deliberate PERIOD-SCOPE difference. See its header.
 
-   Run via the PowerShell runner (or SSMS) against the org DB. Not MCP-tested
-   for real (F_MARGEBRUT_MONTH/F_PURCHASES_DAY are not populated anywhere
-   yet -- go-live is gated); each SELECT's shape was instead verified via MCP
-   by substituting inline VALUES CTEs standing in for the real tables -- see
-   task-10-report.md for the substitutions and results. Re-run this file for
-   real once the fetcher feed lands and the build order has executed.
+   Run via the PowerShell runner (or SSMS) against the org DB. Executed for real
+   against Ibis Gloucester Road (UAT OrgID 21) on 2026-07-29 -- baseline results
+   recorded in each check's header.
    ============================================================================ */
 
 SET NOCOUNT ON;
@@ -83,7 +91,13 @@ DECLARE @PeriodEnd   DATE = NULL;  -- inclusive
    guards against that.
    ============================================================================ */
 WITH fact AS (
-    SELECT GROUP_NAME, PERIOD_MONTH, TURNOVER_EXCL, CONSUMPTION
+    -- TURNOVER_EXCL_CONS mirrors the coverage-matched denominator every live
+    -- ratio uses (2026-07-29): CONSUMPTION is NULL for any month lacking both
+    -- stocktake ends, so turnover for those months must be excluded from the
+    -- ratio or cost % is understated. Without this the check would "pass"
+    -- against a formula the dashboard no longer uses.
+    SELECT GROUP_NAME, PERIOD_MONTH, TURNOVER_EXCL, CONSUMPTION,
+           CASE WHEN CONSUMPTION IS NOT NULL THEN TURNOVER_EXCL END AS TURNOVER_EXCL_CONS
     FROM presentation.F_MARGEBRUT_MONTH
     WHERE (@PeriodStart IS NULL OR PERIOD_MONTH >= @PeriodStart)
       AND (@PeriodEnd   IS NULL OR PERIOD_MONTH <= @PeriodEnd)
@@ -91,14 +105,14 @@ WITH fact AS (
 hero AS (
     -- Mirrors MargeBrutCostRatioKPI's QueryTemplate.
     SELECT
-        SUM(CONSUMPTION)   AS CONSUMPTION,
-        SUM(TURNOVER_EXCL) AS TURNOVER_EXCL,
-        SUM(CONSUMPTION) / NULLIF(SUM(TURNOVER_EXCL), 0) AS HERO_COST_PCT
+        SUM(CONSUMPTION)        AS CONSUMPTION,
+        SUM(TURNOVER_EXCL_CONS) AS TURNOVER_EXCL,
+        SUM(CONSUMPTION) / NULLIF(SUM(TURNOVER_EXCL_CONS), 0) AS HERO_COST_PCT
     FROM fact
 ),
 by_group AS (
     -- Mirrors MargeBrutGrid's by_group CTE (per-GROUP_NAME rollup).
-    SELECT GROUP_NAME, SUM(TURNOVER_EXCL) AS TURNOVER_EXCL, SUM(CONSUMPTION) AS CONSUMPTION
+    SELECT GROUP_NAME, SUM(TURNOVER_EXCL_CONS) AS TURNOVER_EXCL, SUM(CONSUMPTION) AS CONSUMPTION
     FROM fact
     GROUP BY GROUP_NAME
 ),
@@ -186,61 +200,151 @@ ORDER BY turnover_excl DESC;
 
 
 /* ============================================================================
-   CHECK 2: Coverage guard
-   Any product with PROD turnover in F_LINEITEM_15MIN, or any invitem with
-   count activity in F_INV_COUNTS_DAY, whose D_PRODUCT/D_INVITEM
-   BOTTOM_MICROSERVICE_NAME is NULL -- i.e. ungrouped, and therefore silently
-   excluded from F_MARGEBRUT_MONTH by the two
-   "WHERE d.BOTTOM_MICROSERVICE_NAME IS NOT NULL" filters in
-   13_f_margebrut_month_control.sql. Zero rows on both sides = PASS. A non-zero
-   count means Task 5's group mapping (12_group_mapping.sql) missed real
-   products/invitems -- the dashboard totals are understated by whatever those
-   rows are worth (see the detail SELECTs below for the offenders).
+   CHECK 2: Coverage guard  (REWRITTEN 2026-07-29)
+   Reports the turnover and stock value that 13's grouping CASE maps to NULL and
+   therefore EXCLUDES from F_MARGEBRUT_MONTH. Measures the deployed mechanism --
+   D_PRODUCT.TOP_NAME and D_INVITEM.TOP_NAME/MIDDLE_1_NAME -- not the withdrawn
+   BOTTOM_MICROSERVICE_NAME one (12_group_mapping.sql is superseded; nothing
+   populates that column any more, so the old predicate flagged EVERY row and
+   this check always FAILed).
+
+   This is a VALUE check, not a row-count check: some exclusions are correct and
+   permanent (Tips, Service Charge, Allergies, Miscellaneous and Unknown are not
+   F&B revenue; Growyze TOP_NAME 'Other'/'Unknown' is not F&B stock). A row count
+   would therefore never reach zero. What matters is whether anything MATERIAL is
+   being dropped, so the thresholds are monetary:
+     PASS  excluded turnover and excluded stock are both < 1% of their totals
+     WARN  either is 1-5%      -- look at the breakdown before trusting the ratios
+     FAIL  either is > 5%      -- the CASE is missing real categories
+   Baseline on Ibis Gloucester Road, 2026-07-29: turnover GBP 0.04 excluded of
+   GBP 33,144.54 (a single Tips line) and GBP 0.00 of GBP 18,302.55 stock -- i.e.
+   the source categories cover this catalogue essentially completely.
    ============================================================================ */
-WITH ungrouped_products AS (
-    SELECT DISTINCT f.PRODUCT_HUB_ID
+WITH prod AS (
+    SELECT
+        CASE
+            WHEN d.TOP_NAME IN ('Breakfast', 'Heartist Breakfast', 'Hot Drinks') THEN 'Breakfast'
+            WHEN d.TOP_NAME IN ('Wine', 'Wines')                                 THEN 'Wines'
+            WHEN d.TOP_NAME IN ('Bottled Beer', 'Draught Beer', 'Beer & Cider')   THEN 'Bottled Beer'
+            WHEN d.TOP_NAME IN ('Soft Drinks', 'Water')                           THEN 'Soft Drinks'
+            WHEN d.TOP_NAME IN ('Spirits', 'Spirit')                              THEN 'Spirit'
+            WHEN d.TOP_NAME = 'Food'                                              THEN 'Food'
+        END AS GROUP_NAME,
+        d.TOP_NAME,
+        f.NET_VALUE
     FROM presentation.F_LINEITEM_15MIN f
     JOIN presentation.D_PRODUCT d ON d.BOTTOM_HUB_ID = f.PRODUCT_HUB_ID
     WHERE f.LI_TYPE = 'PROD'
-      AND d.BOTTOM_MICROSERVICE_NAME IS NULL
+      -- Source filter must mirror 13 (added 2026-07-30). Without it this check
+      -- measures every POS feed on the org: on The Oak & Vine, NCRAloha's 'Drinks'
+      -- (GBP 448,913.60) counts as "excluded turnover" and the check FAILs on data
+      -- the dashboard was never scoped to include.
+      AND d.BOTTOM_SRC LIKE 'int[_]mews%'
 ),
-ungrouped_invitems AS (
-    SELECT DISTINCT c.INVITEM_HUB_ID
+item AS (
+    SELECT
+        CASE
+            WHEN d.TOP_NAME = 'Beverages' AND d.MIDDLE_1_NAME IN ('Soft Drinks', 'Water', 'Juices')                    THEN 'Soft Drinks'
+            WHEN d.TOP_NAME = 'Beverages' AND d.MIDDLE_1_NAME IN ('Spirits', 'Spirit')                                 THEN 'Spirit'
+            WHEN d.TOP_NAME = 'Beverages' AND d.MIDDLE_1_NAME IN ('Wine', 'Wines')                                     THEN 'Wines'
+            WHEN d.TOP_NAME = 'Beverages' AND d.MIDDLE_1_NAME IN ('Bottled Beer', 'Beer & Cider', 'Draught Beer')       THEN 'Bottled Beer'
+            WHEN d.TOP_NAME = 'Beverages' AND d.MIDDLE_1_NAME IN ('Hot Drinks', 'Coffee', 'Tea')                        THEN 'Breakfast'
+            WHEN d.TOP_NAME = 'Food'      AND d.MIDDLE_1_NAME = 'Breakfast'                                             THEN 'Breakfast'
+            WHEN d.TOP_NAME = 'Food'                                                                                    THEN 'Food'
+        END AS GROUP_NAME,
+        d.TOP_NAME, d.MIDDLE_1_NAME,
+        c.ACTUAL_COUNT * c.UOM_COST AS STOCK_VALUE
     FROM presentation.F_INV_COUNTS_DAY c
     JOIN presentation.D_INVITEM d ON d.BOTTOM_HUB_ID = c.INVITEM_HUB_ID
-    WHERE d.BOTTOM_MICROSERVICE_NAME IS NULL
+    -- Source filter must mirror 13: Growyze stock only, else MarketMan's counts
+    -- (all under TOP_NAME 'All INVITEMs', which maps to no group) register as
+    -- excluded stock.
+    WHERE d.BOTTOM_SRC LIKE 'int[_]growyze%'
+),
+totals AS (
+    SELECT
+        (SELECT ISNULL(SUM(NET_VALUE), 0)   FROM prod)                          AS turnover_all,
+        (SELECT ISNULL(SUM(NET_VALUE), 0)   FROM prod WHERE GROUP_NAME IS NULL) AS turnover_excluded,
+        (SELECT ISNULL(SUM(STOCK_VALUE), 0) FROM item)                          AS stock_all,
+        (SELECT ISNULL(SUM(STOCK_VALUE), 0) FROM item WHERE GROUP_NAME IS NULL) AS stock_excluded
 )
 SELECT
     'coverage_guard' AS check_name,
-    (SELECT COUNT(*) FROM ungrouped_products)  AS ungrouped_products_with_turnover,
-    (SELECT COUNT(*) FROM ungrouped_invitems)  AS ungrouped_invitems_with_activity,
+    CAST(turnover_excluded AS DECIMAL(18,2)) AS turnover_excluded,
+    CAST(turnover_all      AS DECIMAL(18,2)) AS turnover_total,
+    CAST(100.0 * turnover_excluded / NULLIF(turnover_all, 0) AS DECIMAL(9,3)) AS turnover_excluded_pct,
+    CAST(stock_excluded AS DECIMAL(18,2)) AS stock_excluded,
+    CAST(stock_all      AS DECIMAL(18,2)) AS stock_total,
+    CAST(100.0 * stock_excluded / NULLIF(stock_all, 0) AS DECIMAL(9,3)) AS stock_excluded_pct,
     CASE
-        WHEN (SELECT COUNT(*) FROM ungrouped_products) = 0
-         AND (SELECT COUNT(*) FROM ungrouped_invitems) = 0
-        THEN 'PASS' ELSE 'FAIL'
-    END AS check_result;
+        WHEN 100.0 * turnover_excluded / NULLIF(turnover_all, 0) > 5
+          OR 100.0 * stock_excluded    / NULLIF(stock_all, 0)    > 5 THEN 'FAIL'
+        WHEN 100.0 * turnover_excluded / NULLIF(turnover_all, 0) > 1
+          OR 100.0 * stock_excluded    / NULLIF(stock_all, 0)    > 1 THEN 'WARN'
+        ELSE 'PASS'
+    END AS check_result
+FROM totals;
 
--- Detail: which products are ungrouped (only meaningful if the summary above is FAIL)
-SELECT TOP 50
-    'ungrouped_product' AS offender_type,
-    f.PRODUCT_HUB_ID,
-    SUM(f.NET_VALUE) AS turnover_excl
+-- Detail: which source categories are being excluded, and what they are worth.
+-- Read this on any WARN/FAIL -- and skim it even on PASS, since a category that
+-- SHOULD be in scope appearing here at low value is an early warning.
+SELECT 'excluded_product_category' AS offender_type,
+       ISNULL(d.TOP_NAME, '(no dimension match)') AS category,
+       COUNT(*) AS lines_, CAST(SUM(f.NET_VALUE) AS DECIMAL(18,2)) AS turnover_excl
 FROM presentation.F_LINEITEM_15MIN f
 JOIN presentation.D_PRODUCT d ON d.BOTTOM_HUB_ID = f.PRODUCT_HUB_ID
-WHERE f.LI_TYPE = 'PROD' AND d.BOTTOM_MICROSERVICE_NAME IS NULL
-GROUP BY f.PRODUCT_HUB_ID
+WHERE f.LI_TYPE = 'PROD'
+  AND d.BOTTOM_SRC LIKE 'int[_]mews%'
+  AND d.TOP_NAME NOT IN ('Breakfast', 'Heartist Breakfast', 'Hot Drinks', 'Wine', 'Wines',
+                         'Bottled Beer', 'Draught Beer', 'Beer & Cider', 'Soft Drinks',
+                         'Water', 'Spirits', 'Spirit', 'Food')
+GROUP BY d.TOP_NAME
 ORDER BY turnover_excl DESC;
 
--- Detail: which invitems are ungrouped (only meaningful if the summary above is FAIL)
-SELECT TOP 50
-    'ungrouped_invitem' AS offender_type,
-    c.INVITEM_HUB_ID,
-    SUM(c.ACTUAL_COUNT * c.UOM_COST) AS stock_value
+SELECT 'excluded_invitem_category' AS offender_type,
+       ISNULL(d.TOP_NAME, '(null)') + ' / ' + ISNULL(d.MIDDLE_1_NAME, '(null)') AS category,
+       COUNT(*) AS count_rows, CAST(SUM(c.ACTUAL_COUNT * c.UOM_COST) AS DECIMAL(18,2)) AS stock_value
 FROM presentation.F_INV_COUNTS_DAY c
 JOIN presentation.D_INVITEM d ON d.BOTTOM_HUB_ID = c.INVITEM_HUB_ID
-WHERE d.BOTTOM_MICROSERVICE_NAME IS NULL
-GROUP BY c.INVITEM_HUB_ID
+WHERE d.BOTTOM_SRC LIKE 'int[_]growyze%'
+  AND NOT (
+        (d.TOP_NAME = 'Beverages' AND d.MIDDLE_1_NAME IN ('Soft Drinks', 'Water', 'Juices', 'Spirits',
+                                                          'Spirit', 'Wine', 'Wines', 'Bottled Beer',
+                                                          'Beer & Cider', 'Draught Beer', 'Hot Drinks',
+                                                          'Coffee', 'Tea'))
+     OR  d.TOP_NAME = 'Food'
+      )
+GROUP BY d.TOP_NAME, d.MIDDLE_1_NAME
 ORDER BY stock_value DESC;
+
+/* ---------------------------------------------------------------------------
+   CHECK 2b: Supplier dimension guard  (NEW 2026-07-29)
+   MargeBrutPurchasesBySupplier joins presentation.D_SUPPLIER. That dimension is
+   built by the "Supplier Dimension" PresentationControl step, whose recursive
+   CTE anchors on "WHERE BOTTOM_LEVEL = 1 AND CURRENT_FLAG = 1" against
+   datavault.SAT_SUPPLIER -- but the Growyze "Growyze Suppliers" staging step
+   does not populate BOTTOM_LEVEL (its four sibling dimension steps -- Inventory
+   Items, Location, Occasion, Product -- all do). So SAT_SUPPLIER.BOTTOM_LEVEL is
+   NULL, the anchor matches nothing, and D_SUPPLIER ends up holding only the
+   CONVERT(BINARY(32), -999) 'Unknown' sentinel. The supplier chart then returns
+   no data rows even though the purchases themselves are fine.
+   Not a Marge Brut defect -- fix belongs in the Growyze staging step.
+   --------------------------------------------------------------------------- */
+SELECT
+    'supplier_dimension_guard' AS check_name,
+    (SELECT COUNT(*) FROM datavault.SAT_SUPPLIER WHERE CURRENT_FLAG = 1)                              AS sat_supplier_current,
+    (SELECT COUNT(*) FROM datavault.SAT_SUPPLIER WHERE CURRENT_FLAG = 1 AND BOTTOM_LEVEL = 1)         AS sat_supplier_bottom_level_set,
+    (SELECT COUNT(*) FROM presentation.D_SUPPLIER)                                                     AS d_supplier_rows,
+    (SELECT COUNT(*) FROM presentation.F_PURCHASES_DAY p
+      WHERE NOT EXISTS (SELECT 1 FROM presentation.D_SUPPLIER s WHERE s.BOTTOM_HUB_ID = p.SUPPLIER_HUB_ID)) AS purchase_lines_with_no_supplier_match,
+    CASE
+        WHEN (SELECT COUNT(*) FROM presentation.F_PURCHASES_DAY p
+               WHERE NOT EXISTS (SELECT 1 FROM presentation.D_SUPPLIER s WHERE s.BOTTOM_HUB_ID = p.SUPPLIER_HUB_ID)) = 0
+        THEN 'PASS'
+        WHEN (SELECT COUNT(*) FROM datavault.SAT_SUPPLIER WHERE CURRENT_FLAG = 1 AND BOTTOM_LEVEL = 1) = 0
+        THEN 'FAIL - SAT_SUPPLIER.BOTTOM_LEVEL never set (Growyze staging gap); D_SUPPLIER cannot build, supplier chart will be empty'
+        ELSE 'FAIL - supplier keys in F_PURCHASES_DAY do not match D_SUPPLIER'
+    END AS check_result;
 
 
 /* ============================================================================
@@ -279,9 +383,20 @@ lineitem_turnover AS (
     FROM presentation.F_LINEITEM_15MIN f
     JOIN presentation.D_PRODUCT d ON d.BOTTOM_HUB_ID = f.PRODUCT_HUB_ID
     WHERE f.LI_TYPE = 'PROD'
-      AND d.BOTTOM_MICROSERVICE_NAME IS NOT NULL
+      -- Must mirror 13's grouping CASE exactly: in-scope iff TOP_NAME maps to a
+      -- group. (Was BOTTOM_MICROSERVICE_NAME IS NOT NULL -- the withdrawn
+      -- mechanism; nothing populates that column now, so this side summed to
+      -- NULL and the check always FAILed.)
+      AND d.BOTTOM_SRC LIKE 'int[_]mews%'
+      AND d.TOP_NAME IN ('Breakfast', 'Heartist Breakfast', 'Hot Drinks', 'Wine', 'Wines',
+                         'Bottled Beer', 'Draught Beer', 'Beer & Cider', 'Soft Drinks',
+                         'Water', 'Spirits', 'Spirit', 'Food')
       AND (@PeriodStartMonth IS NULL OR f.ORDER_DATE >= @PeriodStartMonth)
-      AND (@PeriodEndMonth   IS NULL OR f.ORDER_DATE <= @PeriodEndMonth)
+      -- EXCLUSIVE upper bound for the same reason as Check 4: @PeriodEndMonth is
+      -- EOMONTH(), i.e. the last day at MIDNIGHT, while ORDER_DATE is datetime2.
+      -- Any line item timestamped after 00:00 on the month's last day would be
+      -- dropped from this side only, producing a false FAIL.
+      AND (@PeriodEndMonth   IS NULL OR f.ORDER_DATE < DATEADD(DAY, 1, @PeriodEndMonth))
 )
 SELECT
     'grain_sanity_turnover' AS check_name,
@@ -299,27 +414,31 @@ FROM fact_turnover ft CROSS JOIN lineitem_turnover li;
 
 
 /* ============================================================================
-   CHECK 4: Purchases reconciliation (WARN/INFO -- not a hard gate)
-   Carried forward from Task 7 / DEPLOY.txt's "GO-LIVE RECONCILIATION TODO":
-   MargeBrutPurchasesBySupplier sums presentation.F_PURCHASES_DAY.LINE_TOTAL
-   (Growyze purchase orders, F&B-scoped via D_INVITEM.BOTTOM_MICROSERVICE_NAME
-   IS NOT NULL); MargeBrutPurchasesKPI sums F_MARGEBRUT_MONTH.PURCHASES
-   (Growyze stock-count ORDER_QTY x UOM_COST, via F_INV_COUNTS_DAY). These are
-   different measures from different pipelines with no guaranteed
-   reconciliation -- so this check REPORTS both totals and the delta rather
-   than failing on a mismatch. If the delta is large once real data is
-   flowing: either point MargeBrutPurchasesBySupplier at the same
-   F_INV_COUNTS_DAY-derived measure as the KPI, or rename that chart's
-   title/description to something scope-honest like "Supplier Spend" so it
-   isn't read as a breakdown of the Purchases KPI total.
+   CHECK 4: Purchases reconciliation  (REWRITTEN 2026-07-29)
+   The Task 7 / DEPLOY.txt "GO-LIVE RECONCILIATION TODO" is CLOSED: 13's
+   PURCHASES measure was switched from F_INV_COUNTS_DAY.ORDER_QTY x UOM_COST to
+   presentation.F_PURCHASES_DAY.LINE_TOTAL, so MargeBrutPurchasesKPI and
+   MargeBrutPurchasesBySupplier now read ONE source and ONE measure. (The old
+   ORDER_QTY measure was ~3x low -- GBP 912.29 vs GBP 2,652.84 for June 2026 on
+   Gloucester -- because ORDER_QTY summarises only part of the inter-count
+   movement and a feed's first count carries an unbounded backlog.)
 
-   Guarded with OBJECT_ID + dynamic SQL because presentation.F_PURCHASES_DAY
-   is not guaranteed to exist yet at the time this script is first run
-   (DEPLOY.txt step 3 notes Growyze 06_purchases_presentation_table.sql /
-   07_purchases_presentation_control.sql, QUERY_STATUS #23/#24, are
-   registered but not deployed anywhere) -- referencing a missing table in a
-   plain SELECT would fail the whole batch at compile time and take out every
-   other check below it in the same script run.
+   They still differ in PERIOD SCOPE by design, and that is what this check
+   measures. F_MARGEBRUT_MONTH only holds months that have turnover or a
+   stocktake, whereas the supplier chart reads F_PURCHASES_DAY directly and
+   includes purchase history predating the POS feed (back to Feb 2025 on
+   Gloucester). So with NO period window the supplier side is legitimately the
+   LARGER of the two, and only an equal-window comparison should reconcile:
+     - @PeriodStart/@PeriodEnd NULL  -> supplier >= KPI is expected; INFO
+     - a period window set          -> the two must agree within GBP 1.00, else WARN
+   Run this check with an explicit single-month window to actually test it.
+
+   Guarded with OBJECT_ID + dynamic SQL so a missing F_PURCHASES_DAY cannot fail
+   the whole batch at compile time and take out every other check. (As of
+   2026-07-29 it IS deployed and populated -- registered in both
+   PresentationTables and PresentationControl "Purchases by Day", tier 1 -- so
+   the earlier "not deployed anywhere" note is stale; the guard stays for orgs
+   built from an older baseline.)
    ============================================================================ */
 IF OBJECT_ID('presentation.F_PURCHASES_DAY') IS NULL
 BEGIN
@@ -328,7 +447,7 @@ BEGIN
         CAST(NULL AS DECIMAL(18,2))                                             AS supplier_chart_total,
         CAST(NULL AS DECIMAL(18,2))                                             AS purchases_kpi_total,
         CAST(NULL AS DECIMAL(18,2))                                             AS delta,
-        'INFO - presentation.F_PURCHASES_DAY not deployed yet (see DEPLOY.txt step 3 / QUERY_STATUS #23-24)' AS check_result;
+        'INFO - presentation.F_PURCHASES_DAY does not exist on this org (Growyze 06/07 not applied to its baseline)' AS check_result;
 END
 ELSE
 BEGIN
@@ -337,9 +456,20 @@ BEGIN
         SELECT SUM(p.LINE_TOTAL) AS TOTAL
         FROM presentation.F_PURCHASES_DAY p
         JOIN presentation.D_INVITEM inv ON inv.BOTTOM_HUB_ID = p.INVITEM_HUB_ID
-        WHERE inv.BOTTOM_MICROSERVICE_NAME IS NOT NULL
+        -- Must mirror the F&B scope 13 and MargeBrutPurchasesBySupplier use.
+        WHERE inv.BOTTOM_SRC LIKE ''int[_]growyze%''
+          AND (   (inv.TOP_NAME = ''Beverages'' AND inv.MIDDLE_1_NAME IN (''Soft Drinks'', ''Water'', ''Juices'',
+                                                                         ''Spirits'', ''Spirit'', ''Wine'', ''Wines'',
+                                                                         ''Bottled Beer'', ''Beer & Cider'', ''Draught Beer'',
+                                                                         ''Hot Drinks'', ''Coffee'', ''Tea''))
+               OR inv.TOP_NAME = ''Food'' )
+          AND p.ORDER_STATUS = ''COMPLETED''
           AND (@PeriodStart IS NULL OR p.ORDER_DATE >= @PeriodStart)
-          AND (@PeriodEnd   IS NULL OR p.ORDER_DATE <= @PeriodEnd)
+          -- EXCLUSIVE upper bound: ORDER_DATE is datetime2 and DOES carry a time
+          -- (Gloucester has 16 lines at 2026-06-30 09:00:00 worth GBP 129.45), so
+          -- "<= @PeriodEnd" -- a DATE, i.e. midnight -- silently drops the whole
+          -- last day of the window and produced a spurious WARN here.
+          AND (@PeriodEnd   IS NULL OR p.ORDER_DATE < DATEADD(DAY, 1, @PeriodEnd))
     ),
     kpi_total AS (
         SELECT SUM(PURCHASES) AS TOTAL
@@ -354,7 +484,9 @@ BEGIN
         CAST(ISNULL(s.TOTAL, 0) - ISNULL(k.TOTAL, 0) AS DECIMAL(18,2))    AS delta,
         CASE
             WHEN ABS(ISNULL(s.TOTAL, 0) - ISNULL(k.TOTAL, 0)) <= 1.00 THEN ''PASS''
-            ELSE ''WARN - different pipelines (F_PURCHASES_DAY purchase orders vs F_INV_COUNTS_DAY-derived stock-count PURCHASES); see DEPLOY.txt go-live reconciliation TODO -- fix or rename the supplier chart to Supplier Spend if this persists''
+            WHEN @PeriodStart IS NULL AND @PeriodEnd IS NULL AND ISNULL(s.TOTAL, 0) >= ISNULL(k.TOTAL, 0)
+                THEN ''INFO - expected with no period window: the supplier chart reads F_PURCHASES_DAY directly (incl. purchase history predating the POS feed) while the KPI reads F_MARGEBRUT_MONTH, which only holds months with turnover or a stocktake. Re-run with a single-month window to reconcile.''
+            ELSE ''WARN - same source and measure (F_PURCHASES_DAY.LINE_TOTAL) yet they disagree within an equal window -- check the F&B scope predicate and ORDER_STATUS filter on both sides''
         END AS check_result
     FROM supplier_total s CROSS JOIN kpi_total k';
 

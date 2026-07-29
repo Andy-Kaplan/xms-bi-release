@@ -81,8 +81,23 @@
 --     ratio. 99_verify.sql reports the excluded turnover/stock so the exclusion
 --     cannot hide.
 --
+-- ============================================
+-- SOURCE SCOPING (added 2026-07-30)
+-- ============================================
+-- Marge Brut is Mews turnover measured against Growyze stock, so each side is
+-- pinned to its own feed via BOTTOM_SRC (D_PRODUCT LIKE 'int_mews%',
+-- D_INVITEM LIKE 'int_growyze%'). Without this the category names collide with
+-- any other POS/inventory integration on the same organisation: The Oak & Vine
+-- (UAT org 16) carries NCRAloha as well as Mews, and NCRAloha's TOP_NAME is also
+-- 'Food' with GBP 916,792.80 of turnover against the Mews Food group's GBP
+-- 281.62 -- so cost of sales read ~0.5%, i.e. a ~99% gross margin. This is the
+-- concrete failure the original design avoided by demanding a dedicated
+-- Mews+Growyze-only organisation; scoping by source removes that constraint and
+-- makes the build correct on any organisation.
+--
 -- MEASURES
---   Turnover  : F_LINEITEM_15MIN PROD lines, grouped via D_PRODUCT.TOP_NAME.
+--   Turnover  : F_LINEITEM_15MIN PROD lines, grouped via D_PRODUCT.TOP_NAME,
+--               restricted to the Mews feed.
 --   CLOSING   : stock value at the LAST stocktake within the month.
 --   OPENING   : the PREVIOUS calendar month's CLOSING. Real stocktakes happen
 --               once, at month end (Gloucester: 31 May and 30 June 2026), so the
@@ -125,6 +140,18 @@ WITH grp_product AS (
     -- top tier (the source system''s own category). NULL = not F&B revenue
     -- (Tips, Service Charge, Allergies, Miscellaneous, Unknown) or a portion
     -- sub-line node with no category of its own; excluded below.
+    --
+    -- SOURCE FILTER (added 2026-07-30) -- Marge Brut is defined as MEWS turnover
+    -- against GROWYZE stock, so both sides must be pinned to their own feed. On an
+    -- organisation carrying another POS or inventory integration the category names
+    -- COLLIDE: The Oak & Vine (UAT org 16) has NCRAloha alongside Mews and its
+    -- D_PRODUCT.TOP_NAME is also ''Food'', worth GBP 916,792.80 against the Mews
+    -- Food group''s GBP 281.62 -- unfiltered, cost of sales read about 0.5% (a ~99%
+    -- gross margin). MarketMan''s invitems currently all sit under ''All INVITEMs''
+    -- so the stock side escaped by luck; one category rename would have broken it
+    -- too. LIKE rather than = so a future int_mews002 / int_growyze002 still matches.
+    -- This is what lets the dashboard be correct on ANY organisation, and retires
+    -- the original design''s "needs a dedicated Mews+Growyze-only org" constraint.
     SELECT
         d.BOTTOM_HUB_ID AS PRODUCT_HUB_ID,
         CASE
@@ -136,11 +163,13 @@ WITH grp_product AS (
             WHEN d.TOP_NAME = ''Food''                                                  THEN ''Food''
         END AS GROUP_NAME
     FROM presentation.D_PRODUCT d
+    WHERE d.BOTTOM_SRC LIKE ''int[_]mews%''
 ),
 grp_invitem AS (
     -- Growyze inventory item -> Marge Brut reporting group, from the invitem
     -- hierarchy (TOP_NAME = Food/Beverages, MIDDLE_1_NAME = subcategory).
     -- Non-F&B tops (Other, Unknown) map to NULL and are excluded below.
+    -- Source-filtered to the Growyze feed for the same reason as grp_product.
     SELECT
         d.BOTTOM_HUB_ID AS INVITEM_HUB_ID,
         CASE
@@ -153,6 +182,7 @@ grp_invitem AS (
             WHEN d.TOP_NAME = ''Food''                                                                             THEN ''Food''
         END AS GROUP_NAME
     FROM presentation.D_INVITEM d
+    WHERE d.BOTTOM_SRC LIKE ''int[_]growyze%''
 ),
 turnover AS (
     -- Mews POS turnover per group per month (PROD lines only).
