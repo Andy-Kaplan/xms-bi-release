@@ -1,6 +1,75 @@
 Marge Brut mock -> live build -- Deploy Order (UAT)
 ====================================================
 
+STATUS 2026-07-29: steps 1-6 COMPLETE on UAT against Ibis Gloucester Road
+(OrganisationID 21, OrganisationCode 67CA4E6F-9A7E-F111-B337-002248A1EC3D,
+DB 20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D). Steps 7-8 outstanding,
+blocked when the session's egress IP changed and both UAT servers began
+refusing connections (report DB returned an explicit firewall rejection for
+94.15.235.51; the MI public endpoint timed out).
+
+  DONE  11a_reference_margebrut_manual_all_orgs.sql -> core
+        Empty reference.MARGEBRUT_MANUAL created in all 20 org DBs. All
+        reported PRESENT.
+  DONE  11_reference_margebrut_manual.sql -> Gloucester (6 Oct-2025 seed rows)
+  DONE  10_f_margebrut_month_table.sql  -> core  (PresentationTables, live)
+  DONE  13_f_margebrut_month_control.sql -> core (PresentationControl, tier 2)
+        REWRITTEN this session -- grouping is now inline, opening stock is the
+        previous month's closing count, purchases come from F_PURCHASES_DAY.
+        See the script header for the full rationale.
+  DONE  presentation.F_MARGEBRUT_MONTH created on Gloucester from the
+        registered DDL, then built via
+        EXEC core.sp_ProcessPresentation @TierFilter = 2, @StopOnError = 0
+        Result: 18 rows (2026-05..2026-07 x 6 groups); June 2026 complete --
+        turnover ex-VAT GBP 17,138.71, opening GBP 10,175.54, purchases
+        GBP 2,652.84, closing GBP 8,127.01, consumption GBP 4,701.37,
+        cost 27.4% / GP 72.6%.
+  DONE  14_margebrut_vis_queries.sql -> core. All 9 MargeBrut* datasets now
+        read live. 8 of the 9 executed against Gloucester and returned correct
+        figures; MargeBrutPurchasesBySupplier returns 0 data rows (D_SUPPLIER
+        gap, see below).
+  TODO  Supplier Dimension build on Gloucester -- datavault.HUB_SUPPLIER has 8
+        rows but presentation.D_SUPPLIER holds only the "Unknown" sentinel, so
+        the supplier chart has nothing to join to. Not a Marge Brut defect.
+        Run only that step (a full tier-1 run would TRUNCATE and rebuild every
+        dimension and re-window every fact):
+           DECLARE @q NVARCHAR(MAX), @cm NVARCHAR(MAX);
+           SELECT @q = CAST(query_sql AS NVARCHAR(MAX)), @cm = column_mappings
+           FROM [core].[core].[PresentationControl]
+           WHERE step_name = N'Supplier Dimension';
+           EXEC [core].[sp_ExecuteQuery] @SourceQuery = @q,
+                @TargetTable = N'[presentation].D_SUPPLIER',
+                @ColumnMappingsJson = @cm, @TableType = N'Dimension',
+                @TimeSeriesTargetColumn = NULL;
+  TODO  15_report_config.sql -> report DB (xms-mssql-ne-uat). @OrgId/@DbPrefix
+        are already set to Gloucester. Needs the client IP allowed on the
+        Azure SQL firewall.
+  TODO  99_verify.sql -> Gloucester, then open the dashboard in the UAT UI.
+
+DO NOT RUN, superseded:
+  01_provision_uat_org.sql -- the "Three Rocks Hotel" org it creates was
+    replaced by the two real Ibis hotels, provisioned under ledger O19.
+  12_group_mapping.sql -- grouping moved inline into 13; this script wrote the
+    6 group strings into MICROSERVICE_NAME, which is the platform's
+    product/item display-name resolver (82 COALESCE sites in
+    8_VisualisationQueries.sql). See its own header and 13's.
+  ../02_margebrut_vis_queries.sql -- the mock. Step 6 has now run, so re-running
+    02 would revert all 9 datasets to mocked Oct-2025 literals for EVERY org.
+
+GOTCHAS LEARNED THIS SESSION (both cost real time):
+  - core.DeployPresentationTables DROPs and recreates every registered
+    presentation table for the target org. Do NOT use it to add one table to a
+    populated org -- it would have wiped all 13 populated tables on Gloucester
+    (F_LINEITEM_15MIN 1,464 rows, F_PURCHASES_DAY 2,438, D_INVITEM 502, ...).
+    Create the single table from its registered ddl_script instead.
+  - A Fact step's rebuild DELETE only spans MIN..MAX of the CURRENT result set.
+    Narrowing a fact's key set therefore leaves orphan rows outside the new
+    window; F_MARGEBRUT_MONTH kept 27 stale purchases-only rows until the table
+    was truncated once.
+
+The historical runbook follows, kept for the rationale it records.
+====================================================
+
 Target org : NEW UAT org "Three Rocks Hotel" (does not exist yet -- step 1
              creates it). Distinct from the mocked dashboard's host, The Oak
              & Vine (OrgID 16), which is untouched by this folder.

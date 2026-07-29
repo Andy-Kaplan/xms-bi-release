@@ -31,11 +31,22 @@
      BarChartCard  : RS1 = BarLabel, BarLabelSort, BarValue, BarValueSort ; RS2 = XAxisLabel, YAxisLabel, Title, Description, Trend, TotalValue, Chip
      PieChartCard  : RS1 = Label, Value, Id, Curve, Stack, Area, StackOrder, ShowMark, LegendLabel ; RS2 = Title, Description, Trend, Chip, PiePrimaryText, PieSecondaryText
 
-   GROUP_NAME values written by Task 5 (12_group_mapping.sql): Food, Breakfast,
-   Wines, Bottled Beer, Soft Drinks, Spirit. The grid (mock rows 1-3) and the
-   two chart datasets fold Food+Breakfast into a single "Food" bucket, matching
-   the mock's category set (Food, Wines, Bottled Beer, Soft Drinks, Spirit) --
-   see per-block comments.
+   GROUP_NAME values (Food, Breakfast, Wines, Bottled Beer, Soft Drinks, Spirit)
+   are derived INSIDE the F_MARGEBRUT_MONTH build step (13) from the source
+   systems' own categories -- D_PRODUCT.TOP_NAME for Mews turnover and
+   D_INVITEM.TOP_NAME/MIDDLE_1_NAME for Growyze stock. 12_group_mapping.sql,
+   which used to write these strings into MICROSERVICE_NAME, is SUPERSEDED (it
+   collided with that column's role as the product/item display-name resolver --
+   see 13's header). Nothing here reads MICROSERVICE_NAME for grouping.
+   The grid (mock rows 1-3) and the two chart datasets fold Food+Breakfast into a
+   single "Food" bucket, matching the mock's category set (Food, Wines, Bottled
+   Beer, Soft Drinks, Spirit) -- see per-block comments.
+
+   COVERAGE-MATCHED RATIOS: every cost-%/GP-% denominator sums TURNOVER_EXCL only
+   for months where CONSUMPTION is non-NULL, because a month without both
+   stocktake ends has turnover but no computable consumption. Summing the two over
+   different period coverage understates cost % (Gloucester at 2026-07-29: 3
+   months of turnover, 1 month of consumption -> 14.3% instead of June's 27.4%).
 
    Aggregation rule: every %/ratio column (COST_PCT, GP_PCT, cost-of-sales %)
    is recomputed from the SUMMED raw measures at whatever grain is being
@@ -73,7 +84,14 @@ DECLARE @sql NVARCHAR(MAX);
    =========================================================================== */
 SET @sql = N'WITH base AS (
     SELECT F.GROUP_NAME, F.PERIOD_MONTH, F.TURNOVER_INCL, F.TURNOVER_EXCL, F.OPENING, F.PURCHASES,
-           F.REV_PROV, F.NEW_PROV, F.ALL_STOCK, F.CLOSING, F.STAFF_MEAL, F.COMP, F.CONSUMPTION
+           F.REV_PROV, F.NEW_PROV, F.ALL_STOCK, F.CLOSING, F.STAFF_MEAL, F.COMP, F.CONSUMPTION,
+           -- Cost-%/GP-% denominator, coverage-matched to CONSUMPTION. CONSUMPTION is
+           -- NULL for any month missing a stocktake end (first month of the feed, a
+           -- month not yet closed). Dividing summed consumption by summed turnover
+           -- across a wider period than consumption covers understates cost % badly --
+           -- e.g. Gloucester at 2026-07-29 has 3 months of turnover but only June
+           -- consumption, which would read 14.3% instead of June''s real 27.4%.
+           CASE WHEN F.CONSUMPTION IS NOT NULL THEN F.TURNOVER_EXCL END AS TURNOVER_EXCL_CONS
     FROM presentation.F_MARGEBRUT_MONTH F
     WHERE 1=1
     @FilterClause
@@ -87,7 +105,8 @@ by_group AS (
         SUM(b.OPENING) AS OPENING, SUM(b.PURCHASES) AS PURCHASES,
         SUM(b.REV_PROV) AS REV_PROV, SUM(b.NEW_PROV) AS NEW_PROV,
         SUM(b.ALL_STOCK) AS ALL_STOCK, SUM(b.CLOSING) AS CLOSING,
-        SUM(b.STAFF_MEAL) AS STAFF_MEAL, SUM(b.COMP) AS COMP, SUM(b.CONSUMPTION) AS CONSUMPTION
+        SUM(b.STAFF_MEAL) AS STAFF_MEAL, SUM(b.COMP) AS COMP, SUM(b.CONSUMPTION) AS CONSUMPTION,
+        SUM(b.TURNOVER_EXCL_CONS) AS TURNOVER_EXCL_CONS
     FROM canon c
     LEFT JOIN base b ON b.GROUP_NAME = c.GROUP_NAME
     GROUP BY c.GROUP_NAME
@@ -96,58 +115,61 @@ food_total AS (
     SELECT SUM(TURNOVER_INCL) AS TURNOVER_INCL, SUM(TURNOVER_EXCL) AS TURNOVER_EXCL,
            SUM(OPENING) AS OPENING, SUM(PURCHASES) AS PURCHASES, SUM(REV_PROV) AS REV_PROV,
            SUM(NEW_PROV) AS NEW_PROV, SUM(ALL_STOCK) AS ALL_STOCK, SUM(CLOSING) AS CLOSING,
-           SUM(STAFF_MEAL) AS STAFF_MEAL, SUM(COMP) AS COMP, SUM(CONSUMPTION) AS CONSUMPTION
+           SUM(STAFF_MEAL) AS STAFF_MEAL, SUM(COMP) AS COMP, SUM(CONSUMPTION) AS CONSUMPTION,
+           SUM(TURNOVER_EXCL_CONS) AS TURNOVER_EXCL_CONS
     FROM by_group WHERE GROUP_NAME IN (N''Food'', N''Breakfast'')
 ),
 bev_total AS (
     SELECT SUM(TURNOVER_INCL) AS TURNOVER_INCL, SUM(TURNOVER_EXCL) AS TURNOVER_EXCL,
            SUM(OPENING) AS OPENING, SUM(PURCHASES) AS PURCHASES, SUM(REV_PROV) AS REV_PROV,
            SUM(NEW_PROV) AS NEW_PROV, SUM(ALL_STOCK) AS ALL_STOCK, SUM(CLOSING) AS CLOSING,
-           SUM(STAFF_MEAL) AS STAFF_MEAL, SUM(COMP) AS COMP, SUM(CONSUMPTION) AS CONSUMPTION
+           SUM(STAFF_MEAL) AS STAFF_MEAL, SUM(COMP) AS COMP, SUM(CONSUMPTION) AS CONSUMPTION,
+           SUM(TURNOVER_EXCL_CONS) AS TURNOVER_EXCL_CONS
     FROM by_group WHERE GROUP_NAME IN (N''Wines'', N''Bottled Beer'', N''Soft Drinks'', N''Spirit'')
 ),
 grand_total AS (
     SELECT SUM(TURNOVER_INCL) AS TURNOVER_INCL, SUM(TURNOVER_EXCL) AS TURNOVER_EXCL,
            SUM(OPENING) AS OPENING, SUM(PURCHASES) AS PURCHASES, SUM(REV_PROV) AS REV_PROV,
            SUM(NEW_PROV) AS NEW_PROV, SUM(ALL_STOCK) AS ALL_STOCK, SUM(CLOSING) AS CLOSING,
-           SUM(STAFF_MEAL) AS STAFF_MEAL, SUM(COMP) AS COMP, SUM(CONSUMPTION) AS CONSUMPTION
+           SUM(STAFF_MEAL) AS STAFF_MEAL, SUM(COMP) AS COMP, SUM(CONSUMPTION) AS CONSUMPTION,
+           SUM(TURNOVER_EXCL_CONS) AS TURNOVER_EXCL_CONS
     FROM by_group
 ),
 rows AS (
     SELECT 1 AS SortOrder, N''TOTAL FOOD'' AS RowLabel,
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM food_total
     UNION ALL
     SELECT 2, N''Total Food (ex. Breakfast)'',
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM by_group WHERE GROUP_NAME = N''Food''
     UNION ALL
     SELECT 3, N''Total Breakfast'',
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM by_group WHERE GROUP_NAME = N''Breakfast''
     UNION ALL
     SELECT 4, N''WINES'',
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM by_group WHERE GROUP_NAME = N''Wines''
     UNION ALL
     SELECT 5, N''BOTTLED BEER'',
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM by_group WHERE GROUP_NAME = N''Bottled Beer''
     UNION ALL
     SELECT 6, N''SOFT DRINKS ONLY'',
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM by_group WHERE GROUP_NAME = N''Soft Drinks''
     UNION ALL
     SELECT 7, N''SPIRIT'',
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM by_group WHERE GROUP_NAME = N''Spirit''
     UNION ALL
     SELECT 8, N''TOTAL BEVERAGE'',
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM bev_total
     UNION ALL
     SELECT 9, N''GRAND TOTAL VR'',
-        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION
+        TURNOVER_INCL, TURNOVER_EXCL, OPENING, PURCHASES, REV_PROV, NEW_PROV, ALL_STOCK, CLOSING, STAFF_MEAL, COMP, CONSUMPTION, TURNOVER_EXCL_CONS
     FROM grand_total
 )
 SELECT
@@ -163,8 +185,8 @@ SELECT
   FORMAT(STAFF_MEAL, ''N2'') AS Column10,
   FORMAT(COMP, ''N2'') AS Column11,
   FORMAT(CONSUMPTION, ''N2'') AS Column12,
-  FORMAT(CASE WHEN TURNOVER_EXCL > 0 THEN CONSUMPTION / TURNOVER_EXCL END, ''P1'') AS Column13,
-  FORMAT(CASE WHEN TURNOVER_EXCL > 0 THEN 1 - (CONSUMPTION / TURNOVER_EXCL) END, ''P1'') AS Column14,
+  FORMAT(CASE WHEN TURNOVER_EXCL_CONS > 0 THEN CONSUMPTION / TURNOVER_EXCL_CONS END, ''P1'') AS Column13,
+  FORMAT(CASE WHEN TURNOVER_EXCL_CONS > 0 THEN 1 - (CONSUMPTION / TURNOVER_EXCL_CONS) END, ''P1'') AS Column14,
   NULL AS Column15, NULL AS Column16, NULL AS Column17, NULL AS Column18, NULL AS Column19, NULL AS Column20,
   NULL AS Column21, NULL AS Column22, NULL AS Column23, NULL AS Column24, NULL AS Column25, NULL AS Column26,
   NULL AS Column27, NULL AS Column28, NULL AS Column29
@@ -207,8 +229,8 @@ PRINT 'MargeBrutGrid merged';
    =========================================================================== */
 SET @sql = N'SELECT
   N''Cost of Sales'' AS Title,
-  FORMAT(SUM(F.CONSUMPTION) / NULLIF(SUM(F.TURNOVER_EXCL), 0), ''P1'') AS Value,
-  N''Gross Margin '' + FORMAT(1 - SUM(F.CONSUMPTION) / NULLIF(SUM(F.TURNOVER_EXCL), 0), ''P1'') AS Description,
+  FORMAT(SUM(F.CONSUMPTION) / NULLIF(SUM(CASE WHEN F.CONSUMPTION IS NOT NULL THEN F.TURNOVER_EXCL END), 0), ''P1'') AS Value,
+  N''Gross Margin '' + FORMAT(1 - SUM(F.CONSUMPTION) / NULLIF(SUM(CASE WHEN F.CONSUMPTION IS NOT NULL THEN F.TURNOVER_EXCL END), 0), ''P1'') AS Description,
   NULL AS Trend,
   NULL AS Chip
 FROM presentation.F_MARGEBRUT_MONTH F
@@ -293,19 +315,21 @@ PRINT 'MargeBrutPurchasesKPI merged';
 SET @sql = N'WITH base AS (
     SELECT
         CASE WHEN F.GROUP_NAME IN (N''Food'', N''Breakfast'') THEN N''Food'' ELSE F.GROUP_NAME END AS BUCKET,
-        F.TURNOVER_EXCL, F.CONSUMPTION
+        F.CONSUMPTION,
+        -- Coverage-matched denominator -- see the MargeBrutGrid base CTE comment.
+        CASE WHEN F.CONSUMPTION IS NOT NULL THEN F.TURNOVER_EXCL END AS TURNOVER_EXCL_CONS
     FROM presentation.F_MARGEBRUT_MONTH F
     WHERE 1=1
     @FilterClause
 ),
 agg AS (
-    SELECT BUCKET, SUM(TURNOVER_EXCL) AS TURNOVER_EXCL, SUM(CONSUMPTION) AS CONSUMPTION
+    SELECT BUCKET, SUM(TURNOVER_EXCL_CONS) AS TURNOVER_EXCL_CONS, SUM(CONSUMPTION) AS CONSUMPTION
     FROM base
     GROUP BY BUCKET
 ),
 ratios AS (
     SELECT BUCKET,
-        CAST(CASE WHEN TURNOVER_EXCL > 0 THEN 100.0 * CONSUMPTION / TURNOVER_EXCL END AS DECIMAL(9,1)) AS COST_PCT
+        CAST(CASE WHEN TURNOVER_EXCL_CONS > 0 THEN 100.0 * CONSUMPTION / TURNOVER_EXCL_CONS END AS DECIMAL(9,1)) AS COST_PCT
     FROM agg
 )
 SELECT
@@ -341,34 +365,27 @@ PRINT 'MargeBrutCostRatioByGroup merged';
    LINE_TOTAL), built in ClaudeDevelopment/integrations/Growyze/06_.../07_...
    -- joined to the CORE (already-deployed) presentation.D_SUPPLIER dimension
    for the display name. This is that table, unqualified.
-   CONCERN: F_PURCHASES_DAY's PresentationTables/PresentationControl records
-   (Growyze scripts 06/07) are registered but NOT deployed to any org yet
-   (QUERY_STATUS.md #23/#24, "Not deployed") -- this dataset will return no
-   rows / error until that table exists and its build step has run at least
-   once. Flagging for Task 8/9/10 (report-DB config, org provisioning,
-   go-live verification) to pick up as a deploy-order dependency.
-   REVIEW FIX: also join presentation.D_INVITEM (BOTTOM_HUB_ID unique per hub
-   -- confirmed via MCP, 1,625 rows / 1,625 distinct BOTTOM_HUB_ID on the
-   Growyze UAT proxy, so this join cannot fan out the fact) and filter to
-   BOTTOM_MICROSERVICE_NAME IS NOT NULL, the same F&B group set Task 5
-   (12_group_mapping.sql) assigns, so this chart is scoped on the same basis
-   as the rest of the dashboard rather than summing every F_PURCHASES_DAY
-   category regardless of type. NOTE: Task 5''s CASE has an ELSE ''Food''
-   catch-all, so on an org whose Growyze catalogue mixes F&B with non-F&B
-   stock (e.g. retail clothing/equipment -- see 12_group_mapping.sql''s own
-   comment on the Padel Social proxy), every invitem ends up non-NULL and this
-   filter does not yet exclude anything; it becomes a real scope once an org''s
-   catalogue either has no non-F&B admixture or gets a proper category source.
-   ============================================================================
-   TODO: F_PURCHASES_DAY.LINE_TOTAL (order qty x price, from Growyze purchase
-   orders) is a different measure and a different source pipeline than
-   F_MARGEBRUT_MONTH.PURCHASES (F_INV_COUNTS_DAY ORDER_QTY x UOM_COST, from
-   Growyze stock counts) -- this chart''s total is NOT guaranteed to reconcile
-   with MargeBrutPurchasesKPI on real data. MUST be validated at go-live: if
-   the two disagree materially, either point this chart at the same
-   F_INV_COUNTS_DAY-based measure as the KPI, or rename the title/description
-   to something scope-honest like "Supplier Spend" rather than implying it is
-   the same Purchases figure shown elsewhere on the dashboard.
+   RESOLVED 2026-07-29: F_PURCHASES_DAY is deployed and populated (2,438 rows on
+   Ibis Gloucester Road, ORDER_DATE Feb 2025 - Jul 2026), and both
+   PresentationTables and PresentationControl ("Purchases by Day", tier 1) hold
+   live records, so it exists in every org. The earlier "not deployed anywhere"
+   concern no longer applies.
+   RECONCILIATION NOW HOLDS (was a go-live TODO): 13's PURCHASES measure was
+   switched from F_INV_COUNTS_DAY.ORDER_QTY x UOM_COST to this same
+   F_PURCHASES_DAY.LINE_TOTAL, so MargeBrutPurchasesKPI and this chart read one
+   source and one measure. They still differ in PERIOD SCOPE, by design: the KPI
+   sums F_MARGEBRUT_MONTH, which only carries months that have turnover or a
+   stocktake, whereas this chart reads F_PURCHASES_DAY directly and so includes
+   purchase history predating the POS feed. On an unfiltered view the chart total
+   is therefore >= the KPI. Filter both to the same PeriodMonth to compare them.
+   SCOPE FILTER: joins presentation.D_INVITEM (BOTTOM_HUB_ID unique per hub, so
+   the join cannot fan out the fact) and restricts to the same F&B categories 13
+   groups on -- TOP_NAME/MIDDLE_1_NAME, the source system''s own taxonomy. This
+   replaces the previous BOTTOM_MICROSERVICE_NAME IS NOT NULL filter, which
+   depended on the withdrawn 12_group_mapping.sql and would now match no rows at
+   all. Unlike the old ELSE ''Food'' catch-all this genuinely excludes non-F&B
+   stock (Growyze TOP_NAME ''Other''/''Unknown''), so orgs whose catalogue mixes
+   retail with F&B are now scoped correctly.
    =========================================================================== */
 SET @sql = N'SELECT
   COALESCE(sup.BOTTOM_MICROSERVICE_NAME, sup.BOTTOM_SUPPLIER_NAME) AS BarLabel,
@@ -379,7 +396,8 @@ FROM presentation.F_PURCHASES_DAY p
 JOIN presentation.D_SUPPLIER sup ON sup.BOTTOM_HUB_ID = p.SUPPLIER_HUB_ID
 JOIN presentation.D_INVITEM inv ON inv.BOTTOM_HUB_ID = p.INVITEM_HUB_ID
 WHERE 1=1
-AND inv.BOTTOM_MICROSERVICE_NAME IS NOT NULL
+AND (   (inv.TOP_NAME = N''Beverages'' AND inv.MIDDLE_1_NAME IN (N''Soft Drinks'', N''Water'', N''Juices'', N''Spirits'', N''Spirit'', N''Wine'', N''Wines'', N''Bottled Beer'', N''Beer & Cider'', N''Draught Beer'', N''Hot Drinks'', N''Coffee'', N''Tea''))
+     OR inv.TOP_NAME = N''Food'' )
 @FilterClause
 GROUP BY COALESCE(sup.BOTTOM_MICROSERVICE_NAME, sup.BOTTOM_SUPPLIER_NAME)
 
@@ -393,7 +411,8 @@ SELECT
    FROM presentation.F_PURCHASES_DAY p
    JOIN presentation.D_INVITEM inv ON inv.BOTTOM_HUB_ID = p.INVITEM_HUB_ID
    WHERE 1=1
-   AND inv.BOTTOM_MICROSERVICE_NAME IS NOT NULL
+   AND (   (inv.TOP_NAME = N''Beverages'' AND inv.MIDDLE_1_NAME IN (N''Soft Drinks'', N''Water'', N''Juices'', N''Spirits'', N''Spirit'', N''Wine'', N''Wines'', N''Bottled Beer'', N''Beer & Cider'', N''Draught Beer'', N''Hot Drinks'', N''Coffee'', N''Tea''))
+     OR inv.TOP_NAME = N''Food'' )
    @FilterClause) AS TotalValue,  -- BarChartCard parses TotalValue as numeric; reuses alias ''p''/''inv'' so @FilterClause resolves in this subquery too
   NULL AS Chip';
 MERGE INTO [core].[core].[VisualisationQueries] AS tgt
