@@ -26,9 +26,12 @@
      A bare NULLIF would null the cost of those items instead.
 
    Scope:
-     StagingControl is ENVIRONMENT-WIDE - this corrects every Growyze org
-     (Padel Social, Dirty Sixth included); their cost/GP% figures will move
-     down toward correct. MarketMan is unaffected (BOMPrice, separate step).
+     StagingControl is ENVIRONMENT-WIDE - this expression runs for every
+     Growyze org (Padel Social, Dirty Sixth included). In practice the
+     division is a no-op wherever size = 1 (price / 1 = price), which covers
+     most of Padel Social's and Dirty Sixth's catalogue, so only the Ibis
+     orgs were materially affected. MarketMan is unaffected (BOMPrice,
+     separate step).
 
    Safe: MERGE upsert on step_name - idempotent, re-runnable.
    ============================================================================ */

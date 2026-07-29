@@ -101,7 +101,8 @@ if (-not $Force) {
 foreach ($o in $orgs) {
     Write-Log "RUN   21_invitem_uom_cost_backfill.sql [$($o.DatabaseName)] ($($o.OrganisationName))"
     try {
-        Invoke-Sql -Database $o.DatabaseName -File $backfillScript | Out-Null
+        $backfillResult = @(Invoke-Sql -Database $o.DatabaseName -File $backfillScript)
+        foreach ($row in $backfillResult) { Write-Log ("      {0} = {1}" -f $row.check_name, $row.stuck_row_count) }
         Write-Log "OK    backfill $($o.OrganisationName)"
     }
     catch {
