@@ -20,7 +20,13 @@ Manifest shape:
 """
 import io
 import json
+import re
 import sys
+
+# A genuine trailing GO batch separator: GO as the only token on its own
+# line (optionally surrounded by whitespace), not any word ending in "go"
+# such as CARGO.
+TRAILING_GO_RE = re.compile(r"(?im)^[ \t]*GO[ \t]*$")
 
 DROP_BY_TYPE = {
     "TABLE": "DROP TABLE {SCHEMA}.[{name}];",
@@ -91,12 +97,16 @@ def build(manifest_path):
 
     for o in objects:
         body = io.open(o["body"], encoding="utf-8").read().rstrip()
-        if body.upper().endswith("GO"):
+        last_line = body.splitlines()[-1] if body else ""
+        if TRAILING_GO_RE.match(last_line):
             raise SystemExit(
                 "{}: body must not end with GO - it is executed via EXEC().".format(o["body"])
             )
-        if "'" in o["description"]:
-            raise SystemExit("{}: description must not contain a single quote.".format(o["name"]))
+        for field in ("description", "category", "name"):
+            if "'" in o[field]:
+                raise SystemExit(
+                    "{}: {} must not contain a single quote.".format(o["name"], field)
+                )
         if o["type"] not in DROP_BY_TYPE:
             raise SystemExit("{}: unsupported type {}".format(o["name"], o["type"]))
 

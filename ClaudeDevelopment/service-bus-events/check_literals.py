@@ -10,33 +10,65 @@ import sys
 
 
 def scan(fname):
-    src = io.open(fname, encoding="utf-8").read()
-    # Drop -- comments so apostrophes in prose do not confuse the scan.
-    lines = []
-    for ln in src.splitlines():
-        idx = ln.find("--")
-        if idx != -1 and ln[:idx].count("'") % 2 == 0:
-            ln = ln[:idx]
-        lines.append(ln)
-    body = "\n".join(lines)
+    """Single left-to-right scan over the raw source.
 
-    i, literals, closed = 0, 0, True
-    while i < len(body):
-        if body[i] != "'":
-            i += 1
-            continue
-        literals += 1
-        i += 1
-        while i < len(body):
-            if body[i] == "'":
-                if i + 1 < len(body) and body[i + 1] == "'":
-                    i += 2
-                    continue
+    Tracks literal state and comment state together so a '--' or '/*' that
+    appears *inside* an already-open string literal is never mistaken for a
+    real comment marker (T-SQL string contents have no comment syntax), and
+    so a quote inside a real comment is never mistaken for the start of a
+    literal. Block comments (/* ... */) nest in T-SQL, so nesting depth is
+    tracked; line comments (--) run to the next newline.
+    """
+    src = io.open(fname, encoding="utf-8").read()
+    n = len(src)
+    i = 0
+    literals = 0
+    closed = True
+    block_depth = 0
+
+    while i < n:
+        if block_depth > 0:
+            if src.startswith("/*", i):
+                block_depth += 1
+                i += 2
+            elif src.startswith("*/", i):
+                block_depth -= 1
+                i += 2
+            else:
                 i += 1
-                break
+            continue
+
+        c = src[i]
+
+        if src.startswith("--", i):
+            nl = src.find("\n", i)
+            i = n if nl == -1 else nl
+            continue
+
+        if src.startswith("/*", i):
+            block_depth = 1
+            i += 2
+            continue
+
+        if c == "'":
+            literals += 1
             i += 1
-        else:
-            closed = False
+            terminated = False
+            while i < n:
+                if src[i] == "'":
+                    if i + 1 < n and src[i + 1] == "'":
+                        i += 2
+                        continue
+                    i += 1
+                    terminated = True
+                    break
+                i += 1
+            if not terminated:
+                closed = False
+            continue
+
+        i += 1
+
     return literals, closed
 
 
