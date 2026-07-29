@@ -162,6 +162,8 @@ git commit -m "test(growyze): verification SELECTs for UOM_COST pack-size fix"
 
 The `query_sql` below is the **live deployed text** with one expression changed. Only the leaf branch changes: `TRY_CAST(price AS DECIMAL(38,10)) AS UOM_COST` becomes `TRY_CAST(price AS DECIMAL(38,10)) / COALESCE(NULLIF(TRY_CAST(size AS DECIMAL(38,10)), 0), 1) AS UOM_COST`. Everything else — including `size AS ATTR_4` and `CAST(price AS NVARCHAR(MAX)) AS ATTR_5`, which the verification script's Section D depends on — is byte-identical.
 
+**Ruling (2026-07-29, Andy):** the statement text is declared **once** into `@sql` and referenced by both MERGE branches, rather than duplicated verbatim as the older `StagingControl` scripts do. This removes the copy-divergence trap structurally. Keep the `DECLARE`s and the `MERGE` in the **same batch** — a `GO` between them would discard the variables. Only one `GO`, at the end.
+
 Create `ClaudeDevelopment/integrations/Growyze/19_invitem_uom_cost_pack_size.sql`:
 
 ```sql
@@ -200,59 +202,60 @@ Create `ClaudeDevelopment/integrations/Growyze/19_invitem_uom_cost_pack_size.sql
    Safe: MERGE upsert on step_name - idempotent, re-runnable.
    ============================================================================ */
 
+DECLARE @step_name NVARCHAR(200) = N'Growyze Inventory Items';
+
+DECLARE @desc NVARCHAR(500) = N'Stages products as 3-tier inventory item hierarchy (Item/SubCategory/Category). UOM_COST = price / pack size (cost per measure unit).';
+
+DECLARE @cols NVARCHAR(MAX) = N'["HUB_ID", "INVITEM_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "UOM", "ATTR_1", "ATTR_2", "ATTR_3", "ATTR_4", "ATTR_5", "UOM_COST", "INVITEM_ID"]';
+
+DECLARE @sql NVARCHAR(MAX) = N'IF OBJECT_ID(''stage.GRYZ_INVITEMS'', ''U'') IS NOT NULL DROP TABLE [stage].[GRYZ_INVITEMS]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_growyze001].[DL_PRODUCTS] ), base AS (SELECT * FROM deduped WHERE rn = 1) SELECT * INTO [stage].[GRYZ_INVITEMS] FROM ( SELECT id AS HUB_ID, name AS INVITEM_NAME, CONCAT(organizations, ''-'', subCategory) AS PARENT_ID, ''Inventory Item'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, measure AS UOM, barcode AS ATTR_1, code AS ATTR_2, unit AS ATTR_3, size AS ATTR_4, CAST(price AS NVARCHAR(MAX)) AS ATTR_5, TRY_CAST(price AS DECIMAL(38,10)) / COALESCE(NULLIF(TRY_CAST(size AS DECIMAL(38,10)), 0), 1) AS UOM_COST, id AS INVITEM_ID FROM base UNION ALL SELECT DISTINCT CONCAT(organizations, ''-'', subCategory) AS HUB_ID, subCategory AS INVITEM_NAME, category AS PARENT_ID, ''Sub Category'' AS LEVEL_NAME, 0 AS BOTTOM_LEVEL, NULL AS UOM, NULL AS ATTR_1, NULL AS ATTR_2, NULL AS ATTR_3, NULL AS ATTR_4, NULL AS ATTR_5, CAST(NULL AS DECIMAL(38,10)) AS UOM_COST, CONCAT(organizations, ''-'', subCategory) AS INVITEM_ID FROM base WHERE subCategory IS NOT NULL UNION ALL SELECT DISTINCT category AS HUB_ID, category AS INVITEM_NAME, NULL AS PARENT_ID, ''Category'' AS LEVEL_NAME, 0 AS BOTTOM_LEVEL, NULL AS UOM, NULL AS ATTR_1, NULL AS ATTR_2, NULL AS ATTR_3, NULL AS ATTR_4, NULL AS ATTR_5, CAST(NULL AS DECIMAL(38,10)) AS UOM_COST, category AS INVITEM_ID FROM base WHERE category IS NOT NULL ) AS source_query;';
+
 MERGE INTO [core].[int_growyze001].[StagingControl] AS tgt
-USING (VALUES (N'Growyze Inventory Items')) AS src (step_name)
+USING (VALUES (@step_name)) AS src (step_name)
 ON tgt.step_name = src.step_name
 WHEN MATCHED THEN
     UPDATE SET
         staging_table    = N'GRYZ_INVITEMS',
-        query_sql        = N'IF OBJECT_ID(''stage.GRYZ_INVITEMS'', ''U'') IS NOT NULL DROP TABLE [stage].[GRYZ_INVITEMS]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_growyze001].[DL_PRODUCTS] ), base AS (SELECT * FROM deduped WHERE rn = 1) SELECT * INTO [stage].[GRYZ_INVITEMS] FROM ( SELECT id AS HUB_ID, name AS INVITEM_NAME, CONCAT(organizations, ''-'', subCategory) AS PARENT_ID, ''Inventory Item'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, measure AS UOM, barcode AS ATTR_1, code AS ATTR_2, unit AS ATTR_3, size AS ATTR_4, CAST(price AS NVARCHAR(MAX)) AS ATTR_5, TRY_CAST(price AS DECIMAL(38,10)) / COALESCE(NULLIF(TRY_CAST(size AS DECIMAL(38,10)), 0), 1) AS UOM_COST, id AS INVITEM_ID FROM base UNION ALL SELECT DISTINCT CONCAT(organizations, ''-'', subCategory) AS HUB_ID, subCategory AS INVITEM_NAME, category AS PARENT_ID, ''Sub Category'' AS LEVEL_NAME, 0 AS BOTTOM_LEVEL, NULL AS UOM, NULL AS ATTR_1, NULL AS ATTR_2, NULL AS ATTR_3, NULL AS ATTR_4, NULL AS ATTR_5, CAST(NULL AS DECIMAL(38,10)) AS UOM_COST, CONCAT(organizations, ''-'', subCategory) AS INVITEM_ID FROM base WHERE subCategory IS NOT NULL UNION ALL SELECT DISTINCT category AS HUB_ID, category AS INVITEM_NAME, NULL AS PARENT_ID, ''Category'' AS LEVEL_NAME, 0 AS BOTTOM_LEVEL, NULL AS UOM, NULL AS ATTR_1, NULL AS ATTR_2, NULL AS ATTR_3, NULL AS ATTR_4, NULL AS ATTR_5, CAST(NULL AS DECIMAL(38,10)) AS UOM_COST, category AS INVITEM_ID FROM base WHERE category IS NOT NULL ) AS source_query;',
+        query_sql        = @sql,
         tier             = 1,
         step_type        = N'Staging',
         exclude          = 0,
-        description      = N'Stages products as 3-tier inventory item hierarchy (Item/SubCategory/Category). UOM_COST = price / pack size (cost per measure unit).',
+        description      = @desc,
         depends_on_steps = NULL,
         retry_count      = 3,
         timeout_minutes  = 30,
-        staging_columns  = N'["HUB_ID", "INVITEM_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "UOM", "ATTR_1", "ATTR_2", "ATTR_3", "ATTR_4", "ATTR_5", "UOM_COST", "INVITEM_ID"]',
+        staging_columns  = @cols,
         updated_at       = GETDATE()
 WHEN NOT MATCHED THEN
     INSERT (step_name, staging_table, query_sql, tier, step_type, exclude,
             description, depends_on_steps, retry_count, timeout_minutes,
             staging_columns, created_at, updated_at)
-    VALUES (N'Growyze Inventory Items', N'GRYZ_INVITEMS',
-            N'IF OBJECT_ID(''stage.GRYZ_INVITEMS'', ''U'') IS NOT NULL DROP TABLE [stage].[GRYZ_INVITEMS]; WITH deduped AS ( SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY LOADTS_UTC DESC) AS rn FROM [int_growyze001].[DL_PRODUCTS] ), base AS (SELECT * FROM deduped WHERE rn = 1) SELECT * INTO [stage].[GRYZ_INVITEMS] FROM ( SELECT id AS HUB_ID, name AS INVITEM_NAME, CONCAT(organizations, ''-'', subCategory) AS PARENT_ID, ''Inventory Item'' AS LEVEL_NAME, 1 AS BOTTOM_LEVEL, measure AS UOM, barcode AS ATTR_1, code AS ATTR_2, unit AS ATTR_3, size AS ATTR_4, CAST(price AS NVARCHAR(MAX)) AS ATTR_5, TRY_CAST(price AS DECIMAL(38,10)) / COALESCE(NULLIF(TRY_CAST(size AS DECIMAL(38,10)), 0), 1) AS UOM_COST, id AS INVITEM_ID FROM base UNION ALL SELECT DISTINCT CONCAT(organizations, ''-'', subCategory) AS HUB_ID, subCategory AS INVITEM_NAME, category AS PARENT_ID, ''Sub Category'' AS LEVEL_NAME, 0 AS BOTTOM_LEVEL, NULL AS UOM, NULL AS ATTR_1, NULL AS ATTR_2, NULL AS ATTR_3, NULL AS ATTR_4, NULL AS ATTR_5, CAST(NULL AS DECIMAL(38,10)) AS UOM_COST, CONCAT(organizations, ''-'', subCategory) AS INVITEM_ID FROM base WHERE subCategory IS NOT NULL UNION ALL SELECT DISTINCT category AS HUB_ID, category AS INVITEM_NAME, NULL AS PARENT_ID, ''Category'' AS LEVEL_NAME, 0 AS BOTTOM_LEVEL, NULL AS UOM, NULL AS ATTR_1, NULL AS ATTR_2, NULL AS ATTR_3, NULL AS ATTR_4, NULL AS ATTR_5, CAST(NULL AS DECIMAL(38,10)) AS UOM_COST, category AS INVITEM_ID FROM base WHERE category IS NOT NULL ) AS source_query;',
-            1, N'Staging', 0,
-            N'Stages products as 3-tier inventory item hierarchy (Item/SubCategory/Category). UOM_COST = price / pack size (cost per measure unit).',
-            NULL, 3, 30,
-            N'["HUB_ID", "INVITEM_NAME", "PARENT_ID", "LEVEL_NAME", "BOTTOM_LEVEL", "UOM", "ATTR_1", "ATTR_2", "ATTR_3", "ATTR_4", "ATTR_5", "UOM_COST", "INVITEM_ID"]',
-            GETDATE(), GETDATE());
+    VALUES (@step_name, N'GRYZ_INVITEMS', @sql, 1, N'Staging', 0,
+            @desc, NULL, 3, 30, @cols, GETDATE(), GETDATE());
 GO
 ```
 
-- [ ] **Step 2: Verify both `query_sql` copies are identical**
-
-The MATCHED and NOT MATCHED branches must carry byte-identical SQL — divergence is a silent trap that only surfaces on a fresh environment. Confirm mechanically:
+- [ ] **Step 2: Verify the statement text is defined once and used by both branches**
 
 ```bash
-grep -o "IF OBJECT_ID('\''stage.GRYZ_INVITEMS'\''.*source_query;" \
-  "ClaudeDevelopment/integrations/Growyze/19_invitem_uom_cost_pack_size.sql" \
-  | sort -u | wc -l
+F="ClaudeDevelopment/integrations/Growyze/19_invitem_uom_cost_pack_size.sql"
+grep -c "DECLARE @sql NVARCHAR(MAX)" "$F"
+grep -c "@sql" "$F"
+grep -c "^GO$" "$F"
 ```
 
-Expected: `1` (both copies collapse to one unique string). If it prints `2`, the copies differ — fix before proceeding.
+Expected: `1` (declared once), then `3` (one declaration + one reference per MERGE branch), then `1` (a single terminating `GO` — more than one would split the batch and discard the variables).
 
-- [ ] **Step 3: Verify the expression appears exactly twice and the old one is gone**
+- [ ] **Step 3: Verify the new expression is present and the old one is gone**
 
 ```bash
-grep -c "COALESCE(NULLIF(TRY_CAST(size AS DECIMAL(38,10)), 0), 1)" \
-  "ClaudeDevelopment/integrations/Growyze/19_invitem_uom_cost_pack_size.sql"
-grep -c "TRY_CAST(price AS DECIMAL(38,10)) AS UOM_COST" \
-  "ClaudeDevelopment/integrations/Growyze/19_invitem_uom_cost_pack_size.sql"
+F="ClaudeDevelopment/integrations/Growyze/19_invitem_uom_cost_pack_size.sql"
+grep -c "COALESCE(NULLIF(TRY_CAST(size AS DECIMAL(38,10)), 0), 1)" "$F"
+grep -c "TRY_CAST(price AS DECIMAL(38,10)) AS UOM_COST" "$F"
+grep -c "size AS ATTR_4" "$F"
 ```
 
-Expected: `2` then `0`.
-
+Expected: `1`, then `0` (the un-divided expression must not survive anywhere), then `1` (`size AS ATTR_4` preserved — the verification script's Section D reads pack size from `D_INVITEM.BOTTOM_ATTR_4`).
 - [ ] **Step 4: Commit**
 
 ```bash
