@@ -1,0 +1,10 @@
+{
+  "out": "03_sp_apply_event_inbox.sql",
+  "header": "XMS Service Bus messaging - core.sp_ApplyEventInbox (generic MDM apply)",
+  "notes": ["Edit 03a_sp_apply_event_inbox_body.sql, never this file."],
+  "objects": [
+    {"name": "sp_ApplyEventInbox", "type": "PROCEDURE", "order": 113, "category": "Data Vault",
+     "body": "03a_sp_apply_event_inbox_body.sql",
+     "description": "Applies core.EVENT_INBOX MDM events to core.MDM_RECORD and projects them onto SAT MICROSERVICE_ columns"}
+  ]
+}
