@@ -151,14 +151,17 @@ catch {
 
 # Confirm the regenerated Load step actually carries the column, and that it did
 # NOT pick up MICROSERVICE_NAME (which would collapse the chart to one bar).
-$loadStepCheck = Invoke-Sql -Database 'core' -Query @"
+# @() is load-bearing: a single-row Invoke-Sqlcmd result is one DataRow, and
+# indexing a DataRow with [0] returns its FIRST COLUMN VALUE, not the row -- so
+# $result[0].Verdict throws under Set-StrictMode. Forcing an array keeps [0] the row.
+$loadStepCheck = @(Invoke-Sql -Database 'core' -Query @'
 SELECT CASE WHEN query_sql LIKE '%BOTTOM[_]LEVEL%'
              AND query_sql NOT LIKE '%MICROSERVICE[_]NAME%'
             THEN 'OK' ELSE 'BAD' END AS Verdict
 FROM [core].[int_growyze001].[StagingControl]
 WHERE step_name = 'Data Vault load - SUPPLIER';
-"@
-if (-not $loadStepCheck -or $loadStepCheck[0].Verdict -ne 'OK') {
+'@)
+if ($loadStepCheck.Count -eq 0 -or $loadStepCheck[0].Verdict -ne 'OK') {
     Write-Log 'FAIL  regenerated SUPPLIER Load step missing BOTTOM_LEVEL or carrying MICROSERVICE_NAME'
     throw 'SUPPLIER Load step did not regenerate as expected.'
 }
@@ -208,8 +211,8 @@ foreach ($o in $orgs) {
 
     # Verify immediately, per org, so a partial success is visible in the log
     # rather than discovered later on the dashboard.
-    $r = Invoke-Sql -Database $o.DatabaseName -Query $rollupSql
-    if ($r) {
+    $r = @(Invoke-Sql -Database $o.DatabaseName -Query $rollupSql)   # @() per the note above
+    if ($r.Count -gt 0) {
         Write-Log ("      sat={0} bl_set={1} d_supplier={2} lines={3} unmatched={4} -> {5}" -f `
             $r[0].rows_current, $r[0].bl_set, $r[0].growyze_rows, $r[0].lines, $r[0].unmatched, $r[0].Verdict)
         if ($r[0].Verdict -ne 'PASS') { $failed += $o.OrganisationName }
