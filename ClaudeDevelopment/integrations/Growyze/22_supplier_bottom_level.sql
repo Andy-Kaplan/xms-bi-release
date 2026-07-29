@@ -46,11 +46,18 @@
 -- is currently NULL for both int_growyze001 and int_marketman001. Keep it that way.
 --
 -- Deploy target: core.  After deploy:
---   EXEC [core].[core].[UploadStagingControl] @IntegrationSchema = N'int_growyze001';
---   EXEC [core].[core].[UploadEntityMappings] @IntegrationSchema = N'int_growyze001';
--- then, per Growyze org: staging -> DV load -> rebuild the `Supplier Dimension`
+--   EXEC [core].[core].[UploadEntityMappings]
+--        @intSchema = N'int_growyze001', @entity = N'SUPPLIER';
+-- to regenerate the `Data Vault load - SUPPLIER` StagingControl step from the
+-- mapping row updated in (b).
+--   * There is NO `UploadStagingControl` procedure -- the staging step edited in
+--     (a) is the live artefact and needs no regeneration.
+--   * @entity is scoped to SUPPLIER deliberately. An unscoped call regenerates
+--     every Growyze entity, and multi-source entities are known to collide
+--     (error 8156 / silent last-source-wins). One entity, one blast radius.
+-- Then, per Growyze org: staging -> DV load -> rebuild the `Supplier Dimension`
 -- step ONLY. Do NOT run DeployPresentationTables -- it DROPs every registered
--- presentation table (see O8).
+-- presentation table (see O8). Runner: 94_deploy_supplier_bottom_level.ps1.
 --
 -- Idempotent: wholesale UPDATE of both control rows; re-running changes nothing.
 -- ============================================================================
