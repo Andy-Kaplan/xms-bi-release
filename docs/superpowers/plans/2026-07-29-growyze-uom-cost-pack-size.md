@@ -255,7 +255,9 @@ grep -c "TRY_CAST(price AS DECIMAL(38,10)) AS UOM_COST" "$F"
 grep -c "size AS ATTR_4" "$F"
 ```
 
-Expected: `1`, then `0` (the un-divided expression must not survive anywhere), then `1` (`size AS ATTR_4` preserved — the verification script's Section D reads pack size from `D_INVITEM.BOTTOM_ATTR_4`).
+Expected: **`2`**, then `0` (the un-divided expression must not survive anywhere), then `1` (`size AS ATTR_4` preserved — the verification script's Section D reads pack size from `D_INVITEM.BOTTOM_ATTR_4`).
+
+The first count is `2`, not `1`: the divisor expression appears once for real inside the `@sql` literal **and** once as prose in the script's own header comment (the "Divisor:" note). Both are expected. What matters is that the second count is `0` — the un-divided form must not survive anywhere.
 - [ ] **Step 4: Commit**
 
 ```bash
