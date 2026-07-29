@@ -45,6 +45,12 @@ BEGIN
        OR OBJECT_ID(N''core.MDM_PROJECTION'', N''U'') IS NULL
         RETURN 0;
 
+    -- Steps 1-5 (candidate shredding through the registry upsert and inbox
+    -- close) are wrapped so nothing in them can be fatal to a DV load. A
+    -- failure here rolls back and is logged, but the procedure still falls
+    -- through to Step 6 (SAT projection) and Step 7 (report) below.
+    BEGIN TRY
+
     ------------------------------------------------------------------
     -- Step 1: candidates. Materialised first so the OPENJSON in step 2
     -- only ever sees valid JSON - predicate order inside a CROSS APPLY
@@ -119,7 +125,31 @@ BEGIN
             name           NVARCHAR(255) N''$.name''
         ) AS J
     WHERE J.entityName IS NOT NULL
-      AND LEN(LTRIM(RTRIM(J.entityName))) > 0;
+      AND LEN(LTRIM(RTRIM(J.entityName))) > 0
+      -- $.payload must be a JSON object. If it is an array, OPENJSON''s
+      -- explicit WITH schema explodes one row per element, all sharing the
+      -- same MessageId, which violates #Ev''s PRIMARY KEY. JSON_QUERY returns
+      -- the sub-document''s raw text, so its first non-whitespace character
+      -- distinguishes object ({) from array ([).
+      AND LEFT(LTRIM(JSON_QUERY(C.Payload, N''$.payload'')), 1) = N''{'';
+
+    -- Array/scalar-shaped $.payload rows were excluded from #Ev above (and so
+    -- would otherwise wrongly look like "no entityName" rows, which must stay
+    -- Received). Distinguish them here by payload shape, not by absence from
+    -- #Ev alone: only rows whose $.payload exists but is not an object (i.e.
+    -- an array) are errored; rows with no $.payload key at all still fall
+    -- through to the "no entityName" path below.
+    UPDATE I
+    SET Status = N''Error'',
+        LastError = N''payload is not a JSON object'',
+        ProcessedAtUtc = SYSUTCDATETIME()
+    FROM core.EVENT_INBOX AS I
+    INNER JOIN #Cand AS C ON C.MessageId = I.MessageId
+    WHERE I.Status = N''Received''
+      AND JSON_QUERY(C.Payload, N''$.payload'') IS NOT NULL
+      AND LEFT(LTRIM(JSON_QUERY(C.Payload, N''$.payload'')), 1) <> N''{'';
+
+    SET @InboxErrored = @InboxErrored + @@ROWCOUNT;
 
     ------------------------------------------------------------------
     -- Step 3: validation. Every rejection carries a specific reason.
@@ -207,8 +237,15 @@ BEGIN
         ON  tgt.EntityName     = src.EntityName
         AND tgt.IntegrationSrc = src.IntegrationSrc
         AND tgt.BusinessKey    = src.BusinessKey
-    WHEN MATCHED THEN
-        UPDATE SET
+    -- A redelivered duplicate (Service Bus is at-least-once) carries the same
+    -- identity fields and the same raw payload text as what is already
+    -- stored, so the EXCEPT below is empty and the no-op update is skipped -
+    -- it must not bump UpdatedAtUtc or inflate @RegistryUpserted/LOG_DV.
+    WHEN MATCHED AND EXISTS (
+            SELECT src.MicroserviceId, src.MicroserviceIdBin, src.MicroserviceName, src.CanonicalPayload
+            EXCEPT
+            SELECT tgt.MicroserviceId, tgt.MicroserviceIdBin, tgt.MicroserviceName, tgt.Payload)
+        THEN UPDATE SET
             MicroserviceId    = COALESCE(src.MicroserviceId, tgt.MicroserviceId),
             MicroserviceIdBin = COALESCE(src.MicroserviceIdBin, tgt.MicroserviceIdBin),
             MicroserviceName  = COALESCE(src.MicroserviceName, tgt.MicroserviceName),
@@ -239,6 +276,17 @@ BEGIN
 
     COMMIT TRANSACTION;
 
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE() <> 0
+            ROLLBACK TRANSACTION;
+
+        IF @JobID IS NOT NULL AND OBJECT_ID(N''core.LOG_DV'', N''U'') IS NOT NULL
+            INSERT INTO core.LOG_DV (dv_process_job_id, src, entity, log_level, log_msg, logts_utc)
+            VALUES (@JobID, N''core'', N''EVENT_INBOX'', N''ERROR'',
+                    N''sp_ApplyEventInbox steps 1-5 failed: '' + ERROR_MESSAGE(), GETUTCDATE());
+    END CATCH
+
     ------------------------------------------------------------------
     -- Step 6: project the registry onto current SAT rows, per entity.
     --
@@ -257,7 +305,7 @@ BEGIN
     -- Created ONCE, outside the loop, and emptied per iteration. Creating and
     -- dropping the same temp table inside a loop in one batch trips
     -- "There is already an object named ''#Rules''" at compile time.
-    CREATE TABLE #Rules (TargetColumn SYSNAME NOT NULL, SourceExpr NVARCHAR(400) NOT NULL);
+    CREATE TABLE #Rules (TargetColumn SYSNAME NOT NULL, SourceExpr NVARCHAR(600) NOT NULL);
 
     DECLARE ent_cur CURSOR LOCAL FAST_FORWARD FOR
         SELECT DISTINCT R.EntityName
@@ -281,13 +329,22 @@ BEGIN
             --   * TargetColumn must match MICROSERVICE[_]% (belt to the CHECK)
             --   * TargetColumn must exist on this SAT table
             --   * SourceField must be a plain identifier (no injection via JSON path)
+            --
+            -- Each SourceExpr is wrapped in COALESCE(<source>, S.<TargetColumn>)
+            -- so a partial message (a field omitted this time) cannot null out
+            -- an already-populated SAT column on the next reconciliation. The
+            -- SAME COALESCEd expression is reused for @SetList and @CmpSrc
+            -- below, so the difference test stays consistent with what is
+            -- actually written and the procedure remains idempotent.
             INSERT INTO #Rules (TargetColumn, SourceExpr)
             SELECT P.TargetColumn,
+                   N''COALESCE('' +
                    CASE P.SourceField
                        WHEN N''microserviceId'' THEN N''R.MicroserviceId''
                        WHEN N''name''           THEN N''R.MicroserviceName''
                        ELSE N''JSON_VALUE(R.Payload, ''''$.'' + P.SourceField + N'''''')''
                    END
+                   + N'', S.'' + QUOTENAME(P.TargetColumn) + N'')''
             FROM (
                 SELECT TargetColumn, SourceField,
                        ROW_NUMBER() OVER (
@@ -306,19 +363,23 @@ BEGIN
 
             -- MICROSERVICE_ID_BIN is always maintained, never configured. It is
             -- also what makes difference detection exact: comparing the text
-            -- column under a CI collation would miss casing changes.
+            -- column under a CI collation would miss casing changes. Same
+            -- COALESCE protection as the configured rules above.
             IF EXISTS (SELECT 1 FROM sys.columns C
                        WHERE C.object_id = OBJECT_ID(@SatObject, N''U'')
                          AND C.name = N''MICROSERVICE_ID_BIN'')
                AND EXISTS (SELECT 1 FROM #Rules WHERE TargetColumn = N''MICROSERVICE_ID'')
                 INSERT INTO #Rules (TargetColumn, SourceExpr)
-                VALUES (N''MICROSERVICE_ID_BIN'', N''R.MicroserviceIdBin'');
+                VALUES (N''MICROSERVICE_ID_BIN'', N''COALESCE(R.MicroserviceIdBin, S.[MICROSERVICE_ID_BIN])'');
 
             IF EXISTS (SELECT 1 FROM #Rules)
             BEGIN
-                SELECT @SetList = STRING_AGG(CAST(N''S.'' + QUOTENAME(TargetColumn) + N'' = '' + SourceExpr AS NVARCHAR(MAX)), N'', ''),
-                       @CmpSat  = STRING_AGG(CAST(N''S.'' + QUOTENAME(TargetColumn) AS NVARCHAR(MAX)), N'', ''),
-                       @CmpSrc  = STRING_AGG(CAST(SourceExpr AS NVARCHAR(MAX)), N'', '')
+                -- All three STRING_AGG calls carry an explicit ORDER BY so the
+                -- positional correspondence between @SetList/@CmpSat/@CmpSrc is
+                -- a guarantee, not an accident of otherwise-unspecified ordering.
+                SELECT @SetList = STRING_AGG(CAST(N''S.'' + QUOTENAME(TargetColumn) + N'' = '' + SourceExpr AS NVARCHAR(MAX)), N'', '') WITHIN GROUP (ORDER BY TargetColumn),
+                       @CmpSat  = STRING_AGG(CAST(N''S.'' + QUOTENAME(TargetColumn) AS NVARCHAR(MAX)), N'', '') WITHIN GROUP (ORDER BY TargetColumn),
+                       @CmpSrc  = STRING_AGG(CAST(SourceExpr AS NVARCHAR(MAX)), N'', '') WITHIN GROUP (ORDER BY TargetColumn)
                 FROM #Rules;
 
                 -- NOT EXISTS (... INTERSECT ...) is a null-safe "differs" test,
@@ -383,9 +444,11 @@ BEGIN
                SatProjected     = @SatProjected,
                StillReceived    = @StillReceived;
 
-    DROP TABLE #Rules;
-    DROP TABLE #Ev;
-    DROP TABLE #Cand;
+    -- Guarded: if steps 1-5 failed before #Cand/#Ev were created (or #Rules
+    -- before step 6 ran at all), an unconditional DROP would itself error.
+    IF OBJECT_ID(N''tempdb..#Rules'') IS NOT NULL DROP TABLE #Rules;
+    IF OBJECT_ID(N''tempdb..#Ev'') IS NOT NULL DROP TABLE #Ev;
+    IF OBJECT_ID(N''tempdb..#Cand'') IS NOT NULL DROP TABLE #Cand;
 
     RETURN 0;
 END;';
