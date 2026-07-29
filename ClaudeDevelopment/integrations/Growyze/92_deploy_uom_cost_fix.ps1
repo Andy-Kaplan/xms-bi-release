@@ -34,6 +34,9 @@ if (-not $server -or -not $user -or -not $password) {
 if ($server -notmatch ',\d+$' -and $server -match '\.public\.') { $server = "$server,3342" }
 if ($server -match 'prod') { throw "Refusing to run against a server whose name contains 'prod': $server" }
 
+if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+    throw "SqlServer module not found. Run: Install-Module SqlServer -Scope CurrentUser -AllowClobber"
+}
 Import-Module SqlServer -DisableNameChecking -WarningAction SilentlyContinue
 
 $scriptDir = $PSScriptRoot
@@ -92,8 +95,14 @@ if (-not $Force) {
 }
 
 Write-Log 'RUN   19_invitem_uom_cost_pack_size.sql [core]'
-Invoke-Sql -Database 'core' -File $fixScript | Out-Null
-Write-Log 'OK    control plane updated'
+try {
+    Invoke-Sql -Database 'core' -File $fixScript | Out-Null
+    Write-Log 'OK    control plane updated'
+}
+catch {
+    Write-Log "FAIL  control plane update: $($_.Exception.Message)"
+    throw
+}
 
 foreach ($o in $orgs) {
     Write-Log "RUN   reload [$($o.DatabaseName)] ($($o.OrganisationName))"
