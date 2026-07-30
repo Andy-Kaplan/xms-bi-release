@@ -1,8 +1,9 @@
 -- =============================================================================
 -- XMS Service Bus messaging — roll the three new objects out to every org DB
 -- =============================================================================
--- Deploys ONLY the Service Bus objects (EVENT_OUTBOX, EVENT_INBOX,
--- sp_ApplyEventInbox) into every active organisation database.
+-- Deploys ONLY the Service Bus / MDM objects (EVENT_OUTBOX, EVENT_INBOX,
+-- MDM_RECORD, MDM_PROJECTION, sp_ApplyEventInbox) into every active
+-- organisation database, in ExecutionOrder so tables precede the procedure.
 --
 -- WHY NOT JUST CALL sp_DeployObjects PER ORG DB?
 -- sp_DeployObjects has no per-object filter (only @ObjectTypes, by type), and it
@@ -11,9 +12,9 @@
 -- re-run against an already-provisioned org DB reports errors for objects that
 -- already exist. This script therefore reuses sp_DeployObjects' exact placeholder
 -- and metasql execution mechanism (4_DeploymentTools.sql ~line 1555) but scopes
--- it to the three objects added for this feature.
+-- it to the objects added for this feature.
 --
--- Run against the CORE database. Idempotent — all three CreationScripts are
+-- Run against the CORE database. Idempotent — all CreationScripts are
 -- self-guarded (IF OBJECT_ID ... IS NULL / CREATE OR ALTER), so re-running is a
 -- no-op for databases already done.
 --
@@ -71,7 +72,9 @@ BEGIN
         SELECT ObjectName, ObjectType, CreationScript
         FROM [core].[DeploymentObjects]
         WHERE IsActive = 1
-          AND ObjectName IN (N'EVENT_OUTBOX', N'EVENT_INBOX', N'sp_ApplyEventInbox')
+          AND ObjectName IN (N'EVENT_OUTBOX', N'EVENT_INBOX',
+                             N'MDM_RECORD', N'MDM_PROJECTION',
+                             N'sp_ApplyEventInbox')
         ORDER BY ExecutionOrder;
 
     OPEN obj_cursor;
