@@ -179,7 +179,13 @@ All measured on UAT 2026-07-30, immediately before the change:
 
 ## 6. Risks
 
-1. **Runtime cross-database permission (highest).** The resolver reads `core.core.Integrations` from inside the org database. Four LIVE vis queries already do this, but all are `FilterList`/`MarkdownCard`/`StaticBoxCard`. If the dashboard's runtime login lacks cross-database rights, **every** retrofitted sales card fails. *Mitigation:* smoke-test one retrofitted card end-to-end through its card SP before rolling the pattern out. This is the first implementation step, and a failure here forces a fallback to a per-org helper object.
+1. **Runtime cross-database permission — DOWNGRADED to near-zero after checking (2026-07-30).** Originally rated the highest risk. Two findings retire it:
+   - **Every card render already reads `core.core`.** `SingleKPICard` (and its siblings) fetch their own `QueryTemplate` from `[core].[core].[VisualisationQueries]` before executing it. If a card can render at all, the connection already reaches `core.core`.
+   - **There is no least-privilege app user whose rights could differ.** `core` contains no non-system database principals and no explicit `SELECT`/`EXECUTE` grants, so the runtime connects as the owner (dbo).
+
+   Residual risk is only that `Integrations` might be denied while `VisualisationQueries` is granted — implausible given the above. Still confirmed by an end-to-end smoke test in Task 1, now framed as confirmation rather than a design gate.
+
+   **A separate composition risk was checked at the same time and also cleared:** `SingleKPICard` does `REPLACE(@SQL,'@FilterClause',...)` then `EXEC sp_executesql @SQL` with **no outer wrapping**, so a leading `WITH` CTE is valid. Several LIVE queries (`InvMMHeader`, `InvMMHeader2`) already use CTEs, one with `@FilterClause` inside the CTE.
 2. **Oak & Vine's POS migration is visible.** A card spanning Oct 2025 → Jul 2026 mixes NCRAloha and Mews categories, so the legend changes mid-timeline. Not double-counting (zero month overlap). Accepted.
 3. **Mews `BREAKFAST ADJUSTMENT` = £42,223.26 of £55,221.06** Oak & Vine Mews PROD sales (76%). Retrofitting surfaces it. Consistent with what Marge Brut already reports, so not a regression — flagged for separate decision.
 4. **Growyze intra-day coverage** is only ~10% until historical sales land. Cards work either way; the heatmap is thin until then.
