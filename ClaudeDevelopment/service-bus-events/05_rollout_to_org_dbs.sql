@@ -1,5 +1,5 @@
 -- =============================================================================
--- XMS Service Bus messaging — roll the three new objects out to every org DB
+-- XMS Service Bus messaging — roll the five Service Bus / MDM objects out to every org DB
 -- =============================================================================
 -- Deploys ONLY the Service Bus / MDM objects (EVENT_OUTBOX, EVENT_INBOX,
 -- MDM_RECORD, MDM_PROJECTION, sp_ApplyEventInbox) into every active
