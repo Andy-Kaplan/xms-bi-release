@@ -2041,6 +2041,62 @@ All scripts in `integrations/Growyze/`. Design: `docs/superpowers/specs/2026-07-
 
 **MarketMan regression:** PASS — untouched. Both runners target only Growyze-mapped orgs (10, 18, 20, 21); MarketMan orgs (1, 3, 4, 5, 6, 7, 16) were never in scope, and the backfill additionally filters `SRC = 'int_growyze001'`.
 
+> **Correction (2026-07-30):** there are **five** Growyze-mapped orgs, not four — **org 16 (The Oak & Vine)** is Growyze-mapped as well as MarketMan/Mews/NCRAloha, so the same data-driven cursor returns it. It was therefore missing from the 2026-07-29 UOM_COST runs. Re-checked after the Plan 1 reload: Oak & Vine has **501 leaf items, 0 stuck per-pack costs, 0 null costs** — identical to Ibis Gloucester Road, because these orgs share one Growyze catalogue. No corrective action needed, but any future "all Growyze orgs" run must expect 5.
+
+---
+
+## Growyze default dashboards — Plan 1 (O5)
+
+Plan: `docs/plans/2026-06-05-growyze-dashboards-1-data-quality.md`. Ledger: `docs/outstanding/O5-growyze-default-dashboards.md`. Authored 2026-07-10, deployed + verified on UAT **2026-07-30** across all 5 Growyze orgs via runner 96 below (log `deploy_PLAN1_UAT_20260730_125550.log`, 16 steps, exit 0).
+
+### 91. `integrations/Growyze/17_product_category_sentinel.sql`
+
+**Purpose:** Task 1 — COALESCE blank/whitespace `DL_DISHES.category` to an `'Uncategorised'` sentinel in **both** halves of the `GRYZ_PRODUCT` staging step (the product `PARENT_ID` half and the category-seed half), and drop the `WHERE category IS NOT NULL` filter so the sentinel category row is seeded. Stops the `D_PRODUCT` recursive flatten falling back to the product's own name for MIDDLE_1/TOP. Wholesale idempotent UPDATE; `RAISERROR` guard asserts exactly 1 row updated.
+
+**Status:** **Deployed UAT 2026-07-30.** PASS with exact reconciliation — fall-through 110→0 (Padel), 34→0 (Dirty Sixth), 2→0 (Ibis Heathrow); `distinct TOP_NAME` collapsed 46→5 and 37→4. The `Uncategorised` bucket holds exactly 110 / 34 / 2 products, matching each org's pre-fix count to the row. Definitive gate (staged Product rows with NULL `PARENT_ID`) = **0 on all 5 orgs**. Oak & Vine and Ibis Gloucester each still show 1 row where `TOP_NAME = BOTTOM_PRODUCT_NAME`, which is **benign**: the dish `Heartist Breakfast` has its source category set literally to `'Heartist Breakfast'`.
+
+### 92. `integrations/Growyze/18_lineitem_timestamp_mapping.sql`
+
+**Purpose:** Task 6 — populate `LINEITEM_TIMESTAMP` so the 15-minute bucket in `F_LINEITEM_15MIN` stops collapsing. Adds the column to `GRYZ_LINEITEM` staging (+ `staging_columns`) and to the `LINEITEM` `EntityMappings` row (+ `entity_columns`). **Plan deviation, approved 2026-07-30:** sourced from `DL_SALES.createdAt` (UK-local via `AT TIME ZONE`), **not** the plan's `sale_from`, which is a daily aggregation window and date-only — mapping it would have parked every line in the 00:00 bucket. Both UPDATEs carry `RAISERROR` guards.
+
+**Status:** **Deployed UAT 2026-07-30.** Works — Padel now has **151 distinct 15-min buckets** (was 0), Dirty Sixth 114, **0 midnight rows**, with a real trading curve 06:00–23:00 peaking 21:00–22:00. ⚠️ **Coverage is structurally capped at the DL window:** only ~4% of satellite rows carry a timestamp (Padel 1,297/31,060) because Growyze's DL tables are a **rolling recent window** — `DL_SALES` held 1,177 rows spanning only 2026-07-27→07-30 against 31,060 accumulated `SAT_LINEITEM` rows. Staging can only stamp line items whose sales header is still in DL, so **history is permanently NULL — its source no longer exists**. Coverage grows forward per load and never backfills. Any intra-day card must be presented as a recent-window view unless the fetcher re-lands historical sales.
+
+### 93. `integrations/Growyze/08_purchases_day_padel_create.sql`
+
+**Purpose:** Task 7 — targeted `IF NOT EXISTS` create of `presentation.F_PURCHASES_DAY` on Padel Social, the only Growyze org lacking it. Deliberately avoids `DeployPresentationTables`, which **drops and recreates every** registered presentation table. Plan over-scope reduced: scripts 05/06/07 and Padel's `SAT_LNK_INVITEM_STOCKORDER` were already deployed, so only the presentation table was missing.
+
+**Status:** **Deployed UAT 2026-07-30.** PASS — Padel went from *table absent* to **1,800 rows / £47,397.03 spanning 2025-09-29→2026-07-29**. Note the runner refuses to execute this if its hardcoded Padel UAT GUID is not an org database in the target environment; re-point it before any non-UAT use.
+
+### 94. `integrations/Growyze/reporting_queries/39_growyze_cost_kpis.sql`
+
+**Purpose:** Task 2 — new Growyze-scoped `GrowyzeProfit` / `GrowyzeProfitPct` SingleKPICard datasets off the healthy `F_PRODUCT_MARGIN_DAY`, leaving the shared `OakVine*` cost KPIs untouched (they read the inflated `F_INV_SALES_DAY` and return −£1.6M / 1,469%). Idempotent MERGE on `(DataSetName, VisualizationType)`.
+
+**Status:** **Deployed UAT 2026-07-30**, both LIVE. `GrowyzeProfitPct` on Padel = **80.8%**. **Defect fixed pre-deploy:** the templates were source-blind despite the Growyze naming. `F_PRODUCT_MARGIN_DAY` has no SRC column, so scoping now goes via `product.[BOTTOM_SRC]`. Measured — a **no-op on Padel** (identical £144,248.29 profit over 7,489 rows) but on Oak & Vine the unscoped form returned **£905,503.87 profit on £1,420,927.46 of net value that is entirely NCRAloha/Mews**, under a card labelled "Growyze". Same collision class as O8's 0.5% cost of sales; see memory `feedback_scope_facts_by_source`.
+
+### 95. `integrations/Growyze/reporting_queries/40_growyze_sales_by_category.sql`
+
+**Purpose:** Task 3 — Growyze-scoped `GrowyzeSalesByCategory` PieChartCard grouping on the real category set, replacing `OakVineMenuFoodDrinksSplit`, which hardcodes `TOP_NAME IN ('Food','Drinks')` and degenerates to a 1-slice pie (Growyze has no "Drinks"). Mirrors the live card's full output contract including the second header SELECT. Depends on 91.
+
+**Status:** **Deployed UAT 2026-07-30**, LIVE. Returns the real category set with no product names. Two fixes pre-deploy: `F.SRC = 'int_growyze001'` scoping (see 94), and `CAST(F.[ORDER_DATE] AS DATE)` on the CALENDAR join — `ORDER_DATE` is `datetime2` against a `DATE` column, matching today only because Growyze lands at midnight.
+
+### 96. `integrations/Growyze/95_deploy_plan1.ps1`
+
+**Purpose:** PowerShell runner (house method) for all of Plan 1: `-WhatIf` preflight, typed `DEPLOY` confirmation, `-StartAt` resume, `-OnlyOrg`, `-SkipPadelTable`, prod-name refusal, `QueryTimeout = 0`, per-run log. Discovers Growyze orgs data-driven and fails fast if 93's hardcoded Padel GUID is absent from the target environment. **Corrects the deploy order documented in the plan and ledger:** there is **no `UploadStagingControl` procedure** (the only `Upload*` proc in `core` is `UploadEntityMappings`, whose parameter is **`@intSchema`**, not `@IntegrationSchema`), and the step is unnecessary since staging is read straight from `StagingControl.query_sql`. Scoped to `@entity = 'LINEITEM'` to avoid rewriting all 23 Load steps.
+
+**Status:** **Executed against UAT 2026-07-30**, 16 steps, exit 0, no FAIL lines, ~13 min. No regression: Growyze net sales identical to the penny (Padel £204,866.82, Dirty Sixth £466,582.61); Oak & Vine `F_PRODUCT_MARGIN_DAY` byte-identical; O8 Marge Brut intact (Gloucester stocktakes £10,175.54 / £8,127.01, 0 null costs).
+
+### 97. `integrations/Growyze/96_verify_plan1.sql`
+
+**Purpose:** Read-only verification for Plan 1, run per org (two-part names), with pre-deploy baselines and achieved results recorded in its header. Sections: A category fall-through (indicator + definitive staged-orphan gate), B category set + sentinel bucket, C timestamp population / fact buckets / hour curve / midnight guard, D `F_PURCHASES_DAY`, E regression guards. All checks scoped to `int_growyze001`.
+
+**Status:** Runs clean against UAT 2026-07-30 (14 check blocks, no SQL errors). **Three of its own checks were wrong and were repaired** — `C1` asserted `with_ts = sat_rows`, impossible given the rolling DL window; `B2` and `E2` looked for `BOTTOM_LEVEL_NAME = 'Category'` rows in `D_PRODUCT`, which holds **only leaf Product rows** for Growyze, so both were vacuously 0. Left unrepaired these would have produced permanent false FAILs — the same stale-verifier trap O8 hit with `99_verify`. Also documents that fact **row count** legitimately rises (Padel 9,796→10,464) because `LINEITEM_TIMESTAMP` is a GROUP BY key: assert on `net_sales`, never row count.
+
+### 98. `integrations/Growyze/97_rebuild_presentation.sql`
+
+**Purpose:** Presentation rebuild with explicit load-window management, invoked per org by 96. Exists because Plan 1's "staging → DV load → presentation rebuild" hides two traps: (1) **`sp_DataVaultLoad` does not rebuild the presentation layer at all** — it never references `PresentationControl`; `core.sp_ProcessPresentation` is separate and needs an explicit call; (2) `sp_ProcessPresentation`'s **Fact** steps filter `ORDER_DATE BETWEEN @StartDate AND @EndDate` read from **the org's own** `core.GlobalParameters` (`LINEITEM_START/END`, `STOCKEVENT_START/END`), which rest at NULL between loads, so `BETWEEN NULL AND NULL` matches nothing and the fact is silently untouched. **Dimension** steps truncate-and-rebuild unconditionally, which is why Task 1 was unaffected but Tasks 6/7 would have looked deployed while changing nothing. Widens `LINEITEM` only where Growyze line items exist and `STOCKEVENT` only where `F_PURCHASES_DAY` is present-but-empty with source rows (self-limiting to Padel, so re-runs are no-ops); always restores NULL, including on failure. Safe by construction — `sp_ExecuteQuery` guards its fact DELETE with `IF @MinDate IS NOT NULL`, so an empty result is a true no-op, not a wipe.
+
+**Status:** **Executed UAT 2026-07-30** on all 5 orgs. Behaved exactly as designed — Padel 3m36s and Dirty Sixth 2m56s (facts rebuilt over full history) versus Oak & Vine 19s, Heathrow 3s, Gloucester 2s (dimensions only, no Growyze line items, POS facts correctly left alone). Reuse for any future Growyze fact backfill.
+
 ---
 
 ## Mews (int_mews001)
