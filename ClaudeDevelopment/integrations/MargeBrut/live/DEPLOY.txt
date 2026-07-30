@@ -333,3 +333,47 @@ whole file after a partial failure is safe. There is no automated
 rollback for org/integration creation; removing a wrongly-provisioned org
 is a manual core.Organisations / core.Integrations / core.OrganisationIntegrations
 cleanup (see memory/test-orgs.md for how prior test-org cleanups were done).
+
+
+================================================================================
+STEP 19-20 -- F&B GROUP FILTER (deployed UAT 2026-07-30, both orgs)
+================================================================================
+19_margebrut_groups_filter.sql        -> xms-bi-uat, database `core`
+20_margebrut_groups_filter_report.sql -> xms-sql-fog-uat, database `report`
+
+RUN 19 BEFORE 20. The widget row in 20 points at the `MargeBrutGroups` vis-query
+dataset that 19 creates; wiring the widget first gives the front end a filter it
+cannot populate.
+
+19 must be run with Invoke-Sqlcmd or the MCP `execute` tool (xms-bi-uat only).
+20 MUST be run with Invoke-Sqlcmd -- MCP is read-only on every microservice-*
+server. Creds: AZURE_MICROSERVICE_UAT_{SERVER,USER,PASSWORD}.
+
+Adds the only non-date filter the current fact grain supports: GROUP_NAME.
+`F_MARGEBRUT_MONTH` is GROUP_NAME x PERIOD_MONTH, so outlet / revenue centre /
+supplier / property filters all need a new fact column and are out of scope.
+
+*** 19 ALSO REWRITES MargeBrutPurchasesBySupplier's QueryTemplate. ***
+`BuildDynamicWhereClause` holds the mapped column in an NVARCHAR(100), so the
+~700-char group-mapping CASE could not be used as a filter column -- it would be
+silently truncated. The supplier query's D_INVITEM join therefore became a
+derived table exposing a short `inv.GROUP_NAME`. Measure-neutral: verified
+Bidfood 16,535.89 / Reynolds Catering 3,782.45 / Matthew Clark 2,226.03 =
+22,544.37 unfiltered, unchanged from before.
+
+The group-mapping CASE is now duplicated in THREE places -- 13 (fact build), and
+twice inside 19 (supplier data query + header subquery). Keep them in step.
+
+VERIFIED by EXECing the real card SPs on both orgs (June 2026, Wines only):
+  Oak & Vine  turnover 17,138.71 -> 381.20; cost 27.3% -> 59.5%
+  Gloucester  cost 27.4% -> 59.5%
+  supplier chart 2,652.84 -> 70.01 (Matthew Clark), bars AND header respond
+  grid GRAND TOTAL 59.5%, agreeing with the hero KPI and the by-group bar
+  all 9 datasets execute clean under a non-empty group @FilterClause
+
+EXPECTED, NOT A DEFECT: with a group selected the grid still renders all 9 rows,
+the unselected groups blank. Its `canon` VALUES list cannot be filtered -- the
+engine builds ONE clause and REPLACEs it into every @FilterClause token, so a
+site over `canon` would also receive the date predicate on a CTE that has no
+PERIOD_MONTH column. Blank rows were chosen over leaving the grid unfiltered,
+which would make its GRAND TOTAL cost % disagree with the hero KPI.
