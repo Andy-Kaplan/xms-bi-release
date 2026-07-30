@@ -1,9 +1,9 @@
-# XMS Service Bus messaging — warehouse-side SQL (handover)
+# XMS Service Bus messaging — generic MDM registry (warehouse-side SQL)
 
 **For:** XMS BI Release project
 **From:** XMS BI Integrations (ledger item **O8**)
-**Date:** 2026-07-27
-**Status:** SQL pre-written, **not yet executed anywhere** — needs review then a Dev run
+**Date:** 2026-07-30 (supersedes the 2026-07-27 LOCATION-specific version of this document)
+**Status:** Deployed and smoke-tested on **Dev only**. Test, UAT and Prod are untouched.
 
 ---
 
@@ -15,12 +15,19 @@ the normal deployment train. It is **inert** in every environment — both featu
 default `false` and the Service Bus trigger does not register until its binding settings
 exist.
 
-It is blocked on warehouse-side objects that live in this project. Rather than hand over a
-prose specification, the SQL is pre-written here so Release only has to review, run and fold
-it into the master files.
+What sits *behind* the inbox has been redesigned since the first version of this handover.
+The original plan applied inbound events directly to `datavault.SAT_LOCATION`'s microservice
+column. That does not generalise — there is no equivalent of `core.LOCATION` for PRODUCT,
+SUPPLIER, or the other ~16 dimension hubs that already carry `MICROSERVICE_ID` /
+`MICROSERVICE_NAME` / `MICROSERVICE_ID_BIN` in anticipation of exactly this functionality.
 
-**Source design spec (read this first if you want the full picture):**
-`XMS BI/Integrations/docs/superpowers/specs/2026-07-21-service-bus-messaging-design.md`
+It is now a **generic MDM registry**: one durable store per org DB (`core.MDM_RECORD`), one
+tiny control table of projection rules (`core.MDM_PROJECTION`), and one generic procedure
+(`core.sp_ApplyEventInbox`) that contains no entity names. Adding a new MDM entity costs zero
+warehouse DDL and zero configuration.
+
+**Design spec (read this first for the full reasoning):**
+`XMS BI/Integrations/docs/superpowers/specs/2026-07-28-mdm-registry-design.md`
 
 ### The flow
 
@@ -28,239 +35,292 @@ it into the master files.
    `core.LOCATION` **and** enqueues a `xmsbi.location.discovered` row in `core.EVENT_OUTBOX`,
    in the same transaction.
 2. An end-of-run activity drains `EVENT_OUTBOX` → publishes to the `location-events` topic.
-3. The XMS location microservice replies with its GUID.
+3. The XMS location microservice replies with its GUID (and, for entities it masters,
+   further canonical attributes).
 4. A Service Bus topic trigger lands the reply envelope in that org's `core.EVENT_INBOX`.
-5. **`core.sp_ApplyEventInbox` (this handover) applies it to the warehouse.**
+5. **`core.sp_ApplyEventInbox` (this handover) shreds it into `core.MDM_RECORD`, the system
+   of record, then projects it onto `datavault.SAT_<Entity>.MICROSERVICE_*` for current
+   rows.**
 
 ---
 
 ## 2. Files, in deploy order
 
-| # | File | Target DB | What it does |
-|---|---|---|---|
-| 01 | `01_event_tables_deployment_objects.sql` | CORE | Registers `core.EVENT_OUTBOX` (order 109) + `core.EVENT_INBOX` (order 110) as DeploymentObjects |
-| 02 | `02_sp_apply_event_inbox.sql` | CORE | Registers `core.sp_ApplyEventInbox` (order 111) as a DeploymentObject |
-| 03 | `03_getorgintegrations_org_guid.sql` | CORE | Appends `OrganisationGuid` as the 4th column of `core.GetOrgIntegrations` |
-| 04 | `04_rollout_to_org_dbs.sql` | CORE | Deploys the three new objects into every ACTIVE org DB (`@WhatIf = 1` by default) |
-| 05 | `05_validate.sql` | CORE | Read-only PASS/FAIL + health checks |
+Files are numbered so file order equals execution order. Every registration script (`01`,
+`02`, `03`) is **generated** — the `*a_*` files are the plain, readable T-SQL bodies a
+maintainer actually edits; `build_registration.py` escapes them into a
+`core.DeploymentObjects` registration script. **Never hand-edit a generated file** — edit its
+body and regenerate (`python build_registration.py <manifest>.json`).
 
-All five are idempotent and re-runnable. 01–03 are pure control-plane changes and change no
-behaviour on their own; 04 is the only one that touches org databases.
+| # | File | Generated from | Target DB | What it does |
+|---|---|---|---|---|
+| 01 | `01_event_tables_deployment_objects.sql` | `01a_event_outbox_body.sql`, `01a_event_inbox_body.sql` | CORE | Registers `core.EVENT_OUTBOX` (order 109) + `core.EVENT_INBOX` (order 110) |
+| 02 | `02_mdm_registry_deployment_objects.sql` | `02a_mdm_record_body.sql`, `02a_mdm_projection_body.sql` | CORE | Registers `core.MDM_RECORD` (order 111) + `core.MDM_PROJECTION` (order 112), the latter seeded with two wildcard rules |
+| 03 | `03_sp_apply_event_inbox.sql` | `03a_sp_apply_event_inbox_body.sql` | CORE | Registers `core.sp_ApplyEventInbox` (order 113) |
+| 04 | `04_getorgintegrations_org_guid.sql` | — (hand-written, unchanged since 2026-07-27) | CORE | Appends `OrganisationGuid` as the 4th column of `core.GetOrgIntegrations` |
+| 05 | `05_rollout_to_org_dbs.sql` | — | CORE | Deploys all five objects into every ACTIVE org DB (`@WhatIf = 1` by default) |
+| 06 | `06_validate.sql` | — | CORE | Read-only PASS/FAIL + health checks (object presence, column-contract counts, registry/projection state, orphans, drift) |
 
----
+Supporting tooling: `build_registration.py` (the generator), `check_literals.py` +
+`test_check_literals.py` (verifies every T-SQL string literal in a script terminates where
+intended — the main failure mode when hand-escaping T-SQL), `01_manifest.json` /
+`02_manifest.json` / `03_manifest.json` (the generator's inputs), `DEPLOY.txt` (run order +
+enablement gate + the Dev deployment record).
 
-## 3. Two questions the spec left open — both now answered
-
-### 3.1 "Confirm the actual `SAT_LOCATION` microservice column name"
-
-It is **`MICROSERVICE_ID` `NVARCHAR(255)`**, with a companion
-**`MICROSERVICE_ID_BIN` `BINARY(32)`** (SHA-256 of the ID, for join optimisation). There is
-also `MICROSERVICE_NAME NVARCHAR(255)`.
-
-`sp_ApplyEventInbox` writes `MICROSERVICE_ID` and `MICROSERVICE_ID_BIN`. It deliberately
-**does not touch `MICROSERVICE_NAME`** — that is the manually curated cross-integration
-display name that `COALESCE(MICROSERVICE_NAME, LOCATION_NAME)` resolves against in the
-presentation layer, and the inbound payload carries no name. **Open decision for Andrew —
-see §6.1.**
-
-### 3.2 "Add an org XMS GUID column to the CORE org table"
-
-**Not needed — it already exists.** `core.Organisations.OrganisationCode` is a
-`UNIQUEIDENTIFIER` and *is* the XMS org GUID: `core.CreateOrganisation` builds the org
-database name as `@OrganisationPrefix + '_XMS_' + @OrganisationCodeStr`, which is why org DBs
-are named e.g. `20260129_XMS_5AD1BEAC-31FD-F011-8D4C-0022489A1D57`. The GUID in every org DB
-name **is** `OrganisationCode`.
-
-So this dependency collapses to appending one column to `GetOrgIntegrations` (file 03).
-It is backward-compatible in both directions: the function app reads the 4th tuple element
-defensively (`if len(org_int) >= 4 and org_int[3]`), so old-app/new-proc and new-app/old-proc
-both work. **Append only, never reorder** — every integration reads this tuple positionally.
+All are idempotent and re-runnable. 01–04 are pure control-plane changes and change no
+behaviour on their own; 05 is the only one that touches org databases.
 
 ---
 
-## 4. The significant design change: reconciliation, not one-shot apply
+## 3. Two questions the original spec left open — both answered
 
-**The spec's "`EVENT_INBOX` → `SAT_LOCATION` microservice column" would not have held.**
+### 3.1 Target column
+
+`sp_ApplyEventInbox` writes exactly two columns, per entity: **`MICROSERVICE_ID`
+`NVARCHAR(255)`** and its companion **`MICROSERVICE_ID_BIN` `BINARY(32)`** (a SHA-256 hash of
+the canonicalised ID text, for a collation-proof join key). `MICROSERVICE_NAME` is also
+projectable but ships **inactive** (§7 below).
+
+### 3.2 Org GUID column
+
+**No new column was needed.** `core.Organisations.OrganisationCode` already **is** the XMS
+org GUID: `core.CreateOrganisation` builds the org database name as
+`@OrganisationPrefix + '_XMS_' + @OrganisationCodeStr`, which is why org DBs are named e.g.
+`20260129_XMS_5AD1BEAC-31FD-F011-8D4C-0022489A1D57`. So this dependency collapsed to appending
+one column to `GetOrgIntegrations` (file 04) — backward-compatible in both directions, since
+the function app reads the 4th tuple element defensively. **Append only, never reorder** —
+every integration reads this tuple positionally.
+
+---
+
+## 4. The significant design decision: reconciliation, not one-shot apply
 
 `core.sp_ProcessHubSat` step 2 **DELETEs** SAT rows whose CDC change type is `T1` or `N`, then
-step 5 re-INSERTs them from `load.LOCATION` using only the columns listed in the entity
-mapping's `entity_columns` — for LOCATION that is
-`["HUB_ID","LOCATION_ID","LOCATION_NAME","BOTTOM_LEVEL","LEVEL_NAME"]`. `MICROSERVICE_*` is
-not in that list, so it comes back **NULL**.
+step 5 re-INSERTs them from `load.{Entity}` using only the columns named in that entity
+mapping's `entity_columns`. `MICROSERVICE_*` is in no mapping's `entity_columns`, so it comes
+back **NULL**.
 
-Consequence of a SAT-only write: the first time a location's name changes (an ordinary `T1`
-change) the microservice GUID is **silently wiped** — and the location microservice only ever
-emits it once, in reply to `location.discovered`, so it would never be resent. A `T2` change
-has the same effect on the new current row.
+So a SAT-only write would not have held: the first time a dimension record's name changes — an
+ordinary `T1` — the microservice identity would be silently wiped, and the microservice only
+ever emits it once, in reply to `*.discovered`, so it would never be resent.
 
-### What the proc does instead
+**Neither would a table per entity.** `core.LOCATION` happens to be a viable identity store for
+LOCATION only because it already exists as the API-pull registry — there is no equivalent for
+PRODUCT, SUPPLIER, INVITEM, or the rest, and building one per entity would mean 15–18 bespoke
+tables and projections.
 
-`core.LOCATION.MicroserviceId` (`UNIQUEIDENTIFIER`) is the **authoritative store**. It already
-exists in every org DB, and its `UQ_LOCATION_Integration` unique constraint on
-`(IntegrationLocationId, IntegrationSrc)` is *exactly* the event round-trip key. Nothing new
-had to be created for it.
+### What the mechanism does instead
 
-`SAT_LOCATION.MICROSERVICE_ID` / `_BIN` then becomes a **projection** of that, re-derived on
-every call — so it **self-heals** after any T1/T2 SAT rebuild. `05_validate.sql` reports
-`SatProjectionDrift` so the gap is visible when it exists.
+`core.MDM_RECORD` is the **durable, entity-agnostic system of record**, keyed
+`(EntityName, IntegrationSrc, BusinessKey)`. `datavault.SAT_<Entity>.MICROSERVICE_*` is a
+**derived projection** of it, re-computed **in full, every run** — not just for newly-arrived
+rows. That full reconciliation is exactly what self-heals a `T1`/`T2` satellite rebuild:
+whatever the DV load just wiped, the next projection pass puts back. `06_validate.sql` reports
+`SatProjectionDrift` so any gap is visible rather than silent.
 
 ### Why this is safe for CDC
 
-`MICROSERVICE_*` columns are absent from LOCATION's `entity_columns`, so `sp_GenerateCDC`
+`MICROSERVICE_*` columns are absent from every entity's `entity_columns`, so `sp_GenerateCDC`
 never includes them in its `CHECKSUM` comparison. Writing them **cannot** cause spurious
 T1/T2 churn.
 
-> ⚠️ **Caveat:** if `MICROSERVICE_*` are ever added to LOCATION's `entity_columns`, issue
-> **M3** in `docs/data-vault-reference.md` bites — the filter is
-> `!= '[MICROSERVICE%'` (literal equality) where it should be `NOT LIKE '[MICROSERVICE%'`, so
-> the columns *would* enter the checksum and cause endless spurious changes. Fix M3 first.
+> ⚠️ **M3 caveat.** Issue **M3** in `docs/data-vault-reference.md`: the CDC MICROSERVICE-exclusion
+> filter is `!= '[MICROSERVICE%'` (literal equality) where it should be `NOT LIKE
+> '[MICROSERVICE%'`. It is currently harmless because no mapping lists `MICROSERVICE_*` in
+> `entity_columns` — but **M3 must be fixed before any mapping ever does**, or those columns
+> would enter the CHECKSUM and cause endless spurious T1/T2 changes.
 
 ### Join path
 
-`SAT_LOCATION.LOCATION_ID` (the un-hashed integration store id) → `core.LOCATION.IntegrationLocationId`,
-plus `SAT_LOCATION.SRC` → `core.LOCATION.IntegrationSrc`. `SRC` is the integration schema name
-(`sp_DataVaultLoad` passes `@SchemaName`), which is exactly what the function app writes as
-`IntegrationSrc` (`integration_src=schema_name` in every integration's store-list activity).
+The projection joins `datavault.SAT_<Entity>` to `core.MDM_RECORD` on the **salted** `HUB_ID`
+hash plus `SRC`, computed inline (never via `core.SHA256Hash`, which does not exist in org
+databases — see §6):
 
-The proc deliberately **does not** re-derive `HUB_ID` via `core.SHA256Hash` — joining on the
-plain business key avoids depending on the hash convention.
+```sql
+S.HUB_ID = HASHBYTES('SHA2_256', CAST(CONCAT_WS('|', R.BusinessKey, R.IntegrationSrc) AS VARBINARY(MAX)))
+AND S.SRC = R.IntegrationSrc
+AND S.CURRENT_FLAG = 1
+```
+
+This sidesteps the vault's native-id column naming inconsistencies entirely (mostly
+`<ENTITY>_ID`, but `OCCASION` uses `OCCASSION_ID`, `REVCENTER` uses `REVC_ID`, `SVCCHARGE` uses
+`SVC_ID`, and `EMPLOYEE` has no native-id column at all) — the hub's own hash is the join key,
+not any per-entity id column.
 
 ---
 
-## 5. Release actions
+## 5. Canonicalisation, and why `MICROSERVICE_ID_BIN` needs it
 
-### 5.1 Run order
+`MICROSERVICE_ID` is `NVARCHAR(255)`; GUID text is not canonical — casing, surrounding braces
+and whitespace vary by producer. Under a case-insensitive collation, `'abc…' = 'ABC…'` is
+*true*, so text comparisons hide differences — but `HASHBYTES('SHA2_256', …)` is byte-sensitive
+over UTF-16, so the *hash* of the same two strings disagrees. `MICROSERVICE_ID_BIN` was
+introduced years ago to give a clean fixed-width join key, but it only holds if something
+canonicalises the text **before** hashing — which is exactly what had never existed, and is why
+the ID columns were never adopted (the presentation layer joins on name instead — see Release
+ledger O20).
 
-1. **Dev** — run 01, 02, 03 against CORE. Run 04 with `@WhatIf = 1`, read the plan, then
-   `@WhatIf = 0`. Run 05 — Part 1 must be all-PASS.
-2. Repeat for **Test**, **UAT**, then **Prod** (Prod via the PowerShell runner per
-   `docs/release-guide.md` §6 — MCP `execute` is blocked on Prod).
+A registry with exactly one writer removes the discipline problem by construction. Applied
+once, on the way in, deterministic and idempotent:
 
-### 5.2 Wire up the call site — needs a master-file edit
+1. Trim leading/trailing whitespace.
+2. Strip a single pair of surrounding braces `{}`.
+3. If `TRY_CONVERT(UNIQUEIDENTIFIER, x)` succeeds → store SQL Server's canonical form
+   (uppercase, hyphenated, unbraced, 36 characters).
+4. Otherwise → the trimmed string as-is (non-GUID microservice IDs remain supported).
+5. `MicroserviceIdBin` = unsalted `HASHBYTES('SHA2_256', CAST(MicroserviceId AS VARBINARY(MAX)))`
+   of the canonical string.
 
-`sp_ApplyEventInbox` is not yet invoked by anything. It should run **inside `sp_DataVaultLoad`,
-after the entity/schema loop completes and *before* `EXEC core.sp_ProcessPresentation`**, so
-the GUIDs land in the same cycle the presentation layer is rebuilt from:
+Drift detection compares `MICROSERVICE_ID_BIN` — binary, exact — never the text column under a
+CI collation, because that would hide precisely the casing differences this exists to fix.
+
+---
+
+## 6. Hashing: inline, and salted for `HUB_ID` only
+
+Corrected 2026-07-29 after probing Dev; the original spec assumed both of the following
+incorrectly.
+
+**`core.SHA256Hash` does not exist in org databases** — it is defined only in the `core`
+control database. Every hash in `sp_ApplyEventInbox` is computed inline with
+`HASHBYTES('SHA2_256', CAST(… AS VARBINARY(MAX)))`, which is exactly what that function does.
+
+**`HUB_ID` is salted with the integration schema.** The DV load generates
+`HASHBYTES('SHA2_256', CAST(CONCAT_WS('|', <column>, '<intSchema>') AS VARBINARY(MAX)))`
+(`3_CoreStoredProceduresAndFunctions.sql:1312`), and `SRC` holds that same `<intSchema>`.
+Proven on Dev (`20250917_XMS_C14CF568-588D-F011-B3CD-000D3AD9E9D4`): the salted form matched
+**9/9** `int_marketman001` and **6/6** `int_ncraloha001` current `SAT_LOCATION` rows, plus
+**1015/1015** and **234/234** `SAT_PRODUCT` rows; the un-salted form matched **0**.
+
+`MICROSERVICE_ID_BIN` stays **unsalted** — it is an identity hash of the canonical ID text, not
+a hub key.
+
+**Known exception:** `int_troap001` rows do not satisfy the salted `HUB_ID` formula, because
+TROAP's hashed source column is not `LOCATION_ID`. TROAP is out of scope — it does not use
+`global_location_data_upsert`, so it never publishes discovery events. `06_validate.sql`'s
+orphan count keeps any such mismatch visible rather than silent.
+
+---
+
+## 7. Three safety guards
+
+Only `MICROSERVICE_%` columns may ever be written by this mechanism, enforced independently in
+three places so the ownership rule is structural rather than merely documented:
+
+1. `core.MDM_PROJECTION.TargetColumn` has a `CHECK` constraint: `TargetColumn LIKE
+   N'MICROSERVICE[_]%'`.
+2. The seed rows are curated and INSERT-only (a re-deploy cannot reset `IsActive`).
+3. `sp_ApplyEventInbox` itself refuses any `TargetColumn` not matching that same pattern,
+   skipping and logging it — so a bad control-table row cannot cause the bus to overwrite
+   integration-sourced data such as `PRODUCT_NAME` or `ATTR_3`.
+
+Proven on Dev (smoke case 8): a deliberately bad `MDM_PROJECTION` row naming `PRODUCT_NAME` was
+refused by the table `CHECK`; with the `CHECK` disabled, the procedure's own guard still left
+`PRODUCT_NAME` untouched.
+
+`MICROSERVICE_NAME` push-down ships **`IsActive = 0`**. Presentation currently resolves
+cross-integration alignment on **name** (133 references in `8_PresentationControl.sql`);
+pushing a canonical name down while joins are name-based would change *join identity*, not
+merely a displayed label. Enabling it is a one-row, reversible switch, gated on Release ledger
+**O20** landing first.
+
+---
+
+## 8. The `sp_DataVaultLoad` call site — still a human edit
+
+`sp_ApplyEventInbox` is not yet invoked by anything. It must run **inside `sp_DataVaultLoad`,
+after the entity/schema loop and before `EXEC core.sp_ProcessPresentation`**, so identities
+reach the presentation rebuild in the same cycle:
 
 ```sql
 EXEC core.sp_ApplyEventInbox @JobID = @JobID;   -- add here, ~line 3000
 EXEC @ReturnCode = core.sp_ProcessPresentation ...
 ```
 
-`sp_DataVaultLoad` lives in `8_Deployment_Objects_Records.sql` (~line 2617), which is
-read-only to Claude under this project's `CLAUDE.md`, so **this one edit is left for a
-human.** It also has to be non-fatal — a messaging failure must never fail a DV load; wrap it
-the same way the surrounding steps handle `@ReturnCode`.
+`sp_DataVaultLoad` lives in `8_Deployment_Objects_Records.sql` (~line 2617), which is read-only
+to Claude under this project's `CLAUDE.md`, so **this edit is left for a human.** It must be
+non-fatal — a messaging failure must never fail a DV load — wrapped the same way the
+surrounding steps handle `@ReturnCode`.
 
 > This is the same region of `sp_DataVaultLoad` as ledger item **O5** (the
-> `sp_InitEntityDeltaParameters`-runs-after-`sp_ProcessPresentation` first-run bug). If both
-> are actioned, coordinate them in one change.
-
-### 5.3 Fold back into master files
-
-Nothing here is a permanent home:
-
-- 01 + 02 → new DeploymentObjects records in `8_Deployment_Objects_Records.sql`
-  (orders 109/110/111 — currently free; 108 is LOCATION and the next existing object is 120).
-- 03 → `3_CoreStoredProceduresAndFunctions.sql` (~line 989).
-- 5.2 → `sp_DataVaultLoad` in `8_Deployment_Objects_Records.sql`.
-- Promote to `releases/v{X.Y}/` per `docs/release-guide.md`, and update `QUERY_STATUS.md`.
+> `sp_InitEntityDeltaParameters`-runs-after-`sp_ProcessPresentation` first-run bug). If both are
+> actioned, coordinate them in one change.
 
 ---
 
-## 6. Open decisions (Andrew / microservices team)
-
-### 6.1 Should the GUID also drive `MICROSERVICE_NAME`?
-
-Currently no. `core.LOCATION.MicroserviceName` exists and the presentation layer resolves
-`COALESCE(MICROSERVICE_NAME, LOCATION_NAME)`, so projecting a name would **change dashboard
-labels**. Left out on purpose as a behaviour change nobody asked for. If the location
-microservice starts returning a canonical name, this becomes a deliberate MDM decision rather
-than a side effect.
-
-### 6.2 Event-type strings are placeholders
-
-`sp_ApplyEventInbox` defaults to `@LocationCreatedEventType = N'xms.location.created'`. The
-microservices team has not confirmed naming conventions. It is a **parameter**, so no redeploy
-is needed to change it — but until it matches, inbound rows sit at `Status='Received'` and
-are reported as `StillReceived` by `05_validate.sql`. Unrecognised event types are *not*
-errored, so a later handler can still pick them up.
-
-### 6.3 Still outstanding elsewhere (not this project)
-
-- `location-events` topic + XMS BI subscription per environment (microservices team)
-- The location microservice's consumer/response itself (microservices team)
-- KV secret `service-bus-client-secret` + SB app settings per env; `Azure Service Bus Data
-  Sender` + `Data Receiver` RBAC for the service principal
-- Jira ticket for the feature (branch was merged as `feature/service-bus-messaging`)
-
----
-
-## 7. ⚠️ Enablement gate — order matters
+## 9. Enablement gate — order matters
 
 `SB_OUTBOX_ENABLED` is **app-global**, not per-org. If `core.EVENT_OUTBOX` is missing from
 **any** org DB, that org's store-list staging activity fails on the enqueue and the ETL run
 breaks.
 
-**Do not set `SB_OUTBOX_ENABLED` in an environment until `05_validate.sql` Part 1 is
-all-PASS for that environment.** The script prints a single go/no-go line for exactly this.
+**Do not set `SB_OUTBOX_ENABLED` in an environment until `06_validate.sql` Part 1 is all-PASS
+for that environment.** Full order, per environment, from `DEPLOY.txt`:
 
-Safe order per environment: 01–04 → 05 all-PASS → topic + subscription exist → SB app
-settings + KV secret → `SB_PUBLISH_ENABLED` → `SB_OUTBOX_ENABLED`.
+```
+01 → 02 → 03 → 04 → 05 (@WhatIf=1, read the plan, then @WhatIf=0) → 06 all-PASS
+  → confirm MDM_PROJECTION has MICROSERVICE_NAME at IsActive=0
+  → topic + subscription exist
+  → SB app settings + KV secret
+  → SB_PUBLISH_ENABLED
+  → SB_OUTBOX_ENABLED
+```
+
+`SB_OUTBOX_ENABLED` has **not** been set anywhere. Neither has any other Service Bus app
+setting — those are out of scope for this warehouse work.
 
 ---
 
-## 8. Testing status — read this before trusting anything above
+## 10. Testing status — what has actually been proven
 
-**None of this SQL has been executed.** It was written against the source of
-`4_DeploymentTools.sql`, `6_GenerateDataVaultTables.sql`, `8_Deployment_Objects_Records.sql`
-and `shared/services/sql.py`, and every column name, type and join key above was verified
-against those files — but syntax, the metasql escaping in file 04, and the `OPENJSON`
-shredding in the proc have **not** been run against a real database.
+**Deployed and smoke-tested on Dev only.** Test, UAT and Prod have not been touched.
 
-What has been verified on a real DB, separately: the function app's `MERGE ... OUTPUT $action`
-new-location detection, smoke-tested against Dev org DB `20260413_XMS_C8D4A193` via
-`scripts/sb_merge_output_smoke.py` (synthetic rows cleaned up).
+Registered in Dev CORE: `EVENT_OUTBOX` (109), `EVENT_INBOX` (110), `MDM_RECORD` (111),
+`MDM_PROJECTION` (112), `sp_ApplyEventInbox` (113) — 5 rows, `IsActive = 1`. Rolled out to all
+**20 ACTIVE org DBs** (dry-run then real, 100/100 SUCCESS, 0 errors). `06_validate.sql`: Part 1
+100/100 PASS (gate: *"PASS — safe to set SB_OUTBOX_ENABLED"*); Part 2 80/80 PASS, column counts
+10 (EVENT_OUTBOX) / 8 (EVENT_INBOX) / 12 (MDM_RECORD) / 4 (MDM_PROJECTION) for every org DB;
+Part 3 one health row per org DB, every signal zero. `MDM_PROJECTION` holds exactly the two
+seed rows, `MICROSERVICE_NAME` at `IsActive = 0`.
 
-### Suggested Dev smoke, once 01–04 have run
+All **eight** spec §11 smoke cases passed, against org DB
+`20250917_XMS_C14CF568-588D-F011-B3CD-000D3AD9E9D4` (chosen for real `int_marketman001` /
+`int_ncraloha001` data, not the plan's original nominee, which had zero current rows and would
+have passed every case vacuously):
 
-```sql
--- 1. Hand-land a fake reply for a location that really exists in this org DB
-DECLARE @src NVARCHAR(50), @locId NVARCHAR(100);
-SELECT TOP 1 @src = IntegrationSrc, @locId = IntegrationLocationId
-FROM core.LOCATION WHERE MicroserviceId IS NULL;
+1. Identity-only record for an existing LOCATION → `MICROSERVICE_ID` + `_ID_BIN` populated.
+2. Same record replayed → all counters zero (idempotency).
+3. **T1 wipe and repair** — the design's central claim, proved on real data: wiped 2 rows'
+   identities → validation drift 2 → `sp_ApplyEventInbox` restored `SatProjected = 2` → drift 0,
+   restored exactly.
+4. Identity arriving before its entity is loaded → registry row kept, counted as an orphan, no
+   SAT write.
+5. **PRODUCT**, a second entity, projected with **zero configuration added** — `MDM_PROJECTION`
+   stayed at 2 rows.
+6. Canonicalisation — a lower-case, brace-wrapped, whitespace-padded GUID produced the same
+   canonical, uppercase, unbraced `MicroserviceId` and a matching `MicroserviceIdBin`.
+7. Five failure-path messages classified exactly per spec (malformed JSON, missing
+   `businessKey`, unknown entity → `Error`; absent/bare-scalar `$.payload` → left `Received`).
+8. Both safety guards proven independently (§7 above).
 
-INSERT INTO core.EVENT_INBOX (MessageId, EventType, CorrelationId, Payload)
-VALUES (N'smoke-' + CONVERT(NVARCHAR(36), NEWID()),
-        N'xms.location.created',
-        NULL,
-        N'{"eventId":"' + CONVERT(NVARCHAR(36), NEWID()) + N'",
-           "eventType":"xms.location.created",
-           "source":"xms-location-service",
-           "tenantId":"00000000-0000-0000-0000-000000000000",
-           "version":"1.0",
-           "payload":{"integrationSrc":"' + @src + N'",
-                      "integrationLocationId":"' + @locId + N'",
-                      "microserviceId":"11111111-2222-3333-4444-555555555555"}}');
+Synthetic data was cleaned up afterwards (all `smoke-`/`bad-` inbox rows deleted,
+`core.MDM_RECORD` emptied, `MICROSERVICE_*` reset to NULL — in the smoke DB only).
+`06_validate.sql` re-run: Part 1 all-PASS, Part 3 all zero. The one org DB holding real curated
+MDM data (`20251208_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14` — 7 `SAT_LOCATION` + 2162
+`SAT_PRODUCT` rows with `MICROSERVICE_ID` populated) received the five new objects via the
+additive rollout but was never targeted by any smoke case or cleanup statement; its counts are
+unchanged.
 
--- 2. Apply and inspect the counters
-EXEC core.sp_ApplyEventInbox @Debug = 1;
+Full run detail: `DEPLOY.txt`'s Dev deployment record.
 
--- 3. Expect: MicroserviceId set, SAT current row carrying the same GUID
-SELECT IntegrationSrc, IntegrationLocationId, MicroserviceId, UpdatedBy
-FROM core.LOCATION WHERE IntegrationLocationId = @locId AND IntegrationSrc = @src;
+### Still outstanding, not part of this warehouse work
 
-SELECT S.LOCATION_ID, S.SRC, S.MICROSERVICE_ID, S.MICROSERVICE_ID_BIN
-FROM datavault.SAT_LOCATION S
-WHERE S.LOCATION_ID = @locId AND S.SRC = @src AND S.CURRENT_FLAG = 1;
-
--- 4. Re-run to confirm idempotency: counters should come back all zero
-EXEC core.sp_ApplyEventInbox @Debug = 1;
-```
-
-Worth also exercising deliberately: a malformed payload, an unknown location, a duplicate
-`MessageId`, and a missing `$.payload` — all four should mark the row `Error` with a readable
-`LastError` and leave nothing stuck at `Received`.
-
-**Clean up the synthetic rows afterwards** (`core.EVENT_INBOX` row, and reset that location's
-`MicroserviceId` / the SAT columns to `NULL`) so Dev is not left carrying a fake GUID.
+- **Microservices team:** `location-events` topic + XMS BI subscription per environment; the
+  §8 payload routing fields (`entityName` / `integrationSrc` / `businessKey`); the location
+  microservice's consumer/response.
+- **Infrastructure:** KV secret `service-bus-client-secret`, SB app settings per environment,
+  `Azure Service Bus Data Sender` + `Data Receiver` RBAC for the service principal.
+- **This project:** the `sp_DataVaultLoad` call site (§8 above); a Jira ticket for the feature;
+  running 01–06 against Test, UAT and Prod.
+- **Release ledger O20:** migrate presentation cross-integration joins from name to ID. Gates
+  enabling the `MICROSERVICE_NAME` rule.
