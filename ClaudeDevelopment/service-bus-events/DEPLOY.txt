@@ -1,0 +1,77 @@
+XMS Service Bus + MDM registry — deployment order
+=================================================
+
+Target: CORE database of each environment, then org DBs via 05.
+Prod is human-run via the PowerShell runner (Release docs/release-guide.md §6).
+MCP `execute` is available on xms-bi-dev / -test / -uat only, and has a ~15s cap
+— if 05 times out, run it through Invoke-Sqlcmd instead.
+
+  1. 01_event_tables_deployment_objects.sql   (CORE)  EVENT_OUTBOX 109, EVENT_INBOX 110
+  2. 02_mdm_registry_deployment_objects.sql   (CORE)  MDM_RECORD 111, MDM_PROJECTION 112 + seed
+  3. 03_sp_apply_event_inbox.sql              (CORE)  sp_ApplyEventInbox 113
+                                                      (generated from 03a — edit 03a, not 03)
+  4. 04_getorgintegrations_org_guid.sql       (CORE)  adds OrganisationGuid as column 4
+  5. 05_rollout_to_org_dbs.sql                (CORE)  @WhatIf = 1 first, then 0
+  6. 06_validate.sql                          (CORE)  Part 1 MUST be all-PASS
+
+Then, and only then:
+  - confirm MDM_PROJECTION has MICROSERVICE_NAME with IsActive = 0
+    (enabling it before Release ledger O20 changes presentation join identity)
+  - set the Service Bus app settings + KV secret for the environment
+  - SB_PUBLISH_ENABLED = true
+  - SB_OUTBOX_ENABLED  = true   <-- app-global; only after 06 Part 1 is all-PASS
+
+Still required, outside these scripts:
+  - human edit: EXEC core.sp_ApplyEventInbox @JobID = @JobID; in sp_DataVaultLoad,
+    immediately before EXEC core.sp_ProcessPresentation (~line 3000 of
+    8_Deployment_Objects_Records.sql). Must be non-fatal to the load.
+    Same region as Release ledger O5 — coordinate if both are actioned.
+
+Dev deployment record (2026-07-30)
+-----------------------------------
+Deployed and smoke-tested against xms-bi-dev via Invoke-Sqlcmd (MI public
+endpoint, port 3342 — the env var carries no port).
+
+Step 1 — registered in Dev CORE: EVENT_OUTBOX 109, EVENT_INBOX 110, MDM_RECORD 111,
+MDM_PROJECTION 112, sp_ApplyEventInbox 113. Confirmed exactly 5 rows, all IsActive=1.
+
+Step 2 — @WhatIf=1 dry run: 100 WHATIF rows across 20 ACTIVE org DBs, no errors.
+
+Step 3 — @WhatIf=0 real rollout: 100 SUCCESS rows across the same 20 org DBs,
+0 ERROR rows.
+
+Step 4 — 06_validate.sql: Part 1 all 100 rows PASS, gate "PASS - safe to set
+SB_OUTBOX_ENABLED", Part 2 all 80 rows PASS (column counts 10/8/12/4), Part 3
+one health row per org DB (20 rows), all zero.
+
+Step 5 — MDM_PROJECTION seed confirmed: MICROSERVICE_ID IsActive=1,
+MICROSERVICE_NAME IsActive=0.
+
+Smoke DB used: 20250917_XMS_C14CF568-588D-F011-B3CD-000D3AD9E9D4 (has real
+int_marketman001 / int_ncraloha001 data). Spec §11 smoke cases 1–8 all
+demonstrated successfully:
+  1/2 — identity apply + idempotency: PASS
+  6   — GUID canonicalisation (lower-case, brace-wrapped, whitespace): PASS
+  3   — T1 wipe self-heal: drift 2 -> apply SatProjected=2 -> drift 0,
+        restored exactly: PASS (the design's central claim)
+  4   — identity arriving before its entity (registry orphan, no SAT write): PASS
+  5   — second entity (PRODUCT) projected with zero DDL/config added: PASS
+  7   — five bad inbox messages classified exactly per spec (bad-json/bad-nokey
+        Error, bad-nopayload/bad-noentity Received, bad-unknown Error
+        "Unknown entity - no datavault.SAT_WIDGET"), StillReceived=2: PASS
+  8   — safety guard: CHECK constraint refuses PRODUCT_NAME; with the CHECK
+        disabled, the procedure's own TargetColumn LIKE 'MICROSERVICE[_]%'
+        filter still refused to touch PRODUCT_NAME: PASS
+
+Cleanup: all smoke-*/bad-* inbox rows deleted, core.MDM_RECORD emptied,
+MICROSERVICE_* reset to NULL — in the smoke DB only. Final 06_validate.sql
+re-run: Part 1 all-PASS, Part 3 all zero across all 20 org DBs.
+
+20251208_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14 (the one org DB holding real
+curated MDM data) received the new objects via the rollout (additive,
+IF NOT EXISTS-guarded) but was never targeted by any smoke case or cleanup
+statement. Confirmed after cleanup: still 7 SAT_LOCATION / 2162 SAT_PRODUCT
+rows with MICROSERVICE_ID populated, and core.MDM_RECORD / core.EVENT_INBOX
+both empty (0 rows) there — proof nothing synthetic ever reached it.
+
+SB_OUTBOX_ENABLED was NOT set. That step remains out of scope.
