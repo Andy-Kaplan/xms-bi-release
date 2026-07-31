@@ -1,0 +1,73 @@
+﻿13:42:40  === Growyze Plan 3 (rev 2) - Report DB wiring ===
+13:42:40  report server : xms-sql-fog-uat.database.windows.net  (database: report)
+13:42:40  MI server     : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+13:42:40  log           : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\report_config\deploy_PLAN3_UAT_20260731_134240.log
+13:42:40  
+13:42:40  step 1: 01_prereqs_biconfig_visconfig.sql - Padel DbPrefix (O34) + card-type grants
+13:42:41         | 1a. Padel DbPrefix: was 20251208, rows changed = 1
+13:42:41         | 1b. Card-type grants inserted = 15 (of 15 candidates; 0 on a re-run)
+13:42:41         | Task 1: OK - Padel DbPrefix corrected + card types granted.
+13:42:41  step 1: OK
+13:42:41  
+13:42:41  step 2: 01b_provision_heathrow.sql - Ibis Heathrow BiConfig + All Dashboards group
+13:42:41         | 1b-i. BiConfig: row created (DbPrefix = 20260722).
+13:42:41         | 1b-ii. DashboardGroup "All Dashboards" created.
+13:42:41         | Task 1b: OK - Ibis Heathrow provisioned in the report DB.
+13:42:41  step 2: OK
+13:42:41  
+13:42:41  step 3: 02_dataset_map.sql - 26 datasets x 5 orgs
+13:42:41         | Dataset map rows inserted = 117 (target population 130 = 26 datasets x 5 orgs, minus already present)
+13:42:41         | Pairs still unwired after this run = 0 (MUST be 0 - anything else means a missing card-type grant from Task 1)
+13:42:41         | Task 2: OK - pack datasets wired for all five orgs.
+13:42:41  step 3: OK
+13:42:41  
+13:42:41  step 4: 03_grids_configs_groups.sql - 3 grids + 15 configs + group mappings
+13:42:41         | 3a. Grids created = 3 (of 3; 0 on a re-run)
+13:42:41         | 3b. Dashboard configs created = 15 (of 15; 0 on a re-run)
+13:42:41         | 3c. Group mappings merged = 15 (of 15)
+13:42:41         | Ungrouped pack configs = 0 (MUST be 0)
+13:42:41         | Task 3: OK - 3 grids + 15 configs + group mappings in place.
+13:42:41  step 4: OK
+13:42:41  
+13:42:41  step 5: 04_items_overview.sql - Overview: 8 items + 2 filters
+13:42:41         | Overview items inserted = 8 (of 8; 0 on a re-run)
+13:42:41         | Overview filters inserted = 2 (of 2; 0 on a re-run)
+13:42:41         | Task 4: OK - Overview grid has 8 items + 2 filters.
+13:42:41  step 5: OK
+13:42:41  
+13:42:41  step 6: 05_items_sales.sql - Sales: 15 items + 3 filters
+13:42:41         | Sales items inserted = 15 (of 15; 0 on a re-run)
+13:42:41         | Sales filters inserted = 3 (of 3; 0 on a re-run)
+13:42:41         | Task 5: OK - Sales grid has 15 items + 3 filters.
+13:42:41  step 6: OK
+13:42:41  
+13:42:41  step 7: 06_items_inventory.sql - Inventory: 9 items + 2 filters
+13:42:41         | Inventory items inserted = 9 (of 9; 0 on a re-run)
+13:42:41         | Inventory filters inserted = 2 (of 2; 0 on a re-run)
+13:42:41         | Task 6: OK - Inventory grid has 9 items + 2 filters.
+13:42:41  step 7: OK
+13:42:41  
+13:42:41  step 8: 99_verify_plan3.sql - report-DB checks A1-A9
+13:42:42         A1  PASS     5 orgs                                    All five have a BiConfig row with the expected DbPrefix.
+13:42:42         A2  PASS     130 pairs (26 x 5)                        Every pack dataset is wired for every org.
+13:42:42         A3  PASS     40 grants (8 types x 5 orgs)              All five orgs hold card types 2,3,4,6,8,9,10,11.
+13:42:42         A4  PASS     15 pack configs (expect 15)               Every pack dashboard is mapped into a live group, so all appear in the nav.
+13:42:42         A5  PASS     Overview                                  items 8/8, filters 2/2
+13:42:42         A5  PASS     Sales & Profitability                     items 15/15, filters 3/3
+13:42:42         A5  PASS     Inventory Control                         items 9/9, filters 2/2
+13:42:42         A6  PASS     160 placements x orgs (expect 160 = 32 items x 5)  Every placed card resolves to a granted dataset for every org.
+13:42:42         A7  WARN     38 dashboards across the five orgs        2 (org, SortOrder) collision(s). Rev 1's flat 10/11/12 collided with Oak & Vine's Weekly P&L; cosmetic (nav order) not functional.
+13:42:42         A8  PASS     10 Padel Social                           non-pack dashboards 5 (expect 5), all group-mapped: 5
+13:42:42         A8  PASS     16 The Oak & Vine                         non-pack dashboards 11 (expect 11), all group-mapped: 11
+13:42:42         A8  PASS     18 Dirty Sixth                            non-pack dashboards 5 (expect 5), all group-mapped: 5
+13:42:42         A8  PASS     20 Ibis Heathrow                          non-pack dashboards 0 (expect 0), all group-mapped: 0
+13:42:42         A8  PASS     21 Ibis Gloucester Road                   non-pack dashboards 2 (expect 2), all group-mapped: 2
+13:42:42         A9  PASS     3 pack grids                              OakVineInvTotalCost is not placed on any pack dashboard, as decided (O37).
+13:42:42         SUMMARY  PASS=14 FAIL=0 WARN=1 VACUOUS=0
+13:42:42  
+13:42:42  step 9: cross-server check - every wired DataSet is LIVE on the MI
+13:42:44         PASS - inspected 30 wired (DataSet, type) pairs against the MI; 0 mismatch(es).
+13:42:44  
+13:42:44  === Done. Log: C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\report_config\deploy_PLAN3_UAT_20260731_134240.log ===
+13:42:44  REMAINING BY HAND: Task 1c (Oak & Vine venue label, MI) and the front-end smoke test
+13:42:44  (Plan 3 Task 7 Step 6 lists the expected reading per card per org, so a wrong number is recognisable).

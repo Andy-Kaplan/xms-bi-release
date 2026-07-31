@@ -2172,27 +2172,49 @@ Ledger **O5**. Plan: `docs/plans/2026-07-10-growyze-dashboards-3-report-db.md` *
 and use the wrong env vars; MCP against `report` is read-only, which is why writes go through
 `90_deploy_plan3.ps1` using `AZURE_MICROSERVICE_UAT_{SERVER,USER,PASSWORD}`.
 
-**Status for all nine files: AUTHORED + PRE-DEPLOY BASELINE CAPTURED 2026-07-31. NOT DEPLOYED.**
-`90_deploy_plan3.ps1 -WhatIf` and `-VerifyOnly` both ran clean; the write pass was **blocked by the local
-permission classifier**, so the developer must run it. Nothing has been written to `report`.
+**Status for all nine files: DEPLOYED TO UAT 2026-07-31 and VERIFIED — 7/7 write steps OK, gate PASS=14 FAIL=0
+WARN=1 VACUOUS=0, cross-server check PASS over 30 pairs** (log `deploy_PLAN3_UAT_20260731_134240.log`).
+Every insert count came out exactly as predicted: 15 grants, 117 dataset-map rows, 3 grids, 15 configs, 15 group
+mappings, 8+2 / 15+3 / 9+2 items+filters.
 
-The pre-deploy baseline (log `deploy_PLAN3_UAT_20260731_130846.log`) is **PASS=6 FAIL=6 WARN=1 VACUOUS=2**, and every
-verdict is the expected pre-deploy state. It independently cross-checks the audit that produced the plan: A2 reports
+**The pre-deploy baseline is what makes the post-deploy PASS meaningful.** It read **PASS=6 FAIL=6 WARN=1
+VACUOUS=2** (log `…_130846.log`), and it independently cross-checked the audit that produced the plan: A2 reported
 **117 of 130** pairs unwired, i.e. exactly the 13 already present (Padel 6 + Dirty Sixth 6 + Oak & Vine 1), and A3
-reports **15** missing grants, exactly the per-org matrix (1+1+1+8+4). A4 and A6 report **`VACUOUS`** rather than a
-confident PASS over an empty set — the trap `99_verify_plan2.sql`'s first draft fell into.
+reported **15** missing grants, exactly the per-org matrix (1+1+1+8+4). A4 and A6 reported **`VACUOUS`** rather than
+a confident PASS over an empty set — the trap `99_verify_plan2.sql`'s first draft fell into.
 
-| # | File | Purpose | Pre-deploy state |
+| # | File | Purpose | Result |
 |---|---|---|---|
-| 114 | `report_config/01_prereqs_biconfig_visconfig.sql` | Padel `DbPrefix` 20251208→20260310 (**O34**) + the 15 missing card-type grants across 5 orgs | A1/A3 correctly FAIL |
-| 115 | `report_config/01b_provision_heathrow.sql` | **Ibis Heathrow has NO report-DB presence at all** — creates its `BiConfig` row and root `All Dashboards` group | A1 FAIL: `<no row>` |
-| 116 | `report_config/02_dataset_map.sql` | 26 (dataset, card-type) pairs × 5 orgs = 130 `VisualisationDataSetMap` rows | A2 FAIL: 117 unwired |
-| 117 | `report_config/03_grids_configs_groups.sql` | 3 shared grids + 15 `OrganisationDashboardConfig` rows + group mappings | A4 VACUOUS |
-| 118 | `report_config/04_items_overview.sql` | Overview: **8** items + 2 filters | A5 FAIL: 0/8, 0/2 |
-| 119 | `report_config/05_items_sales.sql` | Sales & Profitability: 15 items + 3 filters | A5 FAIL: 0/15, 0/3 |
-| 120 | `report_config/06_items_inventory.sql` | Inventory Control: **9** items + 2 filters | A5 FAIL: 0/9, 0/2 |
-| 121 | `report_config/90_deploy_plan3.ps1` | Runner: `-WhatIf`, `-VerifyOnly`, `-StartAt`; refuses any server named `prod` | ran clean |
-| 122 | `report_config/99_verify_plan3.sql` | Report-DB checks A1–A9; read-only, designed for a before/after diff | see above |
+| 114 | `report_config/01_prereqs_biconfig_visconfig.sql` | Padel `DbPrefix` 20251208→20260310 (**O34**) + the 15 missing card-type grants across 5 orgs | 1 row updated, **15 grants** inserted |
+| 115 | `report_config/01b_provision_heathrow.sql` | **Ibis Heathrow had NO report-DB presence at all** — creates its `BiConfig` row and root `All Dashboards` group | both created; **Gloucester verified unchanged** |
+| 116 | `report_config/02_dataset_map.sql` | 26 (dataset, card-type) pairs × 5 orgs = 130 `VisualisationDataSetMap` rows | **117** inserted, 0 left unwired |
+| 117 | `report_config/03_grids_configs_groups.sql` | 3 shared grids + 15 `OrganisationDashboardConfig` rows + group mappings | 3 / 15 / 15, **0 ungrouped** |
+| 118 | `report_config/04_items_overview.sql` | Overview: **8** items + 2 filters | 8 + 2 |
+| 119 | `report_config/05_items_sales.sql` | Sales & Profitability: 15 items + 3 filters | 15 + 3 |
+| 120 | `report_config/06_items_inventory.sql` | Inventory Control: **9** items + 2 filters | 9 + 2 |
+| 121 | `report_config/90_deploy_plan3.ps1` | Runner: `-WhatIf`, `-VerifyOnly`, `-StartAt`; refuses any server named `prod` | 9/9 steps OK |
+| 122 | `report_config/99_verify_plan3.sql` | Report-DB checks A1–A9; read-only, designed for a before/after diff | PASS=14 FAIL=0 |
+
+**Independently re-verified through MCP** (a different connection from the runner's, because the A-checks largely
+mirror the runner's own inserts): `SortOrder` landed per org exactly as computed — Padel **14/24/34** (max was 4),
+Oak & Vine **110/120/130** (max was 100, so clear of `Weekly P&L` at 10), Dirty Sixth / Heathrow / Gloucester
+**10/20/30** — Heathrow holds 1 `BiConfig` (`20260722`) + 1 group while **Gloucester still holds exactly 1 of each**
+(the GUID-mix-up counter-check), Padel now reads `20260310`, `BiConfig` went 19→20 rows for 20 orgs, and
+`OakVineInvTotalCost` appears in **0** pack card slots.
+
+**A9 is the only check that survived deployment unchanged in meaning** — it enforces the O37 drop rather than
+trusting it, and it would have caught a later re-add.
+
+**A7 stayed WARN at 2 collisions, but over 38 dashboards rather than 23 — the pack added 15 and introduced ZERO new
+collisions.** Both pre-date it: Dirty Sixth's 5 dashboards and Gloucester's 2 all sit at `SortOrder` 0. That is what
+demonstrates the per-org `MAX+10/20/30` computation actually worked.
+
+**Also verified because Heathrow had never rendered anything:** all **9** pack card SPs
+(`BarChartCard`, `CombinedChartCard`, `CustomDataGrid`, `CustomGroupedDataGrid`, `HeatmapCard`,
+`MultiLineChartCard`, `PieChartCard`, `SingleKPICard`, `StackedBarChartCard`) exist in `core` on **all five** org
+databases, Heathrow included — so its whole render path (BiConfig → MI DB `20260722_XMS_7CE02464-…`, ACTIVE → card
+SP → granted dataset → group-mapped dashboard) is complete. Nothing about that org's path is now untested except
+the browser itself.
 
 **What rev 2 changed, all re-measured on UAT rather than carried from rev 1:**
 - **Ibis Heathrow (20) had no report-DB presence whatsoever** — no `BiConfig`, no grant, no group, no dashboard. Its
@@ -2221,9 +2243,16 @@ from the deploy scripts — and diffs them against `core.core.VisualisationQueri
 datasets carry **no** source scoping, so on Oak & Vine they read org-wide — accepted by decision, which is why all
 three dashboard names are deliberately source-neutral.
 
-**Still to run by hand:** the deploy itself, **Task 1c** (the Oak & Vine Growyze venue label via
-`MICROSERVICE_NAME`, an **MI** change needing a presentation rebuild), and the front-end smoke test. Plan 3 Task 7
-Step 6 lists the expected reading per card per org so a wrong number is recognisable, not merely plausible.
+**Still to run by hand:** **Task 1c** (the Oak & Vine Growyze venue label via `MICROSERVICE_NAME`, an **MI** change
+needing a presentation rebuild — script number **24**, since `22`/`23`/`94` are taken by O23's fix on the unmerged
+`worktree-margebrut-live` branch) and the **front-end smoke test**. Plan 3 Task 7 Step 6 lists the expected reading
+per card per org so a wrong number is recognisable, not merely plausible.
+
+⚠️ **What the deploy does and does not prove.** It proves the configuration is complete and internally consistent,
+that every wired `DataSet` resolves to a LIVE MI vis query of the matching type, that the card SPs exist, and that
+nothing pre-existing regressed. It does **not** prove the dashboards render in a browser — that is Task 7 Step 6.
+Plan 2 already verified all 15 card templates return correct data on all five orgs from the deployed templates, and
+Plan 3 changed no template, so the remaining risk is presentation-layer, not query-layer.
 
 ---
 
