@@ -240,12 +240,25 @@ SET @od = N'{
   ]
 }';
 
+-- OPENING/CLOSING ARE SNAPSHOTS, NOT FLOWS (defect C5 - same fault as the Closing Stock KPI).
+-- OPENING_QTY, CLOSING_QTY and CLOSING_VALUE were previously plain SUMs over every period in
+-- scope, which silently added each period''s balance together. Correct only when one period is
+-- in scope - true on the first deploy org, false everywhere else. Deliveries, transfers,
+-- consumption, spend, sold and variance ARE flows and stay plain SUMs.
+-- Standard opening/closing-balance treatment: opening comes from the EARLIEST period in scope
+-- and closing from the LATEST, resolved per (location, item) so that venues with independent
+-- stocktake calendars (design D5/D6) each contribute their own boundary rather than being
+-- collapsed onto one global date. The non-boundary rows contribute 0 instead of being filtered
+-- out, so an item still keeps its flow totals across every period in scope.
 SET @q = N'
 WITH Scoped AS (
     SELECT
          F.[REPORT_GROUP]
         ,F.[ITEM_NAME]
         ,F.[STANDARDISED_UOM]
+        ,F.[LOCATION_HUB_ID]
+        ,F.[INVITEM_HUB_ID]
+        ,F.[PERIOD_END_DATE]
         ,F.[OPENING_QTY]
         ,F.[DELIVERY_QTY]
         ,F.[TRANSFER_QTY]
@@ -262,6 +275,27 @@ WITH Scoped AS (
       AND F.[SOURCE] LIKE ''int_growyze%''
       AND ISNULL(F.[IS_FIRST_PERIOD], 0) = 0
       @FilterClause
+),
+Bounds AS (
+    SELECT [LOCATION_HUB_ID], [INVITEM_HUB_ID]
+          ,MIN([PERIOD_END_DATE]) AS [FirstEnd]
+          ,MAX([PERIOD_END_DATE]) AS [LastEnd]
+    FROM Scoped
+    GROUP BY [LOCATION_HUB_ID], [INVITEM_HUB_ID]
+),
+Balanced AS (
+    SELECT
+         S.[REPORT_GROUP], S.[ITEM_NAME], S.[STANDARDISED_UOM]
+        ,CASE WHEN S.[PERIOD_END_DATE] = B.[FirstEnd] THEN S.[OPENING_QTY]    ELSE 0 END AS [OPENING_QTY]
+        ,S.[DELIVERY_QTY], S.[TRANSFER_QTY]
+        ,CASE WHEN S.[PERIOD_END_DATE] = B.[LastEnd]  THEN S.[CLOSING_QTY]    ELSE 0 END AS [CLOSING_QTY]
+        ,S.[CONSUMPTION_QTY], S.[UOM_COST]
+        ,CASE WHEN S.[PERIOD_END_DATE] = B.[LastEnd]  THEN S.[CLOSING_VALUE]  ELSE 0 END AS [CLOSING_VALUE]
+        ,S.[COG_SPEND], S.[COG_SOLD], S.[VARIANCE_VALUE], S.[PERIOD_DAYS]
+    FROM Scoped S
+    INNER JOIN Bounds B
+        ON  B.[LOCATION_HUB_ID] = S.[LOCATION_HUB_ID]
+        AND B.[INVITEM_HUB_ID]  = S.[INVITEM_HUB_ID]
 )
 SELECT
      ParentId, Id, GroupedColumn
@@ -290,7 +324,7 @@ FROM (
         ,MAX([PERIOD_DAYS])        AS Column12
         ,[REPORT_GROUP]            AS SortGroup
         ,0                         AS SortLevel
-    FROM Scoped
+    FROM Balanced
     GROUP BY [REPORT_GROUP], [ITEM_NAME], [STANDARDISED_UOM]
 
     UNION ALL
@@ -314,7 +348,7 @@ FROM (
         ,MAX([PERIOD_DAYS])    AS Column12
         ,[REPORT_GROUP]        AS SortGroup
         ,1                     AS SortLevel
-    FROM Scoped
+    FROM Balanced
     GROUP BY [REPORT_GROUP]
 ) AS Tree
 -- SortLevel DESC so each group''s ROOT row arrives BEFORE its leaves (final-review M17).

@@ -4,7 +4,8 @@
     per location per stocktake period):
       - PantryCOGSSpendKPI          SUM(COG_SPEND)      "value delivered - what the client is billed"
       - PantryCOGSSoldKPI           SUM(COG_SOLD)       "value consumed - what was actually used"
-      - PantryCOGSClosingStockKPI   SUM(CLOSING_VALUE)  closing stock at cost
+      - PantryCOGSClosingStockKPI   CLOSING_VALUE at the LATEST period in scope, per location
+                                    (a snapshot - never summed across periods; see C5 note below)
       - PantryCOGSVarianceKPI       SUM(VARIANCE_VALUE) consumption unexplained by waste/sales
 
     Per 00_CARD_CONTRACTS.md, the live SingleKPICard example (DiscountPerc) has
@@ -132,14 +133,42 @@ VALUES
 -- Dataset: PantryCOGSClosingStockKPI
 -- SingleKPICard - Version 1 - LIVE
 -- ============================================
-SET @q = N'SELECT
+-- CLOSING STOCK IS A SNAPSHOT, NOT A FLOW - DO NOT SUM IT ACROSS PERIODS (defect C5).
+-- This was originally a plain SUM(F.[CLOSING_VALUE]) over every row in scope. That is correct
+-- ONLY when exactly one period is in scope, which is why it looked right on the first deploy
+-- org (Ibis Gloucester Road has a single non-first period). On any org with real stocktake
+-- history it silently adds every period''s closing balance together: on Padel Social the KPI
+-- read GBP 709,650.42 where the true latest closing stock is GBP 31,395.51 - a 22.6x
+-- overstatement presented as a headline figure.
+-- COG Spend, COG Sold, waste and variance are FLOWS and remain plain SUMs - summing those
+-- across periods is correct. Only opening/closing balances need this treatment.
+-- Latest period is resolved PER LOCATION, then summed across locations, because venues in one
+-- org keep independent stocktake calendars (design D5/D6) - taking one global MAX would drop
+-- every venue that did not happen to count on the most recent date.
+-- The alias F must stay on the CTE: @FilterClause and ParameterMappings both emit F.[...].
+SET @q = N'WITH Scoped AS (
+    SELECT
+         F.[LOCATION_HUB_ID]
+        ,F.[PERIOD_END_DATE]
+        ,F.[CLOSING_VALUE]
+    FROM [presentation].[F_COGS_PERIOD] F
+    WHERE 1=1
+      AND F.[SOURCE] LIKE N''int_growyze%''
+      AND ISNULL(F.[IS_FIRST_PERIOD], 0) = 0
+      @FilterClause
+),
+LatestPerLocation AS (
+    SELECT [LOCATION_HUB_ID], MAX([PERIOD_END_DATE]) AS [PERIOD_END_DATE]
+    FROM Scoped
+    GROUP BY [LOCATION_HUB_ID]
+)
+SELECT
      N''Closing stock'' AS Title
-    ,SUM(F.[CLOSING_VALUE]) AS Value
-FROM [presentation].[F_COGS_PERIOD] F
-WHERE 1=1
-  AND F.[SOURCE] LIKE N''int_growyze%''
-  AND ISNULL(F.[IS_FIRST_PERIOD], 0) = 0
-  @FilterClause';
+    ,SUM(S.[CLOSING_VALUE]) AS Value
+FROM Scoped S
+INNER JOIN LatestPerLocation L
+    ON  L.[LOCATION_HUB_ID]  = S.[LOCATION_HUB_ID]
+    AND L.[PERIOD_END_DATE] = S.[PERIOD_END_DATE]';
 
 SET @pm = N'{
   "LocationList": "CONVERT(VARCHAR(64), F.[LOCATION_HUB_ID], 2)",

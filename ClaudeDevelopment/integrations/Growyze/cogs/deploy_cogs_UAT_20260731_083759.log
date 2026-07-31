@@ -1,0 +1,168 @@
+[08:37:59] Target environment : UAT
+[08:37:59] Target server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[08:37:59] Target database    : 20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14
+[08:37:59] Cogs script path    : C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\integrations\Growyze\cogs
+[08:37:59] Tier filter         : 110
+[08:37:59] Steps               : 14 (DEPLOY.txt 1-11; step 10 refused, step 11 manual)
+[08:37:59] All required .sql files present.
+[08:38:00] Connected: xms-mssqlman-ne-uat.9358333fb9bd.database.windows.net (SQL 12.0.2000.8)
+[08:38:00] STEP    1 [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14] 99_verify_cogs_period.sql
+[08:38:00] STEP    1 FAILED AS EXPECTED: Invalid object name 'presentation.F_COGS_PERIOD'. 
+ Msg 208, Level 16, State 1, Procedure , Line 47.
+[08:38:00]   presentation.F_COGS_PERIOD does not exist yet - this confirms step ordering. Continuing.
+[08:38:00] STEP    2 [core] 01_cogs_period_table.sql
+[08:38:00] STEP    2 OK
+[08:38:00] STEP    3 [core] 02_cogs_period_build.sql
+[08:38:00] STEP    3 OK
+[08:38:00] STEP    4 [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14] 03_report_group_config.sql
+[08:38:01] STEP    4 OK
+[08:38:01] STEP    5 [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14] Deploy F_COGS_PERIOD - THIS TABLE ONLY, never DeployPresentationTables
+[08:38:01] STEP    5 OK - F_COGS_PERIOD deployed to 20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14 only.
+[08:38:01] STEP    6 [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14] Presentation rebuild (tier 110)
+    ---------------------------------------------------
+    Processing: Pantry COGS by Period (Tier 110, Type: Fact)
+    Table: [presentation].F_COGS_PERIOD
+    Warning: Null value is eliminated by an aggregate or other SET operation.
+    
+RowsInserted Status 
+------------ ------ 
+       17556 Success
+    Status: Success
+    Duration: 48 seconds
+    ===================================================
+    PROCESSING SUMMARY
+    ===================================================
+    
+
+Tier                 : 110
+TableType            : Fact
+TotalSteps           : 1
+Successful           : 1
+Failed               : 0
+TotalRowsProcessed   : 1
+TotalDurationSeconds : 48.00
+    
+
+Id              : a624baed-b4dc-4f17-b969-6a0d1a40785c
+StepName        : Pantry COGS by Period
+TableName       : [presentation].F_COGS_PERIOD
+Tier            : 110
+TableType       : Fact
+Status          : Success
+RowsProcessed   : 1
+StartTime       : 31/07/2026 07:38:01
+EndTime         : 31/07/2026 07:38:49
+DurationSeconds : 48.00
+ErrorMessage    :
+[08:38:49] STEP    6 OK
+[08:38:49] STEP    7 [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14] 99_verify_cogs_period.sql
+    --- Check 1: grain / fan-out ---
+    
+Verdict FactRows DistinctGrain
+------- -------- -------------
+PASS       17556         17556
+    
+Verdict Reason                                                                 
+------- ------                                                                 
+SKIPPED No Growyze export loaded into [reference].[GROWYZE_COGS_EXPORT_STAGING]
+    --- Check 3: subtotals = grand total = KPI, all three agreeing ---
+    
+
+Verdict                       : PASS
+KPI_SpendExpression           : 27104.377245
+Grid_SumOfSubtotals           : 27104.377245
+Grid_GrandTotalRow            : 27104.377245
+Grid_CategorySubcategoryPairs : 20
+Grid_DistinctRowLabels        : 20
+Note                          :
+    Warning: Null value is eliminated by an aggregate or other SET operation.
+    --- Check 4: coverage guard - no ungrouped items with movement ---
+    
+
+Verdict                         : FAIL
+UngroupedRows                   : 34
+CategoryNullRows                : 0
+CategorySentinelRows            : 34
+SubcategoryNullRows             : 0
+SubcategorySentinelRows         : 34
+ReportGroupNullRows             : 0
+ReportGroupSentinelRows         : 34
+ReportGroupEmbeddedSentinelRows : 0
+ValueAtRisk                     : 97.037200
+    --- Check 5: zero/NULL cost items with movement OR closing stock (reported, not hidden) ---
+    
+
+Verdict                     : INFO
+ZeroCostRows                : 118
+UnvaluedConsumptionQty      : -34497.000000
+UnvaluedClosingQty          : 1698135.000000
+StationaryUnpricedStockRows : 78
+    --- Check 6a: period-level drift guard (FAIL) ---
+    
+Verdict SameStocktakeBothEnds NonPositiveDays
+------- --------------------- ---------------
+PASS
+    --- Check 6b: boundary carry-forward visibility (INFO, never a FAIL) ---
+    
+
+Verdict                 : INFO
+SameCountBothBoundaries : 8082
+UncountedRows           : 9682
+NeverCountedRows        : 1600
+CarriedForwardCOGSold   : 10258.189708
+TotalCOGSold            : 9713.098075
+    Warning: Null value is eliminated by an aggregate or other SET operation.
+    --- Check 7: UOM_COST equals SAT_INVITEM latest-in-period cost, not an average ---
+    
+Verdict MismatchedCostRows
+------- ------------------
+PASS                     0
+    --- Check 8a: mapped ParameterMappings expressions <= 100 chars ---
+    
+Verdict OverlongMappings
+------- ----------------
+PASS                   0
+    --- Check 8b: mapped FilterDefinitions column expressions <= 100 chars ---
+    
+Verdict OverlongMappings
+------- ----------------
+PASS                   0
+    --- Check 9: deliveries non-zero for a period with known receipts ---
+    
+Verdict TotalDeliveryQty TotalCOGSpend
+------- ---------------- -------------
+PASS      6237216.000000  41108.604372
+    Warning: Null value is eliminated by an aggregate or other SET operation.
+    --- Check 10: UOM_CONVERSION fan-out guard ---
+    
+Verdict DuplicateFromUomCount Offenders
+------- --------------------- ---------
+PASS                        0
+    --- Check 11: REPORT_GROUP break-out config is visible to the build AND took effect ---
+    
+
+Verdict                                 : WARN
+ConfiguredValue_ThisDatabase            : Can't Live Without It
+ConfigRowPresentInThisDatabase          : 1
+RowsWhereReportGroupDiffersFromCategory : 0
+RowsInAConfiguredCategory               : 0
+DistinctCategories                      : 5
+DistinctReportGroups                    : 5
+Reason                                  : Config is present and readable, but no fact row carries any configured 
+                                          category, so nothing could break out. Compare the configured names against 
+                                          SELECT DISTINCT CATEGORY on this fact. This is NOT proof the break-out works.
+    Warning: Null value is eliminated by an aggregate or other SET operation.
+    --- Check 12: cost resolution actually resolved (wholesale-unpriced gate) ---
+    
+
+Verdict                    : PASS
+FactRows                   : 17556
+PricedFactRows             : 17225
+PricedLeafItemsInSatellite : 1826
+PricedPct                  : 98
+Reason                     : Cost resolved on the majority of rows.
+[08:38:51]   Verdicts: PASS=9 FAIL=1 WARN=1 SKIPPED=1 INFO=2
+[08:38:51]   1 check(s) reported WARN - not a failure, but something is UNPROVEN. Read the WARN row's Reason column in the log above before continuing.
+[08:38:51]   NOTE: Check 8 (VisualisationQueries length checks, filtered to PantryCOGS%) has ZERO rows to look at until step 8 runs the vis scripts. A PASS here proves nothing about check 8 - do not read it as coverage. The real gate for check 8 is step 9.
+[08:38:51] STEP    7 FAILED: 1 check(s) reported FAIL - halting.
+[08:38:51] Deployment halted. Fix the issue and resume with: .\90_deploy_cogs.ps1 -Environment UAT -TargetDatabase 20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14 -StartAt 7

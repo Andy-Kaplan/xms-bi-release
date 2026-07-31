@@ -248,6 +248,51 @@ failures loud instead of silent.**
   **What step 11 can still find:** only front-end rendering. Every data-layer contract is now verified by
   execution, so if a card looks wrong in the browser, look at the renderer before suspecting the data.
 
+- **2026-07-31 (third session) — rolled out to Padel Social (10) and Dirty Sixth (18). One more Critical (C5)
+  found, fixed and verified. Dirty Sixth fully live; Padel held at the report-DB step.**
+
+  **C5 — closing stock is a snapshot and was being SUMmed across periods.** Every measure card treated its
+  measure as a flow. That is right for COG Spend, COG Sold, waste and variance, and **wrong** for opening/closing
+  balances. It was invisible on org 21 for the same structural reason C4 was invisible to eleven checks: that org
+  has exactly **one** non-first period, so a sum over periods and a snapshot are the same number. On Padel, with
+  33 period-ends across 2 locations, `PantryCOGSClosingStockKPI` read **£709,650.42** against a true latest
+  closing stock of **£31,395.51** — **22.6× overstated, presented as a headline figure**. Dirty Sixth was ~5×.
+
+  Four columns across two cards were affected — the KPI, plus the item table's `OPENING_QTY`, `CLOSING_QTY` and
+  `CLOSING_VALUE` (the initial count of "3 spots" was low; the grep that found it matched only `*_VALUE`).
+  Fixed with the standard opening/closing-balance treatment: opening from the **earliest** period in scope,
+  closing from the **latest**, resolved **per location** (and per item in the grid) because venues keep
+  independent stocktake calendars under D5/D6 — a single global MAX would silently drop every venue that did not
+  count on the most recent date. Flows remain plain SUMs. Verified three ways: org 21 **unchanged at £8,496.68**
+  (no regression), Padel now **£31,395.51**, Dirty Sixth **£16,860.51** — each matching an independently computed
+  figure — and the item table's Beverages root row returns **£9,402.39** (the snapshot) rather than £59,677.98
+  (the old raw sum) while its flow columns still sum across all periods.
+
+  ⚠️ **This is now the second defect of exactly this shape** (after C4): code that is correct on the first deploy
+  org *because that org's data is degenerate*, and wrong everywhere else. Org 21 has one period, one location and
+  no waste/sale events — it cannot exercise period arithmetic, cross-location resolution, or the flow/snapshot
+  distinction. **A single-period org is not a sufficient acceptance environment for this pack.** Anything added
+  here should be shape-tested against Padel (2 locations, 33 period-ends) before it is believed.
+
+  **Both orgs FAIL check 4, and it is a source-data gap, not a build defect.** Padel: 34 rows / **9** items;
+  Dirty Sixth: 34 rows / **12** items — Growyze inventory items carrying no category, so they land on the
+  `'All INVITEMs'` sentinel (the exact case PREFLIGHT Q2's caveat predicted for a NULL `subCategory`). Impact is
+  small — Padel £97.04 sold of £21,873.82 (**0.4%**), Dirty Sixth −£321.44 of £102,240.78 (**0.3%**) — and the
+  items surface under an oddly-named bucket rather than vanishing, so card totals stay correct. The runner
+  **halted on it at step 7 on both orgs**, which is the gate behaving as designed. Deployment was continued past
+  it deliberately, with the impact measured first. **The fix belongs with Growyze: categorise ~9–12 items per
+  org.** Everything else passes on both orgs, including check 12.
+
+  **Padel Social is deliberately NOT wired in the report DB — see new [O34](O34-padel-biconfig-wrong-dbprefix.md).**
+  Its `BiConfig.DbPrefix` is `20251208`, resolving to a database that does not exist (the real one is
+  `20260310_…`); it is the only mismatch of 19 orgs, and `Audit.BiConfig` shows it was **wrong on the original
+  insert**, not drifted. `08_report_db_config.sql`'s `BiConfig` step is an `IF NOT EXISTS` guard, so running it
+  would have skipped the bad row and wired a dashboard that cannot resolve data. Padel's MI side **is** complete
+  (fact built, 17,556 rows, verified) — only the report-DB wiring waits on O34.
+
+  **Dirty Sixth is fully live**: steps 1–10 complete, report DB returned *PASS — 12 cards, 3 filters,
+  group-mapped and visible*, and the Closing Stock KPI verified by execution at £16,860.51.
+
 ## Decisions — three things waiting on Andy (none is a defect)
 
 1. **The comparison card can no longer be pointed at chosen months.** `BuildDynamicWhereClause` builds **one**
