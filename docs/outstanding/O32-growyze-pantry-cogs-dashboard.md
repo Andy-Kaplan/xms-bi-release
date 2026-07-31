@@ -4,15 +4,16 @@
 
 | | |
 |---|---|
-| **Status** | OPEN — **DEPLOYED and VERIFIED on UAT org 21** (steps 1–10). All 12 cards + 3 filters exercised through the real card SPs. Only the **front-end UI check (step 11)** remains |
+| **Status** | MONITOR — **LIVE on all 3 UAT Growyze orgs with stocktake data**: Ibis Gloucester Road (21), Padel Social (10), Dirty Sixth (18). Steps 1–10 complete on each; all 12 cards + 3 filters exercised through the real card SPs. **Six Criticals found and fixed** (C1–C3 in review, **C4/C5/C6 only by executing against real data**). Not on Prod, not release-prepped |
 | **Priority** | 2 |
 | **Area** | Growyze / presentation + Report DB |
 | **Owner / decides** | Andy |
-| **Next action** | **Step 11 — open the "Pantry COGS" dashboard as Ibis Gloucester Road on UAT and look at it.** The data layer is fully verified, so anything wrong from here is rendering, not data. Then decide the **three decisions** (§Decisions) |
+| **Next action** | Three things: **(1) step 11** — open the dashboard in the browser on any of the 3 orgs (data layer fully verified, so anything wrong now is rendering); **(2) re-run `99_verify` a day after deploy** — C6 proved a deploy-time grain check cannot see a duplicate the *next scheduled rebuild* introduces; **(3)** settle the **three decisions** (§Decisions) |
 | **Spec** | [`docs/superpowers/specs/2026-07-30-growyze-pantry-cogs-dashboard-design.md`](../superpowers/specs/2026-07-30-growyze-pantry-cogs-dashboard-design.md) |
 | **Plan** | [`docs/superpowers/plans/2026-07-30-growyze-pantry-cogs-dashboard.md`](../superpowers/plans/2026-07-30-growyze-pantry-cogs-dashboard.md) |
 | **Cross-linked** | **Claude Nine ledger O25** — "Scope Growyze consolidated COGS reporting opportunity" (the commercial thread with Kati) |
-| **Scripts** | `ClaudeDevelopment/integrations/Growyze/cogs/` (13 files) |
+| **Scripts** | `ClaudeDevelopment/integrations/Growyze/cogs/` (14 files, committed) |
+| **Deployed to** | UAT orgs **21** `20260722_XMS_67CA4E6F-…`, **10** `20260310_XMS_94A4B719-…`, **18** `20260327_XMS_7B50D717-…`. Report-DB org GUIDs are the GUID inside each MI database name |
 
 ## Context
 
