@@ -331,7 +331,13 @@ END CATCH
 
 ## Task 1c: Fix the misleading Growyze venue label on Oak & Vine (MI, not report DB)
 
-**Files:** Create `ClaudeDevelopment/integrations/Growyze/22_oakvine_growyze_location_name.sql`
+**Files:** Create `ClaudeDevelopment/integrations/Growyze/24_oakvine_growyze_location_name.sql`
+
+> ⚠️ **Numbering:** `22`/`23`/`94` are **taken** by [O23](O23-growyze-supplier-bottom-level.md)'s supplier
+> `BOTTOM_LEVEL` fix, which lives on the **unmerged** `worktree-margebrut-live` branch — so `git ls-tree` on this
+> branch does not show them. That fix is **deployed and live on UAT** while absent from this line of the repo; see
+> the note in the O5 detail file. Use `24` here, and a `91_*` runner if one is needed (`90` is Plan 3's,
+> `92`–`99` are taken).
 
 **Interfaces:** Orgs 16/20/21 share one Growyze tenant, and Oak & Vine's single Growyze location is named
 **"Ibis Gloucester Rd"** — so `GrowyzeHighestVenue` renders *"Ibis Gloucester Rd · £8,911"* on Oak & Vine. The
