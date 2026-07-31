@@ -4,11 +4,28 @@
 
 | | |
 |---|---|
-| **Status** | OPEN — **cosmetic / data-hygiene only.** The row is genuinely wrong, but **disproved as harmful**: Padel's dashboards render correct data from the real database (observed in the UI, 2026-07-31) |
+| **Status** | DOC-DEBT — ✅ **the row is FIXED (2026-07-31)**; only the documentation correction remains |
 | **Priority** | 4 — *downgraded from 2* |
 | **Area** | Microservice `report` DB / org configuration (UAT) + doc correction |
 | **Owner / decides** | Andy |
-| **Next action** | Two small things: correct the row for hygiene, and **fix `docs/microservice-report-database.md` §1**, which states `DbPrefix` resolves the client database — the running system demonstrably does not depend on it |
+| **Next action** | **Fix `docs/microservice-report-database.md`** — §1 still states `DbPrefix` resolves the client database as `{DbPrefix}_XMS_{OrganisationId}`, and §11 still lists `BiConfig` as the first result set of the card-render config load. The running system demonstrably does not depend on it. Say what actually resolves the client database, or say plainly that it is unverified. Optional follow-on: the cheap Prod sweep below, once Prod has orgs |
+
+## ✅ The row was fixed on 2026-07-31
+
+Corrected `20251208` → `20260310` as **step 1 of [O5](O5-growyze-default-dashboards.md)'s Plan 3 deploy**
+(`ClaudeDevelopment/integrations/Growyze/report_config/01_prereqs_biconfig_visconfig.sql`), then independently
+re-verified through MCP on a separate connection.
+
+- The UPDATE is guarded on the current value (`AND DbPrefix <> N'20260310'`), so it reports `rows changed = 1` on the
+  first run and is a no-op on every re-run. The old value is recorded in the script as a comment for rollback.
+- **All `BiConfig` rows now resolve to a database that exists.** The count went **19 → 20** in the same deploy,
+  because Ibis Heathrow — which had no `BiConfig` row at all — was provisioned alongside it. That org, not Padel,
+  turned out to be the more consequential gap: Padel's wrong row was never read, whereas Heathrow's *missing* row
+  sat under an org with no dashboards at all.
+- Nothing changed in the front end as a result, which is the expected outcome given the correction above: the value
+  is not the resolver.
+
+**The doc half is untouched and is now the whole of this item.**
 | **Found by** | [O32](O32-growyze-pantry-cogs-dashboard.md) rollout to Padel Social, 2026-07-31 |
 
 > ## ⚠️ CORRECTION — the original severity claim here was WRONG
@@ -81,7 +98,7 @@ ever have returned data.
 documentary chain (docs §1 + docs §11 + a corroborating audit trail) was consistent, coherent, and wrong about
 the running system. `DbPrefix` being described as the resolver does not make it the resolver.
 
-## The fix
+## The fix — APPLIED 2026-07-31 (kept for the record)
 
 One row, reversible. Record the old value first.
 
