@@ -59,6 +59,20 @@ PREFLIGHT  Read cogs/PREFLIGHT.md. If Q2 says only one category level lands, STO
                                 -- check 11 (step 7/9) is what catches this.
  5  Deploy F_COGS_PERIOD for the org - THIS TABLE ONLY, never DeployPresentationTables
  6  Presentation rebuild (tier 110)
+                                -- AFTER THIS, CHECK 1 IS NOT A ONE-OFF (defect C6). A Fact step
+                                -- whose PresentationControl row has a NULL
+                                -- time_series_target_column APPENDS instead of replacing:
+                                -- sp_ExecuteQuery gates its pre-insert DELETE on that column
+                                -- being non-NULL, but runs the INSERT unconditionally. The step
+                                -- then adds a full copy of the fact on EVERY scheduled
+                                -- presentation rebuild, silently and cumulatively. This step now
+                                -- sets time_series_target_column = PERIOD_END_DATE, so the
+                                -- rebuild is a true full replace and is idempotent (proven by
+                                -- rebuilding twice in a row and confirming the row count is
+                                -- unchanged). If you ever re-register this step by hand, keep
+                                -- that column set, and re-run check 1 a day AFTER deploying -
+                                -- the deploy-time PASS cannot see a duplicate that a later
+                                -- scheduled refresh introduces.
  7  99_verify_cogs_period.sql   -- expect PASS on checks 1,3,4,6a,7,9,10,12 and PASS-or-WARN on 11.
                                 -- On UAT org 21 the expected verdicts are now MEASURED, not
                                 -- predicted: the build SELECT was executed read-only against

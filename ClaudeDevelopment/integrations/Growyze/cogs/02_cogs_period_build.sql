@@ -470,6 +470,25 @@ LEFT JOIN BreakoutBuckets BB
 MERGE INTO [core].[PresentationControl] AS tgt
 USING (VALUES (N'Pantry COGS by Period', N'F_COGS_PERIOD')) AS src (step_name, table_name)
     ON tgt.[step_name] = src.[step_name] AND tgt.[table_name] = src.[table_name]
+-- time_series_target_column IS NOT OPTIONAL ON A FACT (defect C6 - the worst one in this pack).
+-- Both of these were originally NULL, which is silently catastrophic. sp_ExecuteQuery gates the
+-- pre-insert DELETE on it:
+--     ELSE IF @TableType = 'Fact' AND @TimeSeriesTargetColumn IS NOT NULL
+--         ... DELETE FROM target WHERE [col] BETWEEN @MinDate AND @MaxDate
+--     -- and then, UNCONDITIONALLY:
+--     INSERT INTO target (...) SELECT ... FROM ##TempResults
+-- With the column NULL the DELETE branch is skipped and the INSERT still runs, so the step is a
+-- pure APPEND. It does not fail, it does not warn, and it COMPOUNDS: every scheduled presentation
+-- rebuild adds another complete copy of the fact. Observed on 2026-07-31 - Padel Social reached
+-- 35,112 rows for 17,556 distinct grain keys and Dirty Sixth 14,264 for 7,132, each an exact 2x,
+-- within an hour of deployment, purely from one scheduled refresh. Every measure doubles with it.
+-- ALL 19 other Fact steps in PresentationControl set this column; this step was the exception.
+-- The value must name a TARGET column that also appears in column_mappings.table_column -
+-- sp_ExecuteQuery resolves the matching query_column and RAISERRORs if it cannot, so a typo here
+-- is loud rather than silent. PERIOD_END_DATE is the fact's time axis and is never NULL.
+-- Because the build reads unbounded history, MIN..MAX spans every period and the DELETE is a true
+-- full replace. Set in BOTH branches deliberately: leaving it out of the UPDATE branch is what
+-- would stop a re-run of this script from repairing an already-broken control row.
 WHEN MATCHED THEN UPDATE SET
      [query_sql]        = @sql
     ,[tier]             = 110
@@ -479,6 +498,8 @@ WHEN MATCHED THEN UPDATE SET
     ,[priority]         = 100
     ,[retry_count]      = 3
     ,[timeout_minutes]  = 30
+    ,[time_series_entity]        = N'STOCKEVENT'
+    ,[time_series_target_column] = N'PERIOD_END_DATE'
     ,[description]      = N'Builds F_COGS_PERIOD at item x location x stocktake-period grain. Unbounded read - full refresh.'
     ,[updated_at]       = GETDATE()
 WHEN NOT MATCHED THEN INSERT
@@ -488,4 +509,4 @@ WHEN NOT MATCHED THEN INSERT
 VALUES
     (N'Pantry COGS by Period', N'F_COGS_PERIOD', @sql, 110, N'Fact', @colmap,
      0, 100, 3, 30, N'Builds F_COGS_PERIOD at item x location x stocktake-period grain.',
-     N'PresentationControlApp', GETDATE(), GETDATE(), NULL, NULL);
+     N'PresentationControlApp', GETDATE(), GETDATE(), N'STOCKEVENT', N'PERIOD_END_DATE');

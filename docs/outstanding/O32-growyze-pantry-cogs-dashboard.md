@@ -293,6 +293,50 @@ failures loud instead of silent.**
   **Dirty Sixth is fully live**: steps 1–10 complete, report DB returned *PASS — 12 cards, 3 filters,
   group-mapped and visible*, and the Closing Stock KPI verified by execution at £16,860.51.
 
+- **2026-07-31 (fourth session) — Padel wired; O34's blocker disproved; C6 found and fixed.**
+
+  **O34 was wrong and Andy disproved it from the UI.** The claim that Padel's dashboards had never rendered
+  (because `BiConfig.DbPrefix` names a non-existent database) was inference from docs + schema + audit trail, all
+  three of which agreed with each other and were all wrong about the running system. Padel's *Cost & Margins*
+  renders fully; `InvCOGSByCategory` against the real DB matches it to the penny (£56,189). `DbPrefix` is **not**
+  the resolver. O34 downgraded to priority 4 (hygiene + a doc fix), the hold lifted, and Padel wired — report DB
+  returned *PASS — 12 cards, 3 filters, group-mapped*, now sitting alongside its 4 existing dashboards.
+
+  **C6 — the fact was APPENDING on every rebuild, not replacing. The worst defect in this pack.**
+  Immediately after wiring, Padel's Closing Stock KPI read **£62,791.01 — exactly 2× the £31,395.51 verified
+  minutes earlier.** The fact held **35,112 rows for 17,556 distinct grain keys**; Dirty Sixth **14,264 for
+  7,132**. Both exact doubles. Neither had been built twice by me — **a single scheduled presentation refresh did
+  it**, because registering the tier-110 step globally means every org's scheduled rebuild now runs it.
+
+  Cause, in `sp_ExecuteQuery`:
+  ```sql
+  ELSE IF @TableType = 'Fact' AND @TimeSeriesTargetColumn IS NOT NULL
+  BEGIN ... DELETE FROM target WHERE [col] BETWEEN @MinDate AND @MaxDate END
+  -- then, UNCONDITIONALLY:
+  INSERT INTO target (...) SELECT ... FROM ##TempResults
+  ```
+  `02_cogs_period_build.sql` registered `time_series_entity` and `time_series_target_column` as **NULL**, so the
+  DELETE was skipped and the INSERT still ran. **All 19 other Fact steps set that column** — this step was the
+  sole exception (bar `PF_GROWTH_PERIOD`, see below). It never errors, never warns, and **compounds every refresh
+  cycle**: unbounded table growth with every measure inflating in lockstep.
+
+  Fixed by setting `time_series_entity = 'STOCKEVENT'`, `time_series_target_column = 'PERIOD_END_DATE'` in
+  **both** MERGE branches — the UPDATE branch matters, because omitting it there is exactly what would stop a
+  re-run from repairing an already-broken control row. `sp_ExecuteQuery` resolves the source column from
+  `column_mappings` and RAISERRORs if absent, so a typo is loud. The build reads unbounded history, so MIN..MAX
+  spans every period and the DELETE is a true full replace. All three orgs rebuilt clean —
+  Padel 35,112→**17,556**, Dirty Sixth 14,264→**7,132**, org 21 **732** unchanged — KPIs back to £31,395.51 /
+  £16,860.51 / £8,496.68, and **idempotency proven by rebuilding Padel twice in a row with no growth.**
+
+  ⚠️ **Check 1 (grain/fan-out) is the right guard and it did not fire, because the duplicate arrives *after*
+  deployment.** Every verify run happened before the first scheduled refresh. A deploy-time gate cannot catch a
+  defect whose trigger is the *next* scheduled rebuild — **re-run `99_verify` a day after any deploy**, which is
+  now written into `DEPLOY.txt` step 6.
+
+  ⚠️ **`PF_GROWTH_PERIOD` (tier 102, parent-org / [O4](O4-parent-org-1011.md)) carries the same NULL
+  `time_series_target_column`** and is the only other Fact that does. It is very likely accumulating the same way
+  on every parent-org rebuild. **Not investigated here — worth checking as part of O4.**
+
 ## Decisions — three things waiting on Andy (none is a defect)
 
 1. **The comparison card can no longer be pointed at chosen months.** `BuildDynamicWhereClause` builds **one**
