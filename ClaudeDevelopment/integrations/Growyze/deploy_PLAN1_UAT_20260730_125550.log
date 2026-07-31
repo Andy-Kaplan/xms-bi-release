@@ -1,0 +1,61 @@
+﻿[12:55:50] === Growyze dashboards Plan 1 (O5) ===
+[12:55:50] Environment : UAT
+[12:55:50] Server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[12:55:50] Log         : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\deploy_PLAN1_UAT_20260730_125550.log
+[12:55:51] Growyze orgs (5):
+[12:55:51]   org 10  Padel Social             20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14
+[12:55:51]   org 16  The Oak & Vine           20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87
+[12:55:51]   org 18  Dirty Sixth              20260327_XMS_7B50D717-124C-4902-ADD2-439A9310326A
+[12:55:51]   org 20  Ibis Heathrow            20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D
+[12:55:51]   org 21  Ibis Gloucester Road     20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D
+[12:55:51] Task 7 target   : 20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14 (verified present in UAT)
+[12:55:51] Steps (16):
+[12:55:51]    1. Task 1  category sentinel (GRYZ_PRODUCT staging)     [core] 17_product_category_sentinel.sql
+[12:55:51]    2. Task 6  LINEITEM_TIMESTAMP staging + entity mapping  [core] 18_lineitem_timestamp_mapping.sql
+[12:55:51]    3. Task 6  regenerate LINEITEM Load step                [core] inline T-SQL
+[12:55:51]    4. Task 2  GrowyzeProfit / GrowyzeProfitPct             [core] 39_growyze_cost_kpis.sql
+[12:55:51]    5. Task 3  GrowyzeSalesByCategory                       [core] 40_growyze_sales_by_category.sql
+[12:55:51]    6. Task 7  create F_PURCHASES_DAY on Padel              [core] 08_purchases_day_padel_create.sql
+[12:55:51]    7. reload  org 10 Padel Social                          [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14] inline T-SQL
+[12:55:51]    8. rebuild org 10 Padel Social                          [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14] 97_rebuild_presentation.sql
+[12:55:51]    9. reload  org 16 The Oak & Vine                        [20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87] inline T-SQL
+[12:55:51]   10. rebuild org 16 The Oak & Vine                        [20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87] 97_rebuild_presentation.sql
+[12:55:51]   11. reload  org 18 Dirty Sixth                           [20260327_XMS_7B50D717-124C-4902-ADD2-439A9310326A] inline T-SQL
+[12:55:51]   12. rebuild org 18 Dirty Sixth                           [20260327_XMS_7B50D717-124C-4902-ADD2-439A9310326A] 97_rebuild_presentation.sql
+[12:55:51]   13. reload  org 20 Ibis Heathrow                         [20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D] inline T-SQL
+[12:55:51]   14. rebuild org 20 Ibis Heathrow                         [20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D] 97_rebuild_presentation.sql
+[12:55:51]   15. reload  org 21 Ibis Gloucester Road                  [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] inline T-SQL
+[12:55:51]   16. rebuild org 21 Ibis Gloucester Road                  [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] 97_rebuild_presentation.sql
+[12:55:51] RUN    1. Task 1  category sentinel (GRYZ_PRODUCT staging) [core]
+[12:55:51] OK     1. Task 1  category sentinel (GRYZ_PRODUCT staging)
+[12:55:51] RUN    2. Task 6  LINEITEM_TIMESTAMP staging + entity mapping [core]
+[12:55:51] OK     2. Task 6  LINEITEM_TIMESTAMP staging + entity mapping
+[12:55:51] RUN    3. Task 6  regenerate LINEITEM Load step [core]
+[12:55:51] OK     3. Task 6  regenerate LINEITEM Load step
+[12:55:51] RUN    4. Task 2  GrowyzeProfit / GrowyzeProfitPct [core]
+[12:55:51] OK     4. Task 2  GrowyzeProfit / GrowyzeProfitPct
+[12:55:51] RUN    5. Task 3  GrowyzeSalesByCategory [core]
+[12:55:51] OK     5. Task 3  GrowyzeSalesByCategory
+[12:55:51] RUN    6. Task 7  create F_PURCHASES_DAY on Padel [core]
+[12:55:51] OK     6. Task 7  create F_PURCHASES_DAY on Padel
+[12:55:51] RUN    7. reload  org 10 Padel Social [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14]
+[12:56:34] OK     7. reload  org 10 Padel Social
+[12:56:34] RUN    8. rebuild org 10 Padel Social [20260310_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14]
+[13:00:10] OK     8. rebuild org 10 Padel Social
+[13:00:10] RUN    9. reload  org 16 The Oak & Vine [20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87]
+[13:02:05] OK     9. reload  org 16 The Oak & Vine
+[13:02:05] RUN   10. rebuild org 16 The Oak & Vine [20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87]
+[13:02:24] OK    10. rebuild org 16 The Oak & Vine
+[13:02:24] RUN   11. reload  org 18 Dirty Sixth [20260327_XMS_7B50D717-124C-4902-ADD2-439A9310326A]
+[13:04:28] OK    11. reload  org 18 Dirty Sixth
+[13:04:28] RUN   12. rebuild org 18 Dirty Sixth [20260327_XMS_7B50D717-124C-4902-ADD2-439A9310326A]
+[13:07:24] OK    12. rebuild org 18 Dirty Sixth
+[13:07:24] RUN   13. reload  org 20 Ibis Heathrow [20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D]
+[13:07:52] OK    13. reload  org 20 Ibis Heathrow
+[13:07:52] RUN   14. rebuild org 20 Ibis Heathrow [20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D]
+[13:07:55] OK    14. rebuild org 20 Ibis Heathrow
+[13:07:55] RUN   15. reload  org 21 Ibis Gloucester Road [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D]
+[13:08:29] OK    15. reload  org 21 Ibis Gloucester Road
+[13:08:29] RUN   16. rebuild org 21 Ibis Gloucester Road [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D]
+[13:08:31] OK    16. rebuild org 21 Ibis Gloucester Road
+[13:08:31] DONE. Now run the Plan 1 verification queries (96_verify_plan1.sql).

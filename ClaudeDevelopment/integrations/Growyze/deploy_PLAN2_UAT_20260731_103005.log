@@ -1,0 +1,48 @@
+﻿[10:30:05] === Growyze dashboards Plan 2 - cards & visualisation queries (O5) ===
+[10:30:05] Environment : UAT
+[10:30:05] Server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[10:30:05] Log         : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\deploy_PLAN2_UAT_20260731_103005.log
+[10:30:05] All 12 scripts present.
+[10:30:05] Step  1 (Task A) - GrowyzeActiveStocktakes : running reporting_queries/42_growyze_active_stocktakes.sql
+[10:30:06] Step  1 (Task A) - GrowyzeActiveStocktakes : OK
+[10:30:06] Step  2 (Task B) - GrowyzeDeliveriesValue : running reporting_queries/43_growyze_deliveries_value.sql
+[10:30:06] Step  2 (Task B) - GrowyzeDeliveriesValue : OK
+[10:30:06] Step  3 (Task C) - GrowyzeAvgCostSpend : running reporting_queries/44_growyze_avg_cost_spend.sql
+[10:30:06] Step  3 (Task C) - GrowyzeAvgCostSpend : OK
+[10:30:06] Step  4 (Task D) - GrowyzeBestCategory : running reporting_queries/45_growyze_best_category.sql
+[10:30:06] Step  4 (Task D) - GrowyzeBestCategory : OK
+[10:30:06] Step  5 (Task E) - 4 Menu Item Highlight KPIs : running reporting_queries/46_growyze_menu_highlights.sql
+[10:30:06] Step  5 (Task E) - 4 Menu Item Highlight KPIs : OK
+[10:30:06] Step  6 (Task F) - Highest/Lowest stock venue : running reporting_queries/47_growyze_venue_extremes.sql
+[10:30:06] Step  6 (Task F) - Highest/Lowest stock venue : OK
+[10:30:06] Step  7 (Task G) - GrowyzeCategoryStockTrend : running reporting_queries/48_growyze_category_stock_trend.sql
+[10:30:06] Step  7 (Task G) - GrowyzeCategoryStockTrend : OK
+[10:30:06] Step  8 (Task H) - GrowyzeMenuProfitabilityTrend : running reporting_queries/49_growyze_menu_profitability_trend.sql
+[10:30:06] Step  8 (Task H) - GrowyzeMenuProfitabilityTrend : OK
+[10:30:06] Step  9 (Task I) - GrowyzeMenuEngineering : running reporting_queries/50_growyze_menu_engineering.sql
+[10:30:06] Step  9 (Task I) - GrowyzeMenuEngineering : OK
+[10:30:06] Step 10 (Task J) - GrowyzeSalesHeatmap : running reporting_queries/51_growyze_sales_heatmap.sql
+[10:30:06] Step 10 (Task J) - GrowyzeSalesHeatmap : OK
+[10:30:07] Step 11 (Task K) - GrowyzeProductsCompFilter : running reporting_queries/52_growyze_productscomp_filter.sql
+[10:30:07] Step 11 (Task K) - GrowyzeProductsCompFilter : OK
+[10:30:07] Step 12 (Task L) - InvMargeBrut filter fix (SHARED dataset) : running reporting_queries/53_invmargebrut_filter_fix.sql
+[10:30:07] Step 12 (Task L) - InvMargeBrut filter fix (SHARED dataset) : OK
+[10:30:07] === Deployed 12 step(s); skipped 0 ===
+[10:30:07] --- Post-deploy dataset check ---
+[10:30:07]   GrowyzeActiveStocktakes          OK
+[10:30:07]   GrowyzeAvgCostSpend              OK
+[10:30:07]   GrowyzeBestCategory              OK
+[10:30:07]   GrowyzeCategoryStockTrend        OK
+[10:30:07]   GrowyzeDeliveriesValue           OK
+[10:30:07]   GrowyzeHighestGPItem             OK
+[10:30:07]   GrowyzeHighestVenue              OK
+[10:30:07]   GrowyzeLowestItem                OK
+[10:30:07]   GrowyzeLowestVenue               OK
+[10:30:07]   GrowyzeMenuEngineering           OK
+[10:30:07]   GrowyzeMenuProfitabilityTrend    OK
+[10:30:07]   GrowyzeMostSoldItem              OK
+[10:30:07]   GrowyzeProductsCompFilter        OK
+[10:30:07]   GrowyzeSalesHeatmap              OK
+[10:30:07]   GrowyzeTopRevenueItem            OK
+[10:30:07] All 15 datasets LIVE and well-formed.
+[10:30:07] Next: run 99_verify_plan2.sql against each Growyze org DB (NOT from core - see its header).

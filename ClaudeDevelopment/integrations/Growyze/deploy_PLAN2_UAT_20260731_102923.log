@@ -1,0 +1,19 @@
+﻿[10:29:23] === Growyze dashboards Plan 2 - cards & visualisation queries (O5) ===
+[10:29:23] Environment : UAT
+[10:29:23] Server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[10:29:23] Log         : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\deploy_PLAN2_UAT_20260731_102923.log
+[10:29:23] MODE        : -WhatIf (no changes will be made)
+[10:29:23] All 12 scripts present.
+[10:29:24] Step  1 (Task A) - GrowyzeActiveStocktakes : would run reporting_queries/42_growyze_active_stocktakes.sql
+[10:29:24] Step  2 (Task B) - GrowyzeDeliveriesValue : would run reporting_queries/43_growyze_deliveries_value.sql
+[10:29:24] Step  3 (Task C) - GrowyzeAvgCostSpend : would run reporting_queries/44_growyze_avg_cost_spend.sql
+[10:29:24] Step  4 (Task D) - GrowyzeBestCategory : would run reporting_queries/45_growyze_best_category.sql
+[10:29:24] Step  5 (Task E) - 4 Menu Item Highlight KPIs : would run reporting_queries/46_growyze_menu_highlights.sql
+[10:29:24] Step  6 (Task F) - Highest/Lowest stock venue : would run reporting_queries/47_growyze_venue_extremes.sql
+[10:29:24] Step  7 (Task G) - GrowyzeCategoryStockTrend : would run reporting_queries/48_growyze_category_stock_trend.sql
+[10:29:24] Step  8 (Task H) - GrowyzeMenuProfitabilityTrend : would run reporting_queries/49_growyze_menu_profitability_trend.sql
+[10:29:24] Step  9 (Task I) - GrowyzeMenuEngineering : would run reporting_queries/50_growyze_menu_engineering.sql
+[10:29:24] Step 10 (Task J) - GrowyzeSalesHeatmap : would run reporting_queries/51_growyze_sales_heatmap.sql
+[10:29:24] Step 11 (Task K) - GrowyzeProductsCompFilter : would run reporting_queries/52_growyze_productscomp_filter.sql
+[10:29:24] Step 12 (Task L) - InvMargeBrut filter fix (SHARED dataset) : would run reporting_queries/53_invmargebrut_filter_fix.sql
+[10:29:24] === -WhatIf complete; nothing was changed ===

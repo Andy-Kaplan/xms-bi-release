@@ -91,7 +91,7 @@ FROM (
 SELECT 'A3_sales_cards_resolve_source' AS check_name,
        CASE WHEN checked = 0 THEN 'VACUOUS - datasets not deployed'
             WHEN offenders = 0 THEN 'PASS' ELSE 'FAIL' END AS verdict,
-       CAST(checked AS NVARCHAR(10)) + ' of 8 inspected; ' + ISNULL(names, 'all carry the resolver') AS detail
+       CAST(checked AS NVARCHAR(10)) + ' of 10 inspected; ' + ISNULL(names, 'all carry the resolver') AS detail
 FROM (
     SELECT COUNT(*) AS checked,
            SUM(CASE WHEN v.QueryTemplate NOT LIKE N'%sales[_]src%'

@@ -2112,9 +2112,13 @@ Plan: `docs/plans/2026-06-05-growyze-dashboards-1-data-quality.md`. Ledger: `doc
 Ledger **O5**. Plan: `docs/plans/2026-07-10-growyze-dashboards-2-cards.md` **(rev 2, 2026-07-31)**. Twelve idempotent
 control-plane deltas creating/updating **15 datasets** in `core.core.VisualisationQueries`, plus a runner and a verifier.
 
-**Status for all fourteen files: AUTHORED, every query VERIFIED READ-ONLY on UAT against each org database directly, NOT DEPLOYED.**
-Zero writes were made to UAT. Deploy with `98_deploy_plan2.ps1 -Environment UAT` (use `-WhatIf` first), then re-run
-`99_verify_plan2.sql` per org DB and diff against the recorded pre-deploy output.
+**Status for all fourteen files: DEPLOYED TO UAT 2026-07-31 and VERIFIED on all 5 Growyze orgs.**
+`98_deploy_plan2.ps1 -Environment UAT` ran 12/12 steps OK with all 15 datasets LIVE and well-formed
+(log `deploy_PLAN2_UAT_20260731_103005.log`). `99_verify_plan2.sql` then ran against each of the five org databases:
+**all 9 control-plane checks PASS on every org**, and the **regression witness is unchanged pre → post** (Padel
+£148,897.95 / 7,600 rows; Oak & Vine £905,503.87 / 64,724; Dirty Sixth £317,414.99 / 12,906; both Ibis orgs 0 rows).
+A render check driven from the **deployed** templates reproduced every pre-deploy figure exactly, with `£` and `·`
+intact through the real deploy path. Not on Prod, and not yet release-prepped into `releases/v1.1` (Plan 2 Task M).
 
 > ⚠️ **Verify these against the ORG database, never from `core`.** The precedence resolver reads `sys.schemas` of the
 > *executing* database, so a three-part-prefixed run from `core` resolves *core's* schemas, finds no `int_*` POS schema,
