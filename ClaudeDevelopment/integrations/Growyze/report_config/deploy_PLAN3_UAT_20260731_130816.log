@@ -1,0 +1,8 @@
+﻿13:08:16  === Growyze Plan 3 (rev 2) - Report DB wiring ===
+13:08:16  report server : xms-sql-fog-uat.database.windows.net  (database: report)
+13:08:16  MI server     : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+13:08:16  log           : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\report_config\deploy_PLAN3_UAT_20260731_130816.log
+13:08:16  
+13:08:16  -VerifyOnly: skipping steps 1-7, no writes.
+13:08:16  
+13:08:16  step 8: 99_verify_plan3.sql - report-DB checks A1-A9

@@ -1,0 +1,32 @@
+﻿13:08:46  === Growyze Plan 3 (rev 2) - Report DB wiring ===
+13:08:46  report server : xms-sql-fog-uat.database.windows.net  (database: report)
+13:08:46  MI server     : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+13:08:46  log           : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\report_config\deploy_PLAN3_UAT_20260731_130846.log
+13:08:46  
+13:08:46  -VerifyOnly: skipping steps 1-7, no writes.
+13:08:46  
+13:08:46  step 8: 99_verify_plan3.sql - report-DB checks A1-A9
+13:08:47         A1  FAIL     5 orgs                                    2 org(s) missing or wrong: 10 Padel Social (want 20260310, have 20251208), 20 Ibis Heathrow (want 20260722, have <no row>)
+13:08:47         A2  FAIL     130 pairs (26 x 5)                        117 pair(s) unwired - almost always a missing card-type grant (see A3); the insert in 02 joins to VisualisationConfig and silently skips what it cannot join.
+13:08:47         A3  FAIL     40 grants (8 types x 5 orgs)              15 grant(s) missing - run 01_prereqs_biconfig_visconfig.sql.
+13:08:47         A4  VACUOUS  0 pack configs (expect 15)                No pack dashboard exists yet - nothing to falsify. Expected pre-deploy.
+13:08:47         A5  FAIL     Overview                                  items 0/8, filters 0/2
+13:08:47         A5  FAIL     Sales & Profitability                     items 0/15, filters 0/3
+13:08:47         A5  FAIL     Inventory Control                         items 0/9, filters 0/2
+13:08:47         A6  VACUOUS  0 placements x orgs (expect 160 = 32 items x 5)  No pack grid items exist yet - nothing to falsify. Expected pre-deploy.
+13:08:47         A7  WARN     23 dashboards across the five orgs        2 (org, SortOrder) collision(s). Rev 1's flat 10/11/12 collided with Oak & Vine's Weekly P&L; cosmetic (nav order) not functional.
+13:08:47         A8  PASS     10 Padel Social                           non-pack dashboards 5 (expect 5), all group-mapped: 5
+13:08:47         A8  PASS     16 The Oak & Vine                         non-pack dashboards 11 (expect 11), all group-mapped: 11
+13:08:47         A8  PASS     18 Dirty Sixth                            non-pack dashboards 5 (expect 5), all group-mapped: 5
+13:08:47         A8  PASS     20 Ibis Heathrow                          non-pack dashboards 0 (expect 0), all group-mapped: 0
+13:08:47         A8  PASS     21 Ibis Gloucester Road                   non-pack dashboards 2 (expect 2), all group-mapped: 2
+13:08:47         A9  PASS     3 pack grids                              OakVineInvTotalCost is not placed on any pack dashboard, as decided (O37).
+13:08:47         SUMMARY  PASS=6 FAIL=6 WARN=1 VACUOUS=2
+13:08:47  step 8: FAIL - see the checks above. This is the gate; do not proceed.
+13:08:47  
+13:08:47  step 9: cross-server check - every wired DataSet is LIVE on the MI
+13:08:47         VACUOUS - nothing is wired to the pack grids, so there is nothing to check.
+13:08:47  
+13:08:47  === Done. Log: C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\report_config\deploy_PLAN3_UAT_20260731_130846.log ===
+13:08:47  REMAINING BY HAND: Task 1c (Oak & Vine venue label, MI) and the front-end smoke test
+13:08:47  (Plan 3 Task 7 Step 6 lists the expected reading per card per org, so a wrong number is recognisable).

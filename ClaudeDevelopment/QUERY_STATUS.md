@@ -2163,6 +2163,70 @@ colon (a silent no-op that would still have printed success); and `49`'s resolve
 
 ---
 
+### 114–122. Growyze dashboards Plan 3 — Report DB wiring (`report_config/01`–`06`, `90`, `99`)
+
+Ledger **O5**. Plan: `docs/plans/2026-07-10-growyze-dashboards-3-report-db.md` **(rev 2, 2026-07-31)**.
+
+**TARGET IS A DIFFERENT SERVER.** These run against the microservice **`report`** database on
+**`xms-sql-fog-uat`** (Azure SQL), not the Managed Instance. The MI runners (`95`/`97`/`98_*.ps1`) do not reach it
+and use the wrong env vars; MCP against `report` is read-only, which is why writes go through
+`90_deploy_plan3.ps1` using `AZURE_MICROSERVICE_UAT_{SERVER,USER,PASSWORD}`.
+
+**Status for all nine files: AUTHORED + PRE-DEPLOY BASELINE CAPTURED 2026-07-31. NOT DEPLOYED.**
+`90_deploy_plan3.ps1 -WhatIf` and `-VerifyOnly` both ran clean; the write pass was **blocked by the local
+permission classifier**, so the developer must run it. Nothing has been written to `report`.
+
+The pre-deploy baseline (log `deploy_PLAN3_UAT_20260731_130846.log`) is **PASS=6 FAIL=6 WARN=1 VACUOUS=2**, and every
+verdict is the expected pre-deploy state. It independently cross-checks the audit that produced the plan: A2 reports
+**117 of 130** pairs unwired, i.e. exactly the 13 already present (Padel 6 + Dirty Sixth 6 + Oak & Vine 1), and A3
+reports **15** missing grants, exactly the per-org matrix (1+1+1+8+4). A4 and A6 report **`VACUOUS`** rather than a
+confident PASS over an empty set — the trap `99_verify_plan2.sql`'s first draft fell into.
+
+| # | File | Purpose | Pre-deploy state |
+|---|---|---|---|
+| 114 | `report_config/01_prereqs_biconfig_visconfig.sql` | Padel `DbPrefix` 20251208→20260310 (**O34**) + the 15 missing card-type grants across 5 orgs | A1/A3 correctly FAIL |
+| 115 | `report_config/01b_provision_heathrow.sql` | **Ibis Heathrow has NO report-DB presence at all** — creates its `BiConfig` row and root `All Dashboards` group | A1 FAIL: `<no row>` |
+| 116 | `report_config/02_dataset_map.sql` | 26 (dataset, card-type) pairs × 5 orgs = 130 `VisualisationDataSetMap` rows | A2 FAIL: 117 unwired |
+| 117 | `report_config/03_grids_configs_groups.sql` | 3 shared grids + 15 `OrganisationDashboardConfig` rows + group mappings | A4 VACUOUS |
+| 118 | `report_config/04_items_overview.sql` | Overview: **8** items + 2 filters | A5 FAIL: 0/8, 0/2 |
+| 119 | `report_config/05_items_sales.sql` | Sales & Profitability: 15 items + 3 filters | A5 FAIL: 0/15, 0/3 |
+| 120 | `report_config/06_items_inventory.sql` | Inventory Control: **9** items + 2 filters | A5 FAIL: 0/9, 0/2 |
+| 121 | `report_config/90_deploy_plan3.ps1` | Runner: `-WhatIf`, `-VerifyOnly`, `-StartAt`; refuses any server named `prod` | ran clean |
+| 122 | `report_config/99_verify_plan3.sql` | Report-DB checks A1–A9; read-only, designed for a before/after diff | see above |
+
+**What rev 2 changed, all re-measured on UAT rather than carried from rev 1:**
+- **Ibis Heathrow (20) had no report-DB presence whatsoever** — no `BiConfig`, no grant, no group, no dashboard. Its
+  GUID is `7CE02464-…`, **not** Gloucester's `67CA4E6F-…`, and both share MI prefix `20260722`; `01b` carries a guard
+  and its verify step checks **Gloucester is unchanged** as well as Heathrow now existing.
+- **`SortOrder` is computed per org**, not a flat 10/11/12 — that would have collided with Oak & Vine's `Weekly P&L`
+  (10). That org has **11** dashboards running 0..100, not the 4 rev 1 assumed.
+- **Filters need no card-type grant and no dataset-map row.** Proved by observation: Gloucester renders three
+  Pantry COGS filters while holding **no** type-14 grant and **no** map rows for them. Rev 1's
+  `(GrowyzeProductsCompFilter, 14)` row would have silently no-op'd on 3 of 5 orgs.
+- **`OakVineInvTotalCost` dropped** — see **O37**. `F_INV_DAILY_DETAIL.UOM_COST` is NULL on every row of every org
+  across all time (11,549 / 113,412 / 31,144 / 4,927 / 4,850), so the card renders blank everywhere; it also
+  `SUM`s a per-unit cost with no quantity. It was placed on **two** of the three dashboards. Check **A9** now
+  enforces the drop rather than trusting it.
+
+**The check that matters most cannot be a query in `99_verify_plan3.sql`,** because it spans two servers: whether
+each wired `DataSet` resolves to a LIVE MI vis query of the matching type. Report-DB checks only prove the report DB
+agrees with itself, so a one-character `DataSet` drift passes everything and renders blank. `90_deploy_plan3.ps1`
+step 9 reads the **actual** wired names out of `report` — it does not re-declare them, so it cannot inherit a typo
+from the deploy scripts — and diffs them against `core.core.VisualisationQueries` on the MI.
+
+**Known readings that are data, not wiring faults** (each stated in the affected script's header):
+`InvWasteCost` reads ~£0 on every org (Padel £185.60, Dirty Sixth £5.72, Heathrow £15.41, Oak & Vine and Gloucester
+£0.00 — Growyze carries almost no waste); the five cost cards read `No cost data` on both Ibis orgs (**O35**);
+`InvUseAnalisys` shows ~5% of Oak & Vine's counts (**O38**) and is exposed to **O33**'s fan-out; and seven shared
+datasets carry **no** source scoping, so on Oak & Vine they read org-wide — accepted by decision, which is why all
+three dashboard names are deliberately source-neutral.
+
+**Still to run by hand:** the deploy itself, **Task 1c** (the Oak & Vine Growyze venue label via
+`MICROSERVICE_NAME`, an **MI** change needing a presentation rebuild), and the front-end smoke test. Plan 3 Task 7
+Step 6 lists the expected reading per card per org so a wrong number is recognisable, not merely plausible.
+
+---
+
 ---
 
 ## Mews (int_mews001)
