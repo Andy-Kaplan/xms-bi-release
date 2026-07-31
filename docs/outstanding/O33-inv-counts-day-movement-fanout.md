@@ -4,11 +4,11 @@
 
 | | |
 |---|---|
-| **Status** | OPEN — root cause identified and quantified on one org; blast radius across orgs **not yet measured** |
-| **Priority** | 2 |
+| **Status** | OPEN — root cause identified; **blast radius now measured (2026-07-31) and much larger than first thought**; fix not built |
+| **Priority** | **1** (raised from 2 — it silently corrupts `THEO_QTY`, not just movement columns) |
 | **Area** | Presentation / inventory facts (`F_INV_COUNTS_DAY`) |
 | **Owner / decides** | Andy |
-| **Next action** | Measure the blast radius across all orgs (query in §Reproduce), then fix the movement join in the `F_INV_COUNTS_DAY` `PresentationControl` step so it cannot multiply a count row |
+| **Next action** | Fix the movement join in the `F_INV_COUNTS_DAY` `PresentationControl` step so it cannot multiply a count row. Blast radius is measured — see the 2026-07-31 entry. Until then, **never value stock on `THEO_QTY`**; use `ACTUAL_COUNT` with a dedup to count grain |
 | **Found by** | [O32](O32-growyze-pantry-cogs-dashboard.md) reconciliation, 2026-07-31 — the new `F_COGS_PERIOD` disagreed with `F_INV_COUNTS_DAY` by £24.48 and the new fact turned out to be the correct one |
 | **Related** | [O5](O5-growyze-default-dashboards.md) (Growyze inventory data quality), [O2](O2-inventory-variance-1315.md) (inventory variance) |
 
@@ -44,9 +44,11 @@ every fanned-out row. It is not confined to the movement columns:
 not a cosmetic issue. The error is *silent* and *small* — which is worse than a large one, because it reconciles
 closely enough that nobody questions it.
 
-⚠️ **The scale here is one item on one date on one org. Do not assume that is the ceiling.** A fan-out's size
-depends on how many movement groups a count matches; an item matching three groups triples. The blast radius has
-**not** been measured — that is the next action, not an assumption to carry forward.
+⚠️ **The scale here is one item on one date on one org. That was not the ceiling.** A fan-out's size depends on how
+many movement groups a count matches; an item matching three groups triples. **Measured 2026-07-31 — see the section
+at the end of this file:** Padel Social has **259** duplicate groups (not one), Dirty Sixth **56** with up to **3**
+rows in a group, and the damage extends past the movement columns into **`THEO_QTY`**, making any stock valuation
+built on it non-deterministic.
 
 ## Reproduce / measure
 
@@ -83,3 +85,59 @@ Then quantify the money impact per date as
 - This is **not** the Growyze `UOM_COST` unit-mismatch issue and not the implausible-stock-value problem under
   O5; the costs and quantities on both rows here are correct and identical. The only defect is that there are two
   of them.
+
+## 2026-07-31 — blast radius measured, and it corrupts `THEO_QTY`
+
+Measured while building O5's Plan 2 Task F on UAT. This closes the "not yet measured"
+gap in the original next action, and the finding is materially worse than the single
+£24.48 item on org 21 that raised this ticket.
+
+| Org | Duplicate `(location, item, count date)` groups | Rows involved | Max rows in one group |
+|---|---|---|---|
+| Padel Social (10) | **259** | 518 | 2 |
+| Dirty Sixth (18) | **56** | 123 | **3** |
+| Ibis Gloucester (21) | 1 | 2 | 2 |
+
+**Which columns actually differ inside a duplicate group is the important part:**
+
+| Column | Padel (of 259 groups) | Dirty Sixth (of 56) |
+|---|---|---|
+| `ACTUAL_COUNT` | 0 differ | 0 differ |
+| `UOM_COST` | 0 differ | 0 differ |
+| **`THEO_QTY`** | **230 differ** | **25 differ** |
+| `ORDER_QTY` | 150 differ | 49 differ |
+| `MOVEMENT_QTY` | 249 differ | 56 differ |
+
+So the original diagnosis — "the count row is re-emitted" — is right about
+`ACTUAL_COUNT` and `UOM_COST`, which are repeated **identically**. But `THEO_QTY` is
+derived from the fanned movement columns and therefore **genuinely differs between
+duplicate rows**.
+
+### Consequence: any `THEO_QTY` valuation is non-deterministic
+
+A `ROW_NUMBER() OVER (PARTITION BY location, item ORDER BY count_date DESC)` snapshot
+hits a **tie** on the latest date and picks an arbitrary `THEO_QTY`. Observed live:
+the same query returned **£17,777.76** and **£17,534** for the same org and the same
+data on two consecutive runs. The ambiguity band:
+
+| Org · venue | `THEO_QTY` valuation range | Swing |
+|---|---|---|
+| Padel · Earls Court | £23,266.78 – £24,135.23 | **£868.45** |
+| Dirty Sixth | £17,395.52 – £18,090.15 | **£694.63** |
+
+`ACTUAL_COUNT * UOM_COST` deduplicated to count grain is stable (verified identical
+across three consecutive runs) and is what O5's Task F and Task G now use.
+
+### Why this hid for so long
+
+Ibis Gloucester Road — where the defect was first found — has **1 duplicate group and
+0 `THEO_QTY` disagreements in its snapshot**, so `THEO_QTY` is stable there. A check
+run only on org 21 cannot see this. Same lesson as
+[[feedback_degenerate_acceptance_org]]: Padel is the org with the shape that exposes
+it.
+
+### Ongoing measurement
+
+`ClaudeDevelopment/integrations/Growyze/99_verify_plan2.sql` check **B3** reports the
+duplicate-group count and the `THEO_QTY` disagreement count for whichever org it runs
+against, so this number stops being a one-off measurement.

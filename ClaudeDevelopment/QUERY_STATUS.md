@@ -2107,6 +2107,58 @@ Plan: `docs/plans/2026-06-05-growyze-dashboards-1-data-quality.md`. Ledger: `doc
 
 **Status:** Deployed UAT 2026-07-30, run against all 5 orgs 2026-07-31. **Regression gate (Padel/Dirty Sixth) held**: Padel £144,248.29 profit / £178,464.46 net / 80.8% / 7,489 rows; Dirty Sixth £317,414.99 / £405,110.80 / 78.4% / 12,906 rows — both unchanged from pre-precedence baselines. Oak & Vine resolves `int_ncraloha001` + `int_mews001` (£905,503.87 / £1,092,561.20 / 82.9% / 64,724 rows); Ibis Gloucester resolves `int_mews001` (§C returns no rows — Mews' `AVG_NET_COST` is 100% NULL, so the coverage guard correctly filters every row, not a verifier failure); Ibis Heathrow resolves `int_mews001` with no sales rows at all. **Section E is honest about its own reach**: an earlier version joined via the same `ss` CTE used everywhere else, which made the FAIL branch structurally unreachable (Growyze is never in `org_pos` since it is INVENTORY-type, and the fallback-tier half of the FAIL condition can't fire either) — repaired 2026-07-31 to report the raw Growyze-PROD population *and* the resolver-joined count side by side, so a reader can see there was something to exclude. Today it reports `VACUOUS` on every POS org (none of the five carries any Growyze line items) and `N/A` on the two fallback-tier orgs — a real `PASS` requires a POS org that also carries Growyze sales, which becomes meaningful only if Growyze POS-sync is ever enabled on a Mews/NCRAloha org. It is a self-consistency check on the verifier's own resolver copy, not an independent replay of the deployed cards' join. **Known, deliberate gap:** §B omits the `Unknown` product/location guards that §D and the deployed cards apply, so §B's net_sales for a given SRC will not reconcile exactly against the sum of §D's rows for that org.
 
+### 100–113. Growyze dashboards Plan 2 — cards & visualisation queries (`reporting_queries/42`–`53`, `98`, `99`)
+
+Ledger **O5**. Plan: `docs/plans/2026-07-10-growyze-dashboards-2-cards.md` **(rev 2, 2026-07-31)**. Twelve idempotent
+control-plane deltas creating/updating **15 datasets** in `core.core.VisualisationQueries`, plus a runner and a verifier.
+
+**Status for all fourteen files: AUTHORED, every query VERIFIED READ-ONLY on UAT against each org database directly, NOT DEPLOYED.**
+Zero writes were made to UAT. Deploy with `98_deploy_plan2.ps1 -Environment UAT` (use `-WhatIf` first), then re-run
+`99_verify_plan2.sql` per org DB and diff against the recorded pre-deploy output.
+
+> ⚠️ **Verify these against the ORG database, never from `core`.** The precedence resolver reads `sys.schemas` of the
+> *executing* database, so a three-part-prefixed run from `core` resolves *core's* schemas, finds no `int_*` POS schema,
+> and silently returns the Growyze fallback for every org — a false PASS on the one thing most worth checking.
+
+| # | File | Dataset(s) | Verified |
+|---|---|---|---|
+| 100 | `42_growyze_active_stocktakes.sql` | `GrowyzeActiveStocktakes` | Padel `2 / 3`; other four `1 / 1`. Denominator counts inventory venues only (Oak & Vine has 9 locations, 1 Growyze) |
+| 101 | `43_growyze_deliveries_value.sql` | `GrowyzeDeliveriesValue` | Padel £47,395; Dirty Sixth £68,248; Heathrow £61,826; Oak & Vine / Gloucester £22,577 (identical — one shared Growyze tenant) |
+| 102 | `44_growyze_avg_cost_spend.sql` | `GrowyzeAvgCostSpend` | Padel £1.25, Oak & Vine £1.31, Dirty Sixth £1.83, **Heathrow `—`**, **Gloucester `No cost data`** |
+| 103 | `45_growyze_best_category.sql` | `GrowyzeBestCategory` | Padel `Beverages · 82.0%`, Oak & Vine `Food · 81.8%` — both match an independent baseline ranking exactly |
+| 104 | `46_growyze_menu_highlights.sql` | `GrowyzeTopRevenueItem`, `GrowyzeHighestGPItem`, `GrowyzeMostSoldItem`, `GrowyzeLowestItem` | Padel 4 distinct real products; Gloucester 3 real + `No cost data` for the GP one |
+| 105 | `47_growyze_venue_extremes.sql` | `GrowyzeHighestVenue`, `GrowyzeLowestVenue` | Padel Earls Court £23,269 / O2 £8,126; stable across 3 consecutive runs |
+| 106 | `48_growyze_category_stock_trend.sql` | `GrowyzeCategoryStockTrend` | Padel Retail £4,367.71→£5,125.06 (+17.3%), hand-recomputed from its 10 count dates |
+| 107 | `49_growyze_menu_profitability_trend.sql` | `GrowyzeMenuProfitabilityTrend` | Padel interleaved Margin/Cost by `LabelSort`; Gloucester empty plot **with** the no-cost header |
+| 108 | `50_growyze_menu_engineering.sql` | `GrowyzeMenuEngineering` | Padel 291 products = 85+73+73+60, zero unclassified; Gloucester exactly 1 `No cost data` row |
+| 109 | `51_growyze_sales_heatmap.sql` | `GrowyzeSalesHeatmap` | Padel real 06:00-onward curve, 18 distinct hours; Oak & Vine denser/full-history |
+| 110 | `52_growyze_productscomp_filter.sql` | `GrowyzeProductsCompFilter` | Padel 2,283 Growyze rows; **Oak & Vine 479 POS rows** across 2 sources; shared NCR-hardcoded filter returns 0 on Padel |
+| 111 | `53_invmargebrut_filter_fix.sql` | `InvMargeBrut` (edit) | REPLACE simulated read-only: 1,614→1,480 chars, all 3 assertions PASS |
+| 112 | `98_deploy_plan2.ps1` | — | Runner: `-WhatIf`, `-StartAt`, `-SkipTaskL`; post-deploy check for LIVE / `ParameterMappings` / tokens / mojibake |
+| 113 | `99_verify_plan2.sql` | — | 9 control-plane + 8 per-org checks; run pre-deploy, correctly FAILs A1/A9 and reports `VACUOUS` elsewhere |
+
+**Why rev 2 exists.** Rev 1 (2026-07-10) predates the source-precedence retrofit and would have reintroduced five
+*measured* defect classes across all 12 cards: no resolver (six cards empty on Oak & Vine and both Ibis orgs);
+`MIDDLE_1` category grain (Mews `MIDDLE_1` = 98 product families vs `TOP` = 12 real categories); `ParameterMappings`
+never set (date picker silently discarded on all 12); `BOTTOM_LEVEL_NAME` filters (source-specific — Gloucester's venue
+denominator counted 1 of 3); and coverage-mismatched ratios. Also renumbered `41–52`→`42–53` (41 was taken) and added
+`CAST` on every `CALENDAR` join.
+
+**Three defects were found in the plan's own SQL by executing it rather than reading it:** `52`'s
+`ON ss.SRC = [SRC]` fails with *Msg 209 ambiguous column* because `SAT_PRODUCT` has its own `SRC`; `53`'s planned
+REPLACE anchors match **nothing** because the live `FilterDefinitions` JSON is pretty-printed with spaces after each
+colon (a silent no-op that would still have printed success); and `49`'s resolver CTE is invisible to the header
+`SELECT` after the semicolon, so it is repeated there — which makes its no-cost check source-accurate.
+
+**Two plan deviations, both evidence-based:**
+- `47` and `48` value **`ACTUAL_COUNT`**, not the planned `THEO_QTY` — see **O33**. `THEO_QTY` differs across
+  O33's fanned-out rows (230 of Padel's 259 duplicate groups), so a `ROW_NUMBER` tie picks arbitrarily and the card
+  value moves between renders: the planned query returned £17,777.76 and £17,534 for the same org and data.
+- `43` **omits** the `location <> 'Unknown'` guard every sales card carries — see **O36**. With it, Dirty Sixth's
+  deliveries read £27,554 instead of £68,248, losing 60% of real spend to the -999 location sentinel.
+
+---
+
 ---
 
 ## Mews (int_mews001)
