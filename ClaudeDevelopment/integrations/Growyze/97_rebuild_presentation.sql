@@ -131,6 +131,16 @@ BEGIN TRY
             RAISERROR(N'Presentation rebuild abort: expected exactly 1 STOCKEVENT_END GlobalParameters row updated.', 16, 1);
     END
 
+    /* ⚠ DO NOT TRUST THIS SCRIPT'S SUCCESS MESSAGE WHEN RUN STANDALONE.
+       sp_ProcessPresentation swallows per-step errors into its own result sets
+       (Status = 'Failed' rows) and returns normally. @StopOnError = 1 only
+       BREAKs its cursor - it does NOT raise - so the CATCH below never fires on
+       a failed step, and this script will still reset the window and print
+       "complete" having rebuilt only part of the presentation layer.
+       Failure detection lives in 95_deploy_plan1.ps1, which inspects the
+       returned rows for Status = 'Failed'. Run this via 95. If you must run it
+       standalone (SSMS / MCP execute), read the result sets yourself and look
+       for Status = 'Failed' before believing the success line. */
     EXEC [core].[sp_ProcessPresentation] @StopOnError = 1;
 
 END TRY

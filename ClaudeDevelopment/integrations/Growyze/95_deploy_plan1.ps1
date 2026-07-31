@@ -215,8 +215,22 @@ foreach ($s in $steps) {
         if ($result.Count -gt 0) { Write-Log ("      -> {0} result row(s) returned" -f $result.Count) }
         $failedRows = @($result | Where-Object { $_.PSObject.Properties.Name -contains 'Status' -and $_.Status -eq 'Failed' })
         if ($failedRows.Count -gt 0) {
+            # Read every column defensively. TWO different row shapes carry
+            # Status = 'Failed', and only one of them has StepName:
+            #   sp_ExecuteQuery's own CATCH row -> ErrorNumber, ErrorMessage,
+            #     ErrorLine, Status         (NO StepName/TableName, and it is
+            #     emitted mid-cursor so it arrives FIRST)
+            #   #ProcessingLog rows          -> StepName, TableName, ..., Status
+            # Under this file's Set-StrictMode -Version Latest, touching an
+            # absent column throws PropertyNotFoundException - which would
+            # replace the failed step's name with a bogus "runner bug" message,
+            # destroying exactly the diagnostic this block exists to surface.
             foreach ($f in $failedRows) {
-                Write-Log ("      -> FAILED STEP: {0} [{1}]: {2}" -f $f.StepName, $f.TableName, $f.ErrorMessage)
+                $cols = $f.PSObject.Properties.Name
+                $step = if ($cols -contains 'StepName')     { $f.StepName }     else { '(step unknown)' }
+                $tbl  = if ($cols -contains 'TableName')    { $f.TableName }    else { '' }
+                $msg  = if ($cols -contains 'ErrorMessage') { $f.ErrorMessage } else { '' }
+                Write-Log ("      -> FAILED STEP: {0} [{1}]: {2}" -f $step, $tbl, $msg)
             }
             throw "sp_ProcessPresentation reported $($failedRows.Count) failed presentation step(s) during '$($s.Name)' - see log above."
         }
