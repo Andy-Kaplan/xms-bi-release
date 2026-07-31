@@ -20,18 +20,18 @@
 -- OakVine cards show. FilterDefinitions reused verbatim from ProductComparison
 -- (same F_PRODUCT_MARGIN_DAY + D_LOCATION + D_PRODUCT aliases).
 --
--- *** SOURCE SCOPING ADDED 2026-07-30 (O5 pick-up) ***
--- F_PRODUCT_MARGIN_DAY has NO SRC column, so these templates were source-blind.
--- On a Growyze-only org that is harmless, but on a multi-integration org it makes
--- a card labelled "Growyze" report other systems' revenue. Measured live:
---   Padel (Growyze-only) ..... unscoped == scoped: £144,248.29 profit / 7,489 rows
---   Oak & Vine (4 integs) .... unscoped £905,503.87 profit on £1,420,927.46 net
---                              value -- ALL of it NCRAloha/Mews; scoped = 0 rows
--- Scoped via product.[BOTTOM_SRC] (the existing `product` join alias). This is a
--- no-op on Padel/Dirty Sixth and prevents the source-collision bug class that made
--- O8's cost of sales read 0.5%. See memory feedback_scope_facts_by_source.
--- NB the plan's recorded £129,663.84 has since moved to £144,248.29 through later
--- data loads -- expected, not a regression.
+-- *** SOURCE PRECEDENCE 2026-07-30 (O5) ***
+-- Spec: docs/superpowers/specs/2026-07-30-growyze-sales-source-precedence-design.md
+-- Sales source is resolved per organisation, not hardcoded: every POS integration
+-- mapped to the org wins; Growyze is the fallback; no match renders empty.
+-- The resolver joins the org's own sys.schemas to core.core.Integrations - a
+-- provisioned int_* schema IS that org's record of a mapped integration. Same
+-- idiom as the LIVE `Integrations` FilterList. F_PRODUCT_MARGIN_DAY has no SRC
+-- column, so precedence is applied via product.[BOTTOM_SRC].
+-- Expected: Padel/Dirty Sixth unchanged (no POS mapped => Growyze); Oak & Vine
+-- and the Ibis hotels switch from empty to their POS sales.
+-- Baselines that must NOT move: Padel GBP 144,248.29 profit / 80.8% over 7,489
+-- rows; Dirty Sixth GBP 317,414.99 / 78.4% over 12,906 rows.
 --
 -- Idempotent MERGE on (DataSetName, VisualizationType). Deploy target: core.
 -- ============================================================================
@@ -41,30 +41,52 @@ MERGE INTO [core].[core].[VisualisationQueries] AS tgt
 USING (VALUES (N'GrowyzeProfit', N'SingleKPICard')) AS src (DataSetName, VisualizationType)
 ON tgt.DataSetName = src.DataSetName AND tgt.VisualizationType = src.VisualizationType
 WHEN MATCHED THEN UPDATE SET
-    QueryTemplate = N'SELECT
+    QueryTemplate = N'WITH org_pos AS (
+    SELECT i.[SchemaName]
+    FROM sys.schemas s
+    INNER JOIN [core].[core].[Integrations] i ON s.name = i.[SchemaName]
+    WHERE i.[IntegrationType] = ''POS''
+),
+sales_src AS (
+    SELECT [SchemaName] AS SRC FROM org_pos
+    UNION ALL
+    SELECT N''int_growyze001'' WHERE NOT EXISTS (SELECT 1 FROM org_pos)
+)
+SELECT
     N''Profit'' AS Title,
     N''£'' + FORMAT(SUM(F.PROFIT), ''N0'') AS Value
 FROM [presentation].[F_PRODUCT_MARGIN_DAY] F
 INNER JOIN [presentation].[CALENDAR] C ON CAST(F.[ORDER_DATE] AS DATE) = C.[DATE]
 LEFT JOIN [presentation].[D_LOCATION] location ON F.LOCATION_HUB_ID = location.BOTTOM_HUB_ID
 LEFT JOIN [presentation].[D_PRODUCT] product ON F.PRODUCT_HUB_ID = product.BOTTOM_HUB_ID
+INNER JOIN sales_src ss ON ss.SRC = product.[BOTTOM_SRC]
 WHERE 1=1 AND F.NET_VALUE > 0
-AND product.[BOTTOM_SRC] = ''int_growyze001''
 AND location.[BOTTOM_LOCATION_NAME] <> ''Unknown''
 @FilterClause;',
     FilterDefinitions = N'{"Channels":{"column":"","type":"IN","dataType":"VARCHAR"},"DayOfWeek":{"column":"","type":"IN","dataType":"VARCHAR"},"Deals":{"column":"","type":"IN","dataType":"VARCHAR"},"DealToggle":{"column":"","type":"IN","dataType":"VARCHAR"},"Discounts":{"column":"","type":"IN","dataType":"VARCHAR"},"Distributors":{"column":"","type":"IN","dataType":"VARCHAR"},"Integrations":{"column":"","type":"IN","dataType":"VARCHAR"},"InvItems":{"column":"","type":"IN","dataType":"VARCHAR"},"Locations":{"column":"COALESCE(location.[BOTTOM_MICROSERVICE_NAME],location.[BOTTOM_LOCATION_NAME])","type":"IN","dataType":"VARCHAR"},"Mods":{"column":"","type":"IN","dataType":"VARCHAR"},"Occasions":{"column":"","type":"IN","dataType":"VARCHAR"},"ProductCategories":{"column":"COALESCE(product.[MIDDLE_1_MICROSERVICE_NAME],product.[MIDDLE_1_NAME])","type":"IN","dataType":"VARCHAR"},"Products":{"column":"COALESCE(product.[BOTTOM_MICROSERVICE_NAME],product.[BOTTOM_PRODUCT_NAME])","type":"IN","dataType":"VARCHAR"},"ProductsComp":{"column":"","type":"IN","dataType":"VARCHAR"},"RevenueCentres":{"column":"","type":"IN","dataType":"VARCHAR"},"ServiceCharges":{"column":"","type":"IN","dataType":"VARCHAR"},"Suppliers":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilter":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilterAge":{"column":"","type":"IN","dataType":"VARCHAR"},"Tax":{"column":"","type":"IN","dataType":"VARCHAR"},"Tenders":{"column":"","type":"IN","dataType":"VARCHAR"}}',
     Status = N'LIVE', ModifiedDate = GETDATE(), ModifiedBy = N'plan-2026-06-05-O5'
 WHEN NOT MATCHED THEN INSERT (DataSetName, VisualizationType, Version, Status, QueryTemplate, FilterDefinitions, CreatedDate, CreatedBy)
 VALUES (N'GrowyzeProfit', N'SingleKPICard', 1, N'LIVE',
-    N'SELECT
+    N'WITH org_pos AS (
+    SELECT i.[SchemaName]
+    FROM sys.schemas s
+    INNER JOIN [core].[core].[Integrations] i ON s.name = i.[SchemaName]
+    WHERE i.[IntegrationType] = ''POS''
+),
+sales_src AS (
+    SELECT [SchemaName] AS SRC FROM org_pos
+    UNION ALL
+    SELECT N''int_growyze001'' WHERE NOT EXISTS (SELECT 1 FROM org_pos)
+)
+SELECT
     N''Profit'' AS Title,
     N''£'' + FORMAT(SUM(F.PROFIT), ''N0'') AS Value
 FROM [presentation].[F_PRODUCT_MARGIN_DAY] F
 INNER JOIN [presentation].[CALENDAR] C ON CAST(F.[ORDER_DATE] AS DATE) = C.[DATE]
 LEFT JOIN [presentation].[D_LOCATION] location ON F.LOCATION_HUB_ID = location.BOTTOM_HUB_ID
 LEFT JOIN [presentation].[D_PRODUCT] product ON F.PRODUCT_HUB_ID = product.BOTTOM_HUB_ID
+INNER JOIN sales_src ss ON ss.SRC = product.[BOTTOM_SRC]
 WHERE 1=1 AND F.NET_VALUE > 0
-AND product.[BOTTOM_SRC] = ''int_growyze001''
 AND location.[BOTTOM_LOCATION_NAME] <> ''Unknown''
 @FilterClause;',
     N'{"Channels":{"column":"","type":"IN","dataType":"VARCHAR"},"DayOfWeek":{"column":"","type":"IN","dataType":"VARCHAR"},"Deals":{"column":"","type":"IN","dataType":"VARCHAR"},"DealToggle":{"column":"","type":"IN","dataType":"VARCHAR"},"Discounts":{"column":"","type":"IN","dataType":"VARCHAR"},"Distributors":{"column":"","type":"IN","dataType":"VARCHAR"},"Integrations":{"column":"","type":"IN","dataType":"VARCHAR"},"InvItems":{"column":"","type":"IN","dataType":"VARCHAR"},"Locations":{"column":"COALESCE(location.[BOTTOM_MICROSERVICE_NAME],location.[BOTTOM_LOCATION_NAME])","type":"IN","dataType":"VARCHAR"},"Mods":{"column":"","type":"IN","dataType":"VARCHAR"},"Occasions":{"column":"","type":"IN","dataType":"VARCHAR"},"ProductCategories":{"column":"COALESCE(product.[MIDDLE_1_MICROSERVICE_NAME],product.[MIDDLE_1_NAME])","type":"IN","dataType":"VARCHAR"},"Products":{"column":"COALESCE(product.[BOTTOM_MICROSERVICE_NAME],product.[BOTTOM_PRODUCT_NAME])","type":"IN","dataType":"VARCHAR"},"ProductsComp":{"column":"","type":"IN","dataType":"VARCHAR"},"RevenueCentres":{"column":"","type":"IN","dataType":"VARCHAR"},"ServiceCharges":{"column":"","type":"IN","dataType":"VARCHAR"},"Suppliers":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilter":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilterAge":{"column":"","type":"IN","dataType":"VARCHAR"},"Tax":{"column":"","type":"IN","dataType":"VARCHAR"},"Tenders":{"column":"","type":"IN","dataType":"VARCHAR"}}',
@@ -75,30 +97,52 @@ MERGE INTO [core].[core].[VisualisationQueries] AS tgt
 USING (VALUES (N'GrowyzeProfitPct', N'SingleKPICard')) AS src (DataSetName, VisualizationType)
 ON tgt.DataSetName = src.DataSetName AND tgt.VisualizationType = src.VisualizationType
 WHEN MATCHED THEN UPDATE SET
-    QueryTemplate = N'SELECT
+    QueryTemplate = N'WITH org_pos AS (
+    SELECT i.[SchemaName]
+    FROM sys.schemas s
+    INNER JOIN [core].[core].[Integrations] i ON s.name = i.[SchemaName]
+    WHERE i.[IntegrationType] = ''POS''
+),
+sales_src AS (
+    SELECT [SchemaName] AS SRC FROM org_pos
+    UNION ALL
+    SELECT N''int_growyze001'' WHERE NOT EXISTS (SELECT 1 FROM org_pos)
+)
+SELECT
     N''Profit %'' AS Title,
     FORMAT(SUM(F.PROFIT) * 100.0 / NULLIF(SUM(F.NET_VALUE), 0), ''N1'') + N''%'' AS Value
 FROM [presentation].[F_PRODUCT_MARGIN_DAY] F
 INNER JOIN [presentation].[CALENDAR] C ON CAST(F.[ORDER_DATE] AS DATE) = C.[DATE]
 LEFT JOIN [presentation].[D_LOCATION] location ON F.LOCATION_HUB_ID = location.BOTTOM_HUB_ID
 LEFT JOIN [presentation].[D_PRODUCT] product ON F.PRODUCT_HUB_ID = product.BOTTOM_HUB_ID
+INNER JOIN sales_src ss ON ss.SRC = product.[BOTTOM_SRC]
 WHERE 1=1 AND F.NET_VALUE > 0
-AND product.[BOTTOM_SRC] = ''int_growyze001''
 AND location.[BOTTOM_LOCATION_NAME] <> ''Unknown''
 @FilterClause;',
     FilterDefinitions = N'{"Channels":{"column":"","type":"IN","dataType":"VARCHAR"},"DayOfWeek":{"column":"","type":"IN","dataType":"VARCHAR"},"Deals":{"column":"","type":"IN","dataType":"VARCHAR"},"DealToggle":{"column":"","type":"IN","dataType":"VARCHAR"},"Discounts":{"column":"","type":"IN","dataType":"VARCHAR"},"Distributors":{"column":"","type":"IN","dataType":"VARCHAR"},"Integrations":{"column":"","type":"IN","dataType":"VARCHAR"},"InvItems":{"column":"","type":"IN","dataType":"VARCHAR"},"Locations":{"column":"COALESCE(location.[BOTTOM_MICROSERVICE_NAME],location.[BOTTOM_LOCATION_NAME])","type":"IN","dataType":"VARCHAR"},"Mods":{"column":"","type":"IN","dataType":"VARCHAR"},"Occasions":{"column":"","type":"IN","dataType":"VARCHAR"},"ProductCategories":{"column":"COALESCE(product.[MIDDLE_1_MICROSERVICE_NAME],product.[MIDDLE_1_NAME])","type":"IN","dataType":"VARCHAR"},"Products":{"column":"COALESCE(product.[BOTTOM_MICROSERVICE_NAME],product.[BOTTOM_PRODUCT_NAME])","type":"IN","dataType":"VARCHAR"},"ProductsComp":{"column":"","type":"IN","dataType":"VARCHAR"},"RevenueCentres":{"column":"","type":"IN","dataType":"VARCHAR"},"ServiceCharges":{"column":"","type":"IN","dataType":"VARCHAR"},"Suppliers":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilter":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilterAge":{"column":"","type":"IN","dataType":"VARCHAR"},"Tax":{"column":"","type":"IN","dataType":"VARCHAR"},"Tenders":{"column":"","type":"IN","dataType":"VARCHAR"}}',
     Status = N'LIVE', ModifiedDate = GETDATE(), ModifiedBy = N'plan-2026-06-05-O5'
 WHEN NOT MATCHED THEN INSERT (DataSetName, VisualizationType, Version, Status, QueryTemplate, FilterDefinitions, CreatedDate, CreatedBy)
 VALUES (N'GrowyzeProfitPct', N'SingleKPICard', 1, N'LIVE',
-    N'SELECT
+    N'WITH org_pos AS (
+    SELECT i.[SchemaName]
+    FROM sys.schemas s
+    INNER JOIN [core].[core].[Integrations] i ON s.name = i.[SchemaName]
+    WHERE i.[IntegrationType] = ''POS''
+),
+sales_src AS (
+    SELECT [SchemaName] AS SRC FROM org_pos
+    UNION ALL
+    SELECT N''int_growyze001'' WHERE NOT EXISTS (SELECT 1 FROM org_pos)
+)
+SELECT
     N''Profit %'' AS Title,
     FORMAT(SUM(F.PROFIT) * 100.0 / NULLIF(SUM(F.NET_VALUE), 0), ''N1'') + N''%'' AS Value
 FROM [presentation].[F_PRODUCT_MARGIN_DAY] F
 INNER JOIN [presentation].[CALENDAR] C ON CAST(F.[ORDER_DATE] AS DATE) = C.[DATE]
 LEFT JOIN [presentation].[D_LOCATION] location ON F.LOCATION_HUB_ID = location.BOTTOM_HUB_ID
 LEFT JOIN [presentation].[D_PRODUCT] product ON F.PRODUCT_HUB_ID = product.BOTTOM_HUB_ID
+INNER JOIN sales_src ss ON ss.SRC = product.[BOTTOM_SRC]
 WHERE 1=1 AND F.NET_VALUE > 0
-AND product.[BOTTOM_SRC] = ''int_growyze001''
 AND location.[BOTTOM_LOCATION_NAME] <> ''Unknown''
 @FilterClause;',
     N'{"Channels":{"column":"","type":"IN","dataType":"VARCHAR"},"DayOfWeek":{"column":"","type":"IN","dataType":"VARCHAR"},"Deals":{"column":"","type":"IN","dataType":"VARCHAR"},"DealToggle":{"column":"","type":"IN","dataType":"VARCHAR"},"Discounts":{"column":"","type":"IN","dataType":"VARCHAR"},"Distributors":{"column":"","type":"IN","dataType":"VARCHAR"},"Integrations":{"column":"","type":"IN","dataType":"VARCHAR"},"InvItems":{"column":"","type":"IN","dataType":"VARCHAR"},"Locations":{"column":"COALESCE(location.[BOTTOM_MICROSERVICE_NAME],location.[BOTTOM_LOCATION_NAME])","type":"IN","dataType":"VARCHAR"},"Mods":{"column":"","type":"IN","dataType":"VARCHAR"},"Occasions":{"column":"","type":"IN","dataType":"VARCHAR"},"ProductCategories":{"column":"COALESCE(product.[MIDDLE_1_MICROSERVICE_NAME],product.[MIDDLE_1_NAME])","type":"IN","dataType":"VARCHAR"},"Products":{"column":"COALESCE(product.[BOTTOM_MICROSERVICE_NAME],product.[BOTTOM_PRODUCT_NAME])","type":"IN","dataType":"VARCHAR"},"ProductsComp":{"column":"","type":"IN","dataType":"VARCHAR"},"RevenueCentres":{"column":"","type":"IN","dataType":"VARCHAR"},"ServiceCharges":{"column":"","type":"IN","dataType":"VARCHAR"},"Suppliers":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilter":{"column":"","type":"IN","dataType":"VARCHAR"},"SurveyFilterAge":{"column":"","type":"IN","dataType":"VARCHAR"},"Tax":{"column":"","type":"IN","dataType":"VARCHAR"},"Tenders":{"column":"","type":"IN","dataType":"VARCHAR"}}',
