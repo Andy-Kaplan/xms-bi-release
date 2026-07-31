@@ -1,13 +1,13 @@
-# O14 — Mews001 DV mapping: scripts built + reviewed, deployment pending
+# O14 — Mews001 DV mapping: DEPLOYED to UAT; Test + Prod remain
 
 > Detail file for ledger item **O14**. Read only when picking up this item. Back to the [ledger](../OUTSTANDING.md).
 
 | | |
 |---|---|
-| **Status** | OPEN |
+| **Status** | MONITOR — **UAT deployed and proven end-to-end 2026-07-29** (staging 15 / load 16 / mappings 16, re-verified 2026-07-30); real `F_LINEITEM_15MIN` rows and a working Marge Brut dashboard on two orgs. **Test and Prod remain.** |
 | **Area** | Integrations / Mews POS (ex-Bizon) / DV mapping |
 | **Owner / decides** | Andy |
-| **Next action** | Deploy per updated `DEPLOY.txt`: 01 → 02 → **05 (GDPR CRM removal + PII purge)** → 03, re-run `sp_DataVaultLoad @SchemaList = N'int_mews001'` in org 19, then hand back for MCP post-load verification (04 sections B–E). Separately: ask fetcher team to drop the customers endpoint (DL_CUSTOMERS re-lands raw PII every fetch) |
+| **Next action** | **Test:** `ClaudeDevelopment/integrations/Mews/91_deploy_mews_uat.ps1 -Environment TEST` (its SQL DB was paused when UAT was done). **Prod:** human-run per the safety model. Separately, still outstanding: ask the fetcher team to drop the Mews **customers** endpoint — `DL_CUSTOMERS` re-lands raw PII on every fetch regardless of the DV-side GDPR purge in `05`. *(UAT's Mews `STAGE_DDL` is already the 21-row GDPR-safe shape with no `DL_CUSTOMERS`, per O19 `01b`.)* |
 | **Sources** | Spec: `docs/superpowers/specs/2026-07-03-mews-dv-mapping-design.md` · Plan: `docs/superpowers/plans/2026-07-03-mews-dv-mapping.md` · Scripts: `ClaudeDevelopment/integrations/Mews/` (01–04 + DEPLOY.txt) · QUERY_STATUS.md §Mews · Memory: `memory/bizon-integration.md` |
 
 ## Context
@@ -23,6 +23,10 @@ Key design decisions locked during the build:
 Known source-data gaps (not bugs; flag to fetcher team): 5/6 payment methods have NULL name (blank TENDER_NAME members); variants have no selector/sku/barcode (names synthesized as `{product} @ {price}`); no customer address data (MEWS_ADDRESS = 0 rows); area "Rooms" inactive (CHANNEL = 1 member).
 
 ## Progress log
+- **2026-07-30 (status corrected — UAT was completed on 2026-07-29 but this item was never updated)** — The UAT deploy happened as a side-effect of [O8](O8-marge-brut-dashboard.md) and was recorded only in that item's log, leaving this row reading "not deployed" for a day. The control plane had **never** been deployed to UAT — `core.int_mews001.StagingControl` and `.EntityMappings` were **both 0 rows**, no `stage.MEWS_*` tables, `HUB_LINEITEM`/`SAT_LINEITEM` 0, `F_LINEITEM_15MIN` 0 — which was the real reason Mews turnover was dead there. Deployed `01`→`02`→`05` §A→`03` (05 before 03, per the ordering rule) via a new house-pattern runner `ClaudeDevelopment/integrations/Mews/91_deploy_mews_uat.ps1`, which discovers target orgs from `OrganisationIntegrations` rather than hardcoding them. **Re-verified independently 2026-07-30: staging = 15, load = 16, mappings = 16** — exactly the expected counts.
+  - **Proven end-to-end, not merely present:** `sp_DataVaultLoad @SchemaList='int_mews001'` then ran for both Ibis orgs and later for The Oak & Vine ([O24](O24-oak-vine-growyze-mews-mapping.md)), producing real `F_LINEITEM_15MIN` rows and a working Marge Brut dashboard on two orgs.
+  - `LINEITEM_TIMESTAMP` is **100% populated** on the Mews feed — the Growyze NULL-timestamp defect does not apply here.
+  - **Remaining: Test and Prod.** Test needs `91_deploy_mews_uat.ps1 -Environment TEST` (its SQL DB was paused at the time); Prod is human-run per the safety model. The previous next-action referred to DEV proxy **org 19** — superseded by the real UAT orgs.
 - **2026-07-03** — Spec approved (rev §2a), plan written, all 7 tasks executed via subagent-driven development (Sonnet 5 workers). Commits `86a1cca..12cfe41` on `prod-baseline-regen`. Every staging query MCP-verified against org 19 live data pre-deployment. Per-task reviews + final whole-branch review: READY TO DEPLOY. Three review-caught fixes: orphan-link filter asymmetry (3e554ea), commit-scope contamination of user's uncommitted QUERY_STATUS edits (history split, 5cf9036), drift-fragile verification literals → DL-derived (c65e107, 12cfe41). Live baselines recorded in QUERY_STATUS §Mews (CUSTORDER=19, LINEITEM PROD=22/5 void, TAX lines=17, PRODUCT=389, CONTACT=257…). Deployment NOT yet run.
 - **2026-07-03 (later)** — First deploy + E2E test: pre-flight, host, staging, and CTL all PASSED (live API pull, pagination fix confirmed); **DV load FAILED with SQL 8156** ("LINEITEM_HUB_ID specified multiple times" on `load.CUSTORDER_LINEITEM`), datavault 0→480→0 rollback, surfaced as 2754 via the sp_DataVaultLoad error-masking re-raise. Root cause: `core.UploadEntityMappings` supports exactly **one EntityMappings row per entity** — its column-JSON temp tables key by entity_name only, so the 3-rows-per-entity design for LINEITEM/CUSTORDER_LINEITEM tripled the generated column list; additionally all rows collide on step_name, so only the last source table (MEWS_LINEITEM_DISCOUNT) survived — silent PROD/TAX loss even without 8156 (both confirmed live via MCP). Fix (same day): new tier-2 step 18 `Mews Line Item Combined` → `stage.MEWS_LINEITEM_ALL` union (NCRAloha `NCR_LINE_ITEM_DETAIL` precedent); single mappings from it; guarded DELETEs retire the 6 obsolete rows; 04 §A now expects 18/21/21 + a `one_mapping_row_per_entity` guard, §B gains a union sum-of-parts check. Awaiting re-deploy.
 
