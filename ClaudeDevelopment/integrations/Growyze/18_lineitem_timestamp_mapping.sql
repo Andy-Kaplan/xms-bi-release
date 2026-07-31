@@ -26,9 +26,12 @@
 -- + staging_columns, and wholesale UPDATE of the LINEITEM entity mapping columns
 -- (verified against live values on UAT 2026-07-10).
 --
--- Deploy target: core. After deploy:
---   EXEC [core].[core].[UploadStagingControl]  @IntegrationSchema = N'int_growyze001';   -- if staging is regenerated
---   EXEC [core].[core].[UploadEntityMappings]   @IntegrationSchema = N'int_growyze001';   -- regenerate Load step to map the new column
+-- Deploy target: core. There is no UploadStagingControl procedure and no staging
+-- regeneration call is needed - staging steps are read straight from
+-- StagingControl.query_sql, so part (a)'s UPDATE takes effect immediately. After
+-- deploy, regenerate only the LINEITEM Load step so it maps the new column
+-- (@intSchema, not @IntegrationSchema, is the actual parameter name):
+--   EXEC [core].[UploadEntityMappings] @intSchema = N'int_growyze001', @entity = N'LINEITEM';
 -- then Growyze staging -> DV load -> presentation rebuild for each Growyze org.
 -- ============================================================================
 

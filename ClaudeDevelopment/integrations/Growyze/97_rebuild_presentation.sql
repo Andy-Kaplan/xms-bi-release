@@ -103,9 +103,15 @@ BEGIN TRY
         SET ParameterValue = CONVERT(NVARCHAR(10), @li_min, 23), ModifiedDate = GETDATE()
         WHERE ParameterKey = N'LINEITEM_START';
 
+        IF @@ROWCOUNT <> 1
+            RAISERROR(N'Presentation rebuild abort: expected exactly 1 LINEITEM_START GlobalParameters row updated.', 16, 1);
+
         UPDATE [core].[GlobalParameters]
         SET ParameterValue = CONVERT(NVARCHAR(10), @li_max, 23), ModifiedDate = GETDATE()
         WHERE ParameterKey = N'LINEITEM_END';
+
+        IF @@ROWCOUNT <> 1
+            RAISERROR(N'Presentation rebuild abort: expected exactly 1 LINEITEM_END GlobalParameters row updated.', 16, 1);
     END
 
     IF @widen_stockevent = 1
@@ -114,12 +120,18 @@ BEGIN TRY
         SET ParameterValue = CONVERT(NVARCHAR(10), @se_min, 23), ModifiedDate = GETDATE()
         WHERE ParameterKey = N'STOCKEVENT_START';
 
+        IF @@ROWCOUNT <> 1
+            RAISERROR(N'Presentation rebuild abort: expected exactly 1 STOCKEVENT_START GlobalParameters row updated.', 16, 1);
+
         UPDATE [core].[GlobalParameters]
         SET ParameterValue = CONVERT(NVARCHAR(10), @se_max, 23), ModifiedDate = GETDATE()
         WHERE ParameterKey = N'STOCKEVENT_END';
+
+        IF @@ROWCOUNT <> 1
+            RAISERROR(N'Presentation rebuild abort: expected exactly 1 STOCKEVENT_END GlobalParameters row updated.', 16, 1);
     END
 
-    EXEC [core].[sp_ProcessPresentation];
+    EXEC [core].[sp_ProcessPresentation] @StopOnError = 1;
 
 END TRY
 BEGIN CATCH

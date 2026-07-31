@@ -16,8 +16,9 @@
 -- Idempotent: wholesale UPDATE of the staging step's query_sql (re-running sets
 -- the same value). Verified against live GRYZ_PRODUCT query_sql on UAT 2026-07-10 —
 -- all 14 output columns preserved 1:1; only the category expressions change.
--- Deploy target: core.  After deploy: UploadStagingControl int_growyze001 (if the
--- integration regenerates staging), then Growyze staging -> DV load ->
+-- Deploy target: core. There is no UploadStagingControl procedure and none is
+-- needed - staging steps are read straight from StagingControl.query_sql, so this
+-- UPDATE takes effect immediately. After deploy: Growyze staging -> DV load ->
 -- presentation rebuild for each Growyze org.
 -- ============================================================================
 

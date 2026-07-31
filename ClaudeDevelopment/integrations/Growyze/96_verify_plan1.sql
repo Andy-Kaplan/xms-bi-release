@@ -224,8 +224,15 @@ SELECT 'E2_product_counts' AS check_name,
 FROM [presentation].[D_PRODUCT]
 WHERE BOTTOM_LEVEL_NAME = N'Product' AND BOTTOM_SRC = 'int_growyze001';
 
-/* Cost/GP sanity for the two new KPI datasets (mirrors GrowyzeProfitPct).
-   Padel measured 80.8% pre-deploy; the OakVine cards it replaces read 1,469%. */
+/* Cost/GP sanity for the two new KPI datasets. Mirrors GrowyzeProfitPct's
+   coverage guard (AND F.AVG_NET_COST IS NOT NULL, added 2026-07-31 so the profit
+   numerator and net_value denominator describe the same rows) - numerically a
+   no-op here because E3 is hardcoded to int_growyze001, where AVG_NET_COST has
+   zero NULLs, unlike Oak & Vine/Ibis where the resolver widened scope to POS
+   sources. This check intentionally omits the card's CALENDAR join and
+   @FilterClause/date window - it verifies the all-time Growyze figure, not a
+   filtered card render. Padel measured 80.8% pre-deploy; the OakVine cards it
+   replaces read 1,469%. */
 SELECT 'E3_profit_kpis' AS check_name,
        CAST(SUM(F.PROFIT) AS DECIMAL(18,2)) AS profit,
        CAST(SUM(F.NET_VALUE) AS DECIMAL(18,2)) AS net_value,
@@ -234,5 +241,6 @@ FROM [presentation].[F_PRODUCT_MARGIN_DAY] F
 LEFT JOIN [presentation].[D_LOCATION] location ON F.LOCATION_HUB_ID = location.BOTTOM_HUB_ID
 LEFT JOIN [presentation].[D_PRODUCT] product ON F.PRODUCT_HUB_ID = product.BOTTOM_HUB_ID
 WHERE F.NET_VALUE > 0
+  AND F.AVG_NET_COST IS NOT NULL
   AND product.[BOTTOM_SRC] = 'int_growyze001'
   AND location.[BOTTOM_LOCATION_NAME] <> N'Unknown';

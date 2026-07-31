@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Status** | IN PROGRESS — **Plan 1 DEPLOYED + VERIFIED on UAT (all 5 Growyze orgs) 2026-07-30**; Plans 2 & 3 authored, execution pending |
+| **Status** | IN PROGRESS — **Plan 1 DEPLOYED + VERIFIED on UAT (all 5 Growyze orgs) 2026-07-30**; **sales source precedence built, deployed UAT + verified 2026-07-31**; Plans 2 & 3 authored, execution pending |
 | **Area** | Growyze / presentation + Report DB |
 | **Owner / decides** | Andy |
 | **Next action** | ✅ Plan 1 complete on UAT — all 3 original blockers now cleared. **2026-07-31: sales source precedence built, deployed UAT + verified** — the earlier "Plan 3 needs a scoping decision" question (below) is now **resolved**: the pack can go to all five orgs; Ibis Heathrow is legitimately empty until Mews data lands. Remaining: execute Plan 2 (12 card tasks, MI — remaining cards must use the resolver, see pick-up notes) → execute Plan 3 (Report DB wiring, run directly on `report`, all 5 orgs). NB Plan 3 Task 1 fixes Padel BiConfig DbPrefix (still 20251208 on UAT). **Open sub-items:** Padel/Dirty Sixth stock values still implausible (separate cause); the 4 unrefreshed satellite rows still unexplained; intra-day coverage is DL-window-limited (see below); Mews populates no product cost at all — Gloucester/Heathrow profit KPIs render blank, a new finding distinct from O7, needs its own data-vault/staging investigation |
@@ -13,10 +13,10 @@
 ## Context
 Default dashboards for Growyze orgs. **The 2026-05-20 plan is STALE** (P1 filter void; Growyze sales already in facts; cost is `F_PRODUCT_MARGIN_DAY.AVG_NET_COST`, not `D_PRODUCT`). Re-planned 2026-06-05 via a 6-agent UAT deep dive into 3 split plans (data-quality+enablement / cards+InvMargeBrut / Report DB wiring).
 
-Real blockers before dashboards can be trusted:
-1. **NULL `LINEITEM_TIMESTAMP`** on Growyze line items.
-2. **Inventory `UOM_COST` pack-vs-unit inflation** (16-113×).
-3. **`D_PRODUCT` category fall-through.**
+Real blockers before dashboards can be trusted (all three now CLEARED — see Progress log for detail):
+1. **NULL `LINEITEM_TIMESTAMP`** on Growyze line items. — ✅ FIXED 2026-07-30, mapped from `DL_SALES.createdAt` (UK local); coverage is capped by the rolling DL retention window (see Pick-up notes).
+2. **Inventory `UOM_COST` pack-vs-unit inflation** (16-113×). — ✅ FIXED + DEPLOYED UAT 2026-07-29 (staging pack-size normalisation).
+3. **`D_PRODUCT` category fall-through.** — ✅ FIXED 2026-07-30 (category sentinel; fall-through 110→0 / 34→0 / 2→0 across the 5 orgs).
 
 ## Progress log
 - **2026-05-20** — Initial plan (now stale).

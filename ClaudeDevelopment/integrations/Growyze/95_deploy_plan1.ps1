@@ -202,8 +202,24 @@ foreach ($s in $steps) {
     if ($s.Id -lt $StartAt) { Write-Log ("SKIP  {0,2}. {1} (-StartAt $StartAt)" -f $s.Id, $s.Name); continue }
     Write-Log ("RUN   {0,2}. {1} [{2}]" -f $s.Id, $s.Name, $s.Database)
     try {
-        if ($s.File) { Invoke-Sql -Database $s.Database -File $s.File  | Out-Null }
-        else         { Invoke-Sql -Database $s.Database -Query $s.Query | Out-Null }
+        if ($s.File) { $result = @(Invoke-Sql -Database $s.Database -File $s.File) }
+        else         { $result = @(Invoke-Sql -Database $s.Database -Query $s.Query) }
+
+        # Surface result rows instead of silently discarding them (was "| Out-Null").
+        # This matters most for 97_rebuild_presentation.sql: it EXECs
+        # core.sp_ProcessPresentation, which swallows per-step errors into its own
+        # result sets (Status = 'Failed' rows) rather than raising - even with
+        # @StopOnError = 1 it just stops the loop and returns normally, so T-SQL's
+        # own TRY/CATCH never sees a failure. PowerShell, seeing the raw rows
+        # Invoke-Sqlcmd returns, is the only place left that can catch this.
+        if ($result.Count -gt 0) { Write-Log ("      -> {0} result row(s) returned" -f $result.Count) }
+        $failedRows = @($result | Where-Object { $_.PSObject.Properties.Name -contains 'Status' -and $_.Status -eq 'Failed' })
+        if ($failedRows.Count -gt 0) {
+            foreach ($f in $failedRows) {
+                Write-Log ("      -> FAILED STEP: {0} [{1}]: {2}" -f $f.StepName, $f.TableName, $f.ErrorMessage)
+            }
+            throw "sp_ProcessPresentation reported $($failedRows.Count) failed presentation step(s) during '$($s.Name)' - see log above."
+        }
         Write-Log ("OK    {0,2}. {1}" -f $s.Id, $s.Name)
     }
     catch {
