@@ -6,19 +6,49 @@
    Rule: every POS integration mapped to the org wins; Growyze is the fallback;
    no match renders empty.
 
-   EXPECTED per org (UAT, 2026-07-30):
-     Padel Social (10) ...... int_growyze001 . profit 144,248.29 / 80.8% / 7,489
-     Dirty Sixth (18) ....... int_growyze001 . profit 317,414.99 / 78.4% / 12,906
-     Oak & Vine (16) ........ int_ncraloha001 + int_mews001 . net 1,420,927.46
-                              C1 = 905,503.87 / 1,092,561.20 / 82.9% / 64,724 rows
-     Ibis Gloucester (21) ... int_mews001 .... net 33,144.54 . C1 legitimately
-                              returns NO ROWS (Mews populates no cost at all,
-                              so the AVG_NET_COST guard filters every row -
-                              expected, not a failure)
-     Ibis Heathrow (20) ..... int_mews001 .... no sales rows at all; every
-                              section must return cleanly with no rows
-   Padel and Dirty Sixth are the REGRESSION GATE: their figures must not move.
-   E1 (no_tier_leak) must report PASS on all five orgs.
+   EXPECTED per org (UAT, verified 2026-07-30/31, full B1/D1 baselines below):
+
+   Padel Social (10) -- Growyze fallback tier
+     B1  int_growyze001            8,342 rows  net   204,962.22  (2026-01-29 to 2026-07-30)
+     C1  profit 144,248.29 / net 178,464.46 / 80.8% / 7,489 rows   <== REGRESSION GATE
+     D1  Beverages 95,647.68 / Other 64,542.78 / Food 8,547.06 /
+         Uncategorised 6,308.23 / Retail 3,418.71
+
+   Dirty Sixth (18) -- Growyze fallback tier
+     B1  int_growyze001           14,140 rows  net   466,632.86  (2026-01-29 to 2026-07-29)
+     C1  profit 317,414.99 / net 405,110.80 / 78.4% / 12,906 rows  <== REGRESSION GATE
+     D1  Food 271,266.16 / Beverages 127,144.26 / Uncategorised 5,160.38 / Other 1,540.00
+
+   Oak & Vine (16) -- POS tier: int_ncraloha001 + int_mews001
+     B1  int_ncraloha001         175,044 rows  net 1,365,706.40  (2025-10-01 to 2026-03-31)
+         int_mews001               1,368 rows  net    55,221.06  (2026-04-30 to 2026-07-28)
+         combined net 1,420,927.46
+     C1  profit 905,503.87 / net 1,092,561.20 / 82.9% / 64,724 rows
+     D1  Food 917,074.42 / Drinks 448,913.60 / Breakfast 49,230.21 / Bottled Beer 1,985.98 /
+         Wine 1,335.45 / Soft Drinks 1,175.54 / Spirits 695.20 / Hot Drinks 404.01 /
+         Draught Beer 113.01 / Tips 0.04
+
+   Ibis Gloucester Road (21) -- POS tier: int_mews001
+     B1  int_mews001                 875 rows  net    33,144.54  (2026-05-30 to 2026-07-28)
+     C1  legitimately returns NO ROWS (Mews populates no cost at all, so the
+         AVG_NET_COST guard filters every row - expected, not a failure)
+     D1  Breakfast 29,489.71 / Bottled Beer 1,344.06 / Soft Drinks 809.25 / Wine 787.95 /
+         Spirits 341.00 / Hot Drinks 248.71 / Food 123.82 / Tips 0.04
+
+   Ibis Heathrow (20) -- POS tier: int_mews001
+     no sales rows at all; every section must return cleanly with no rows
+
+   Padel and Dirty Sixth are the REGRESSION GATE: their C1 figures must not move.
+   E1 (no_tier_leak) must report PASS or VACUOUS on all five orgs (see the note
+   above section E - a bare PASS is only meaningful once a POS org actually
+   carries Growyze line items, which none of the five do today).
+
+   NOTE (B vs D): section B does not apply the `Unknown` product/location guards
+   that section D and the deployed cards apply, so B's net_sales for a SRC will
+   not reconcile exactly against the sum of D's rows for that org (e.g. Oak &
+   Vine's combined B1 net is 1,420,927.46 but D1's rows sum to less, since D1
+   drops Unknown-categorised and Unknown-location lines). This is a real, known
+   gap - deliberately left as-is (see fix-round-1 notes); not a query bug.
 
    *** COVERAGE GUARD 2026-07-31 (O5 fix round 1) ***
    Section C (C1_margin_kpis) carries `AND F.AVG_NET_COST IS NOT NULL` in its
@@ -124,25 +154,65 @@ GROUP BY COALESCE(product.[TOP_MICROSERVICE_NAME], product.[TOP_NAME])
 ORDER BY net_sales DESC;
 
 /* -- E: negative check - no cross-tier leakage ---------------------------
-   On a POS org, zero Growyze rows may reach the result. */
-SELECT 'E1_no_tier_leak' AS check_name,
-       SUM(CASE WHEN F.[SRC] = 'int_growyze001' THEN 1 ELSE 0 END) AS growyze_rows,
-       CASE WHEN EXISTS (SELECT 1 FROM sys.schemas s
-                         JOIN [core].[core].[Integrations] i ON s.name = i.[SchemaName]
-                         WHERE i.[IntegrationType] = 'POS')
-                 AND SUM(CASE WHEN F.[SRC] = 'int_growyze001' THEN 1 ELSE 0 END) > 0
-            THEN 'FAIL - Growyze rows on a POS org'
-            ELSE 'PASS' END AS verdict
-FROM [presentation].[F_LINEITEM_15MIN] F
-INNER JOIN (
-    SELECT i.[SchemaName] AS SRC
+   *** HONESTY FIX 2026-07-31 (O5 fix round 1) ***
+   The original version joined F to the same resolver-built `ss` used
+   everywhere else and summed rows where SRC = 'int_growyze001'. On a POS org
+   `ss` never contains 'int_growyze001' (Growyze is INVENTORY-type, never in
+   org_pos), so those rows are excluded by the JOIN itself before the SUM ever
+   runs - growyze_rows was structurally 0 and the FAIL branch was unreachable
+   by construction. On a fallback-tier org the EXISTS(...POS...) half of the
+   FAIL condition is false, so it was unreachable there too. The check could
+   never fail and was not actually exercising anything about the join.
+
+   This version reports the raw population alongside the resolver-joined
+   count so a reader can see there was something to exclude, not just an
+   absence of data:
+     growyze_rows_in_fact       - Growyze PROD rows in the fact table, no
+                                   resolver join at all (the population a
+                                   leak could come from)
+     growyze_rows_after_resolver- Growyze rows that survive the resolver join
+                                   (the original measure)
+   A PASS is only meaningful when growyze_rows_in_fact > 0 - i.e. Growyze data
+   actually exists for this org and was genuinely excluded. Today that is
+   VACUOUS on all five orgs: no POS-tier org here carries any Growyze line
+   items yet, so there is nothing for the join to exclude. This becomes a real
+   check the moment Growyze POS-sync is enabled on a Mews/NCRAloha org - which
+   is exactly the scenario the precedence rule exists to guard against, so the
+   check stays even though it is inert on today's data. Note this still can't
+   catch a join-key bug in the deployed cards themselves (39/40), only in this
+   verifier's own copy of the resolver - it is a self-consistency check, not
+   an independent replay of the cards' SQL. */
+WITH org_pos AS (
+    SELECT i.[SchemaName]
     FROM sys.schemas s
     INNER JOIN [core].[core].[Integrations] i ON s.name = i.[SchemaName]
     WHERE i.[IntegrationType] = 'POS'
+),
+sales_src AS (
+    SELECT [SchemaName] AS SRC FROM org_pos
     UNION ALL
-    SELECT N'int_growyze001'
-    WHERE NOT EXISTS (SELECT 1 FROM sys.schemas s2
-                      JOIN [core].[core].[Integrations] i2 ON s2.name = i2.[SchemaName]
-                      WHERE i2.[IntegrationType] = 'POS')
-) ss ON ss.SRC = F.[SRC]
-WHERE F.LI_TYPE = 'PROD';
+    SELECT N'int_growyze001' WHERE NOT EXISTS (SELECT 1 FROM org_pos)
+),
+metrics AS (
+    SELECT
+        (SELECT COUNT(*) FROM [presentation].[F_LINEITEM_15MIN] F
+         WHERE F.LI_TYPE = 'PROD' AND F.[SRC] = 'int_growyze001') AS growyze_rows_in_fact,
+        (SELECT COUNT(*) FROM [presentation].[F_LINEITEM_15MIN] F
+         INNER JOIN sales_src ss ON ss.SRC = F.[SRC]
+         WHERE F.LI_TYPE = 'PROD' AND F.[SRC] = 'int_growyze001') AS growyze_rows_after_resolver,
+        CASE WHEN EXISTS (SELECT 1 FROM org_pos) THEN 'POS tier' ELSE 'Growyze fallback tier' END AS org_tier
+)
+SELECT 'E1_no_tier_leak' AS check_name,
+       m.org_tier,
+       m.growyze_rows_in_fact,
+       m.growyze_rows_after_resolver,
+       CASE
+           WHEN m.org_tier = 'Growyze fallback tier' THEN 'N/A - single-tier org'
+           WHEN m.org_tier = 'POS tier' AND m.growyze_rows_in_fact = 0
+               THEN 'VACUOUS - org has no Growyze sales, nothing to leak'
+           WHEN m.org_tier = 'POS tier' AND m.growyze_rows_after_resolver > 0
+               THEN 'FAIL - Growyze rows on a POS org'
+           WHEN m.org_tier = 'POS tier'
+               THEN 'PASS - leak genuinely excluded'
+       END AS verdict
+FROM metrics m;
