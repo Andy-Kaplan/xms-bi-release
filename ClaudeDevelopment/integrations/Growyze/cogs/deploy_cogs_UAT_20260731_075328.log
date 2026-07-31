@@ -1,0 +1,287 @@
+[07:53:28] Target environment : UAT
+[07:53:29] Target server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[07:53:29] Target database    : 20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D
+[07:53:29] Cogs script path    : C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\integrations\Growyze\cogs
+[07:53:29] Tier filter         : 110
+[07:53:29] Steps               : 14 (DEPLOY.txt 1-11; step 10 refused, step 11 manual)
+[07:53:29] All required .sql files present.
+[07:53:29] Connected: xms-mssqlman-ne-uat.9358333fb9bd.database.windows.net (SQL 12.0.2000.8)
+[07:53:29] STEP    1 [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] 99_verify_cogs_period.sql
+[07:53:30] STEP    1 FAILED AS EXPECTED: Invalid object name 'presentation.F_COGS_PERIOD'. 
+ Msg 208, Level 16, State 1, Procedure , Line 47.
+[07:53:30]   presentation.F_COGS_PERIOD does not exist yet - this confirms step ordering. Continuing.
+[07:53:30] STEP    2 [core] 01_cogs_period_table.sql
+[07:53:30] STEP    2 OK
+[07:53:30] STEP    3 [core] 02_cogs_period_build.sql
+[07:53:30] STEP    3 OK
+[07:53:30] STEP    4 [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] 03_report_group_config.sql
+[07:53:30] STEP    4 OK
+[07:53:30] STEP    5 [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] Deploy F_COGS_PERIOD - THIS TABLE ONLY, never DeployPresentationTables
+[07:53:30] STEP    5 OK - F_COGS_PERIOD deployed to 20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D only.
+[07:53:30] STEP    6 [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] Presentation rebuild (tier 110)
+    ---------------------------------------------------
+    Processing: Pantry COGS by Period (Tier 110, Type: Fact)
+    Table: [presentation].F_COGS_PERIOD
+    
+RowsInserted Status 
+------------ ------ 
+         732 Success
+    Status: Success
+    Duration: 2 seconds
+    ===================================================
+    PROCESSING SUMMARY
+    ===================================================
+    
+
+Tier                 : 110
+TableType            : Fact
+TotalSteps           : 1
+Successful           : 1
+Failed               : 0
+TotalRowsProcessed   : 1
+TotalDurationSeconds : 2.00
+    
+
+Id              : a624baed-b4dc-4f17-b969-6a0d1a40785c
+StepName        : Pantry COGS by Period
+TableName       : [presentation].F_COGS_PERIOD
+Tier            : 110
+TableType       : Fact
+Status          : Success
+RowsProcessed   : 1
+StartTime       : 31/07/2026 06:53:30
+EndTime         : 31/07/2026 06:53:32
+DurationSeconds : 2.00
+ErrorMessage    :
+[07:53:32] STEP    6 OK
+[07:53:32] STEP    7 [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] 99_verify_cogs_period.sql
+    --- Check 1: grain / fan-out ---
+    
+Verdict FactRows DistinctGrain
+------- -------- -------------
+PASS         732           732
+    
+Verdict Reason                                                                 
+------- ------                                                                 
+SKIPPED No Growyze export loaded into [reference].[GROWYZE_COGS_EXPORT_STAGING]
+    --- Check 3: subtotals = grand total = KPI, all three agreeing ---
+    
+
+Verdict                       : PASS
+KPI_SpendExpression           : 1733.378404
+Grid_SumOfSubtotals           : 1733.378404
+Grid_GrandTotalRow            : 1733.378404
+Grid_CategorySubcategoryPairs : 11
+Grid_DistinctRowLabels        : 11
+Note                          :
+    --- Check 4: coverage guard - no ungrouped items with movement ---
+    
+
+Verdict                         : PASS
+UngroupedRows                   : 0
+CategoryNullRows                : 
+CategorySentinelRows            : 
+SubcategoryNullRows             : 
+SubcategorySentinelRows         : 
+ReportGroupNullRows             : 
+ReportGroupSentinelRows         : 
+ReportGroupEmbeddedSentinelRows : 
+ValueAtRisk                     :
+    --- Check 5: zero/NULL cost items with movement OR closing stock (reported, not hidden) ---
+    
+
+Verdict                     : INFO
+ZeroCostRows                : 2
+UnvaluedConsumptionQty      : 1403.000000
+UnvaluedClosingQty          : 1600.000000
+StationaryUnpricedStockRows : 0
+    --- Check 6a: period-level drift guard (FAIL) ---
+    
+Verdict SameStocktakeBothEnds NonPositiveDays
+------- --------------------- ---------------
+PASS
+    --- Check 6b: boundary carry-forward visibility (INFO, never a FAIL) ---
+    
+
+Verdict                 : INFO
+SameCountBothBoundaries : 24
+UncountedRows           : 220
+NeverCountedRows        : 196
+CarriedForwardCOGSold   : 195.009630
+TotalCOGSold            : 81204.832179
+    --- Check 7: UOM_COST equals SAT_INVITEM latest-in-period cost, not an average ---
+    
+Verdict MismatchedCostRows
+------- ------------------
+PASS                     0
+    --- Check 8a: mapped ParameterMappings expressions <= 100 chars ---
+    
+Verdict OverlongMappings
+------- ----------------
+PASS                   0
+    --- Check 8b: mapped FilterDefinitions column expressions <= 100 chars ---
+    
+Verdict OverlongMappings
+------- ----------------
+PASS                   0
+    --- Check 9: deliveries non-zero for a period with known receipts ---
+    
+Verdict TotalDeliveryQty TotalCOGSpend
+------- ---------------- -------------
+PASS     10298150.652800  89701.508579
+    --- Check 10: UOM_CONVERSION fan-out guard ---
+    
+Verdict DuplicateFromUomCount Offenders
+------- --------------------- ---------
+PASS                        0
+    --- Check 11: REPORT_GROUP break-out config is visible to the build AND took effect ---
+    
+
+Verdict                                 : WARN
+ConfiguredValue_ThisDatabase            : Can't Live Without It
+ConfigRowPresentInThisDatabase          : 1
+RowsWhereReportGroupDiffersFromCategory : 0
+RowsInAConfiguredCategory               : 0
+DistinctCategories                      : 4
+DistinctReportGroups                    : 4
+Reason                                  : Config is present and readable, but no fact row carries any configured 
+                                          category, so nothing could break out. Compare the configured names against 
+                                          SELECT DISTINCT CATEGORY on this fact. This is NOT proof the break-out works.
+    --- Check 12: cost resolution actually resolved (wholesale-unpriced gate) ---
+    
+
+Verdict                    : PASS
+FactRows                   : 732
+PricedFactRows             : 730
+PricedLeafItemsInSatellite : 500
+PricedPct                  : 99
+Reason                     : Cost resolved on the majority of rows.
+[07:53:32]   Verdicts: PASS=10 FAIL=0 WARN=1 SKIPPED=1 INFO=2
+[07:53:32]   1 check(s) reported WARN - not a failure, but something is UNPROVEN. Read the WARN row's Reason column in the log above before continuing.
+[07:53:32]   NOTE: Check 8 (VisualisationQueries length checks, filtered to PantryCOGS%) has ZERO rows to look at until step 8 runs the vis scripts. A PASS here proves nothing about check 8 - do not read it as coverage. The real gate for check 8 is step 9.
+[07:53:32] STEP    7 OK
+[07:53:32] STEP  8.1 [core] 04_vis_kpis.sql
+[07:53:33] STEP  8.1 OK
+[07:53:33] STEP  8.2 [core] 05_vis_charts.sql
+[07:53:33] STEP  8.2 OK
+[07:53:33] STEP  8.3 [core] 06_vis_grids.sql
+    PantryCOGSBillingTotals merged
+    PantryCOGSItemTable merged
+    PantryCOGSExceptions merged
+    === Pantry COGS grid visualisation queries registered (3 datasets) ===
+[07:53:33] STEP  8.3 OK
+[07:53:33] STEP  8.4 [core] 07_vis_filters.sql
+[07:53:33] STEP  8.4 OK
+[07:53:33] STEP    9 [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] 99_verify_cogs_period.sql
+    --- Check 1: grain / fan-out ---
+    
+Verdict FactRows DistinctGrain
+------- -------- -------------
+PASS         732           732
+    
+Verdict Reason                                                                 
+------- ------                                                                 
+SKIPPED No Growyze export loaded into [reference].[GROWYZE_COGS_EXPORT_STAGING]
+    --- Check 3: subtotals = grand total = KPI, all three agreeing ---
+    
+
+Verdict                       : PASS
+KPI_SpendExpression           : 1733.378404
+Grid_SumOfSubtotals           : 1733.378404
+Grid_GrandTotalRow            : 1733.378404
+Grid_CategorySubcategoryPairs : 11
+Grid_DistinctRowLabels        : 11
+Note                          :
+    --- Check 4: coverage guard - no ungrouped items with movement ---
+    
+
+Verdict                         : PASS
+UngroupedRows                   : 0
+CategoryNullRows                : 
+CategorySentinelRows            : 
+SubcategoryNullRows             : 
+SubcategorySentinelRows         : 
+ReportGroupNullRows             : 
+ReportGroupSentinelRows         : 
+ReportGroupEmbeddedSentinelRows : 
+ValueAtRisk                     :
+    --- Check 5: zero/NULL cost items with movement OR closing stock (reported, not hidden) ---
+    
+
+Verdict                     : INFO
+ZeroCostRows                : 2
+UnvaluedConsumptionQty      : 1403.000000
+UnvaluedClosingQty          : 1600.000000
+StationaryUnpricedStockRows : 0
+    --- Check 6a: period-level drift guard (FAIL) ---
+    
+Verdict SameStocktakeBothEnds NonPositiveDays
+------- --------------------- ---------------
+PASS
+    --- Check 6b: boundary carry-forward visibility (INFO, never a FAIL) ---
+    
+
+Verdict                 : INFO
+SameCountBothBoundaries : 24
+UncountedRows           : 220
+NeverCountedRows        : 196
+CarriedForwardCOGSold   : 195.009630
+TotalCOGSold            : 81204.832179
+    --- Check 7: UOM_COST equals SAT_INVITEM latest-in-period cost, not an average ---
+    
+Verdict MismatchedCostRows
+------- ------------------
+PASS                     0
+    --- Check 8a: mapped ParameterMappings expressions <= 100 chars ---
+    
+Verdict OverlongMappings
+------- ----------------
+PASS                   0
+    --- Check 8b: mapped FilterDefinitions column expressions <= 100 chars ---
+    
+Verdict OverlongMappings
+------- ----------------
+PASS                   0
+    --- Check 9: deliveries non-zero for a period with known receipts ---
+    
+Verdict TotalDeliveryQty TotalCOGSpend
+------- ---------------- -------------
+PASS     10298150.652800  89701.508579
+    --- Check 10: UOM_CONVERSION fan-out guard ---
+    
+Verdict DuplicateFromUomCount Offenders
+------- --------------------- ---------
+PASS                        0
+    --- Check 11: REPORT_GROUP break-out config is visible to the build AND took effect ---
+    
+
+Verdict                                 : WARN
+ConfiguredValue_ThisDatabase            : Can't Live Without It
+ConfigRowPresentInThisDatabase          : 1
+RowsWhereReportGroupDiffersFromCategory : 0
+RowsInAConfiguredCategory               : 0
+DistinctCategories                      : 4
+DistinctReportGroups                    : 4
+Reason                                  : Config is present and readable, but no fact row carries any configured 
+                                          category, so nothing could break out. Compare the configured names against 
+                                          SELECT DISTINCT CATEGORY on this fact. This is NOT proof the break-out works.
+    --- Check 12: cost resolution actually resolved (wholesale-unpriced gate) ---
+    
+
+Verdict                    : PASS
+FactRows                   : 732
+PricedFactRows             : 730
+PricedLeafItemsInSatellite : 500
+PricedPct                  : 99
+Reason                     : Cost resolved on the majority of rows.
+[07:53:33]   Verdicts: PASS=10 FAIL=0 WARN=1 SKIPPED=1 INFO=2
+[07:53:33]   1 check(s) reported WARN - not a failure, but something is UNPROVEN. Read the WARN row's Reason column in the log above before continuing.
+[07:53:33]   NOTE: This is the real acceptance gate for check 8. Check 2 (Growyze reconciliation) still reports SKIPPED until a real export is loaded into [reference].[GROWYZE_COGS_EXPORT_STAGING].
+[07:53:33] STEP    9 OK
+[07:53:33] STEP   10 REFUSED: 08_report_db_config.sql - Report-DB wiring - REFUSED by this runner, run by hand against report
+[07:53:33]   Reason: targets the 'report' microservice database on a different server.
+[07:53:33]   Action: run 08_report_db_config.sql directly against report, by hand. See DEPLOY.txt step 10.
+[07:53:33] STEP   11 MANUAL: UI check - exercise all three filters as the target org
+[07:53:33]   Not a database action - this runner stops here. Perform the UI check yourself.
+[07:53:33] Deployment run complete through the automated steps.
+[07:53:33] Remaining by hand: step 10 (08_report_db_config.sql against report) and step 11 (UI check).
