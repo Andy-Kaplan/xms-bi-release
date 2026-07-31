@@ -4,11 +4,11 @@
 
 | | |
 |---|---|
-| **Status** | OPEN — 13 artefacts **committed**; build **executed read-only against UAT org 21 and reconciled exactly**; one new Critical (**C4**) found and fixed; **still not deployed** |
+| **Status** | OPEN — **DEPLOYED and VERIFIED on UAT org 21** (steps 1–10). All 12 cards + 3 filters exercised through the real card SPs. Only the **front-end UI check (step 11)** remains |
 | **Priority** | 2 |
 | **Area** | Growyze / presentation + Report DB |
 | **Owner / decides** | Andy |
-| **Next action** | Run `cogs/DEPLOY.txt` steps 1–9 via `90_deploy_cogs.ps1` on **Ibis Gloucester Road (UAT org 21)** — needs Andy's explicit per-stage go-ahead. Both prerequisites now resolved or accepted (§Prerequisites); **three decisions** (§Decisions) still open, none blocking |
+| **Next action** | **Step 11 — open the "Pantry COGS" dashboard as Ibis Gloucester Road on UAT and look at it.** The data layer is fully verified, so anything wrong from here is rendering, not data. Then decide the **three decisions** (§Decisions) |
 | **Spec** | [`docs/superpowers/specs/2026-07-30-growyze-pantry-cogs-dashboard-design.md`](../superpowers/specs/2026-07-30-growyze-pantry-cogs-dashboard-design.md) |
 | **Plan** | [`docs/superpowers/plans/2026-07-30-growyze-pantry-cogs-dashboard.md`](../superpowers/plans/2026-07-30-growyze-pantry-cogs-dashboard.md) |
 | **Cross-linked** | **Claude Nine ledger O25** — "Scope Growyze consolidated COGS reporting opportunity" (the commercial thread with Kati) |
@@ -203,6 +203,50 @@ failures loud instead of silent.**
   Runner connectivity confirmed: the MI public endpoint needs **port 3342**, which `90_deploy_cogs.ps1:98` already
   appends (matching the reference runner). Both edited `.sql` files re-verified for quote balance at both nesting
   levels and `SET PARSEONLY` clean — one apostrophe (`today's`) inside the `@sql` literal was caught and doubled.
+
+- **2026-07-31 (later) — DEPLOYED steps 1–10 on UAT org 21, then verified every card by execution.**
+
+  **Steps 1–9** via `90_deploy_cogs.ps1`: step 9 (the real gate) returned **PASS=10 FAIL=0 WARN=1 SKIPPED=1
+  INFO=2** — check 12 PASS, check 11 WARN, check 2 SKIPPED, checks 5/6b INFO, exactly as predicted. Step 1 failed
+  as designed (table absent). Both runner safety rules fired correctly: `DeployPresentationTables` never called,
+  step 10 refused. Deployed fact matches the pre-deploy simulation to the penny.
+
+  **Step 10** run by hand against `report` on `xms-sql-fog-uat` via `Invoke-Sqlcmd` (MCP is read-only there). Its
+  own transactional verify-or-rollback returned **PASS — 12 cards, 3 filters, group-mapped and visible**.
+  `BiConfig` already existed with `DbPrefix = 20260722`, independently confirming the prefix. The dashboard is
+  additive alongside O8's "Marge Brut" on the same org, in the existing "All Dashboards" group. ⚠️ The committed
+  `08_report_db_config.sql` still holds its `<TARGET-ORG-GUID>` / `<TARGET-DB-PREFIX>` placeholders **by design** —
+  the run used a substituted scratch copy so the committed script stays org-agnostic. Do not commit a pinned copy.
+
+  **Cross-database contract check (the seam nothing had tested).** All **15** dataset names in the report DB's
+  `DashboardGridItem`/`DashboardGridFilter` match the 15 `PantryCOGS%` rows in `core.core.VisualisationQueries`
+  exactly, and every card type agrees (4×SingleKPICard→10, PieChart→9, 4×BarChart→1, 2×CustomDataGrid→3,
+  CustomGroupedDataGrid→4; the 3 FilterLists carry no `VisualisationId`, which is correct). This is the
+  `DashboardGridFilter.DataSet` == `FilterDefinitions` key contract, and it holds.
+
+  **Every card type executed against the live org — all 5 return correct data:**
+
+  | Card / filter | Result |
+  |---|---|
+  | `SingleKPICard` COG Spend | **£1,733.38** ✓ matches fact |
+  | `SingleKPICard` COG Sold | **£3,387.77** ✓ |
+  | `SingleKPICard` Closing stock | **£8,496.68** ✓ |
+  | `SingleKPICard` Unexplained variance | **−£3,387.77** — exactly `−COG_SOLD`, the documented no-waste/sale caveat, now confirmed live |
+  | `PieChartCard` Consumption mix | Beverages £391.81 + Food £2,995.96 = **£3,387.77** ✓, zero slices correctly omitted |
+  | `BarChartCard` By venue | Ibis Gloucester Rd **£3,387.77** ✓ |
+  | `CustomDataGrid` Billing totals | **GRAND TOTAL £1,733.378404 == the COG Spend KPI exactly** — check 3's three-way agreement proven through the real SPs |
+  | `CustomGroupedDataGrid` Item table | correct parent/child nesting (`ParentId` NULL on group rows, group id on children) |
+  | 3 × `FilterList` | all return the `Label`/`ID`/`ParentID`/`BottomLevel` contract |
+
+  **C2 IS NOW SETTLED BY OBSERVATION, NOT INFERENCE** — the open question was whether the renderer reads `ID`.
+  The filters were round-tripped: filtering COG Sold to `Food` returned **£2,995.96**, the exact Food subtotal
+  (not the £3,387.77 total), and a **deliberately bogus venue hash returned NULL** — proving the filter is
+  genuinely applied rather than silently ignored, which is the failure mode the binary(32)-vs-hex-string defect
+  would have produced. The venue filter's real hex ID returns the full value. Period filter round-trips too, and
+  `PERIOD_LABEL` renders `"Opening - 31 May 2026"` rather than NULL, confirming that fix.
+
+  **What step 11 can still find:** only front-end rendering. Every data-layer contract is now verified by
+  execution, so if a card looks wrong in the browser, look at the renderer before suspecting the data.
 
 ## Decisions — three things waiting on Andy (none is a defect)
 
