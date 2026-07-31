@@ -4,12 +4,32 @@
 
 | | |
 |---|---|
-| **Status** | OPEN — root cause established; **fix identified but deliberately NOT applied** (it changes 4 existing dashboards, so it needs Andy's nod) |
-| **Priority** | 2 |
-| **Area** | Microservice `report` DB / org configuration (UAT) |
+| **Status** | OPEN — **cosmetic / data-hygiene only.** The row is genuinely wrong, but **disproved as harmful**: Padel's dashboards render correct data from the real database (observed in the UI, 2026-07-31) |
+| **Priority** | 4 — *downgraded from 2* |
+| **Area** | Microservice `report` DB / org configuration (UAT) + doc correction |
 | **Owner / decides** | Andy |
-| **Next action** | Decide whether to run the one-row fix below. It is required before [O32](O32-growyze-pantry-cogs-dashboard.md)'s Pantry COGS dashboard can resolve any data on Padel Social |
+| **Next action** | Two small things: correct the row for hygiene, and **fix `docs/microservice-report-database.md` §1**, which states `DbPrefix` resolves the client database — the running system demonstrably does not depend on it |
 | **Found by** | [O32](O32-growyze-pantry-cogs-dashboard.md) rollout to Padel Social, 2026-07-31 |
+
+> ## ⚠️ CORRECTION — the original severity claim here was WRONG
+>
+> This item was first written asserting that Padel's 4 dashboards "have never returned data on UAT". **That was an
+> inference from the schema and the docs, and it is false.** Andy opened Padel Social's *Cost & Margins* dashboard
+> and it renders fully populated cards. `InvCOGSByCategory` was then executed against the **real** database
+> (`20260310_XMS_94A4B719-…`) and returns Beverages £35,573.16 / Other £10,731.42 / Food £3,985.27 /
+> Uncategorised £3,519.59 / Retail £2,379.55 — **matching the rendered dashboard exactly**, £56,189 total.
+>
+> So the front end resolves the client database through some path that does **not** depend on
+> `BiConfig.DbPrefix`. What remains unknown is *which*: whether `DbPrefix` is entirely unused, whether something
+> falls back when the named database is absent, or whether resolution happens in the `organisation` microservice.
+> Distinguishing those needs the microservice source, not this database.
+>
+> **Consequence: this never blocked anything.** [O32](O32-growyze-pantry-cogs-dashboard.md)'s Pantry COGS wiring
+> on Padel was held back on the strength of the wrong claim; that hold has been lifted.
+>
+> **Lesson worth keeping:** the docs said `DbPrefix` resolves the database, the schema was consistent with that,
+> and the audit trail corroborated a plausible story — and the conclusion was still wrong, because none of that
+> is the running system. One glance at the UI settled what three sources of documentary evidence could not.
 
 ## The defect
 
@@ -42,24 +62,24 @@ on 2026-07-03 touched the row without correcting it.
 
 **So this is not stale config that drifted out of date — it has never pointed at a live database.**
 
-## Why it matters
+## Why it looked load-bearing (and why that was wrong)
 
-`DbPrefix` is load-bearing, not decorative. Per `docs/microservice-report-database.md`:
+⚠️ **Everything in this section is the reasoning that led to the WRONG conclusion.** It is kept because the
+documentary case looked strong and someone will reconstruct it otherwise. The observed behaviour above overrides
+all of it. Per `docs/microservice-report-database.md`:
 
 - §1: *"`DbPrefix` (in `BiConfig`) — resolves to the MI database name `{DbPrefix}_XMS_{OrganisationId}`"*
 - §11: `BiConfig_GetEntities_ByOrganisationIdentifier` is the *"Main config load for a card render"* and returns
   `BiConfig` as its first result set; `Filter_GetEntities_ByDashboardIdentifier` returns `BiConfig` + the filter
   datasets. There is no documented fallback resolution path.
 
-Padel Social currently has **4 dashboards** wired in the report DB (Cost & Margins, Period Analysis, Products,
-Stock Activity). If card rendering resolves the client database through `BiConfig`, **none of them has ever
-returned data on UAT.**
+Padel Social has **4 dashboards** wired in the report DB (Cost & Margins, Period Analysis, Products, Stock
+Activity). The reasoning ran: if card rendering resolves the client database through `BiConfig`, none of them can
+ever have returned data.
 
-⚠️ **That conclusion is inferred from the schema and docs, not observed in the running front end.** It is possible
-the microservice resolves the database some other way and `DbPrefix` is vestigial in practice — in which case the
-row is merely wrong rather than harmful. **Confirming which is true is part of this item**, and it is worth
-knowing generally: if `DbPrefix` really is unused, that changes how much anyone needs to care about `BiConfig`.
-The cheapest test is to open one of Padel's four existing dashboards in the UI and see whether it renders.
+**It was tested and it is false** — see the correction at the top. All four render, from the real database. The
+documentary chain (docs §1 + docs §11 + a corroborating audit trail) was consistent, coherent, and wrong about
+the running system. `DbPrefix` being described as the resolver does not make it the resolver.
 
 ## The fix
 
@@ -77,16 +97,23 @@ UPDATE dbo.BiConfig
 Prefer the `BiConfig_UpdateEntity` SP over a bare `UPDATE` if it fits — the audit trigger on this table works
 (unlike the two broken ones in [O22](O22-report-db-audit-trigger-regression.md)), so either path leaves a record.
 
-**Not applied yet** because it changes the behaviour of 4 dashboards outside O32's scope. It should be a strict
-improvement — the current value cannot be correct, since the database it names does not exist — but that is
-Andy's call, not an assumption to make silently.
+**Now optional and low-risk.** Since rendering demonstrably does not depend on this value, the update is
+hygiene — it stops the next person reaching the same wrong conclusion. Low priority, but worth doing precisely
+*because* the wrong value cost a session's reasoning once already.
+
+## Also fix the documentation
+
+`docs/microservice-report-database.md` §1 states plainly that `DbPrefix` *"resolves to the MI database name
+`{DbPrefix}_XMS_{OrganisationId}`"*, and §11 lists `BiConfig` as the first result set of the "main config load for
+a card render". Whatever was once true, **the running UAT system renders Padel's dashboards correctly while that
+value points at a database that does not exist.** The doc should say what actually resolves the client database,
+or say that it is unverified — the repo rule is that docs must reflect reality, and this one does not.
 
 ## Related
 
-- Blocks [O32](O32-growyze-pantry-cogs-dashboard.md) on Padel Social: the Pantry COGS report-DB wiring was
-  deliberately **not** run there, because `08_report_db_config.sql`'s `BiConfig` step is an
-  `IF NOT EXISTS` guard — it would skip the existing row, leave the dead prefix in place, and wire a dashboard
-  that cannot resolve data. Dirty Sixth was wired successfully; its prefix is correct.
+- **Did NOT block [O32](O32-growyze-pantry-cogs-dashboard.md) after all.** Pantry COGS wiring on Padel was held
+  back on the strength of the wrong severity claim; the hold is lifted. Dirty Sixth was wired successfully and
+  its prefix is correct, so nothing there is affected either way.
 - Worth a one-off sweep for the same class of error on **Prod** once that has orgs — nothing currently checks that
   a `BiConfig` row resolves to a database that exists. The query is cheap: join `BiConfig` to `sys.databases` on
   `DbPrefix + '_XMS_' + OrganisationId`.
