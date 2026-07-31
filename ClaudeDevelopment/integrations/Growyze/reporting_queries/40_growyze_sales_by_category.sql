@@ -10,9 +10,9 @@
 --
 -- Output contract mirrors the live OakVineMenuFoodDrinksSplit PieChartCard EXACTLY
 -- (Label, Value, Id, Curve, Stack, Area, StackOrder, ShowMark, LegendLabel + the
--- second header SELECT) so the card renders identically. For Growyze,
--- TOP_NAME == MIDDLE_1_NAME (2-level hierarchy), so grouping on MIDDLE_1 matches
--- the real category set; ProductCategories filter re-pointed to MIDDLE_1 to match.
+-- second header SELECT) so the card renders identically. Grouping and the
+-- ProductCategories filter are both on TOP (see the 2026-07-30 block below); for
+-- Growyze, TOP_NAME == MIDDLE_1_NAME (2-level hierarchy), so this is a no-op there.
 --
 -- Depends on Task 1 (17_product_category_sentinel.sql) for clean categories.
 --
