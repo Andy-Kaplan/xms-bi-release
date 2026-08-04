@@ -1,0 +1,23 @@
+﻿[08:46:27] === Growyze dashboards Plan 4 - layout, REPORT-DB side (O5) ===
+[08:46:27] Environment   : UAT
+[08:46:27] report server : xms-sql-fog-uat.database.windows.net  (database: report)
+[08:46:27] MI server     : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342      (read-only, cross-server check)
+[08:46:27] Log           : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\report_config\deploy_PLAN4_UAT_20260804_084627.log
+[08:46:27] MODE          : -VerifyOnly (steps 3-4 only)
+[08:46:27] All 2 scripts plus the verifier are present.
+[08:46:27] Step 3 - 92_verify_plan4.sql (report-DB gate)
+[08:46:28] Report-DB gate: 0 FAIL, 0 REVIEW
+[08:46:28] Step 4 - cross-server check: every wired DataSet must exist on the MI
+[08:46:28]   29 distinct (DataSet, card type) pairs are wired across the three grids.
+[08:46:29]   PASS - every wired card resolves to a LIVE MI query.
+[08:46:29] === Plan 4 REPORT-DB side complete and gated. ===
+[08:46:29] 
+[08:46:29] REMAINING, BY HAND (these cannot be asserted from SQL):
+[08:46:29]   1. Confirm the heatmap has actually DISAPPEARED from Sales & Profitability.
+[08:46:29]      The soft delete assumes the frontend honours DashboardGridItem.IsDeleted;
+[08:46:29]      that is documented but has not been observed directly.
+[08:46:29]   2. Check xl=2 / xl=3 at >=1536px. No live grid diverges md/lg/xl, so this is
+[08:46:29]      unprecedented. If it reads badly, set those cards back to xl=4 / xl=6.
+[08:46:29]   3. Confirm InvCountHealthAlert renders on Padel Social (Earls Court, 6 items
+[08:46:29]      with no cost) and is absent on Gloucester. OverviewStockAlert is expected
+[08:46:29]      to be SILENT everywhere today - that is healthy, not broken.

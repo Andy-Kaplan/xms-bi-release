@@ -1,0 +1,25 @@
+﻿[08:44:57] === Growyze dashboards Plan 4 - layout & formatting, WAREHOUSE side (O5) ===
+[08:44:57] Environment : UAT
+[08:44:57] Server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342  (database: core)
+[08:44:57] Log         : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\deploy_PLAN4_UAT_20260804_084457.log
+[08:44:57] All 7 scripts plus the verifier are present.
+[08:44:58] Encoding guard: all step scripts are pure ASCII.
+[08:44:58] Step 1 - currency symbols + type tokens : running reporting_queries/54_currency_percent_tokens.sql
+[08:45:00] Step 1 - currency symbols + type tokens : OK
+[08:45:00] Step 2 - InvCOGSByCategory - 5 defects, both card types : running reporting_queries/55_invcogs_category_fixes.sql
+[08:45:00] Step 2 - InvCOGSByCategory - 5 defects, both card types : OK
+[08:45:00] Step 3 - sentence case + duplicate [Type11] alias : running reporting_queries/56_grid_header_hygiene.sql
+[08:45:00] Step 3 - sentence case + duplicate [Type11] alias : OK
+[08:45:00] Step 4 - D_INVITEM sentinel -> Uncategorised : running reporting_queries/57_category_stock_trend_sentinel.sql
+[08:45:00] Step 4 - D_INVITEM sentinel -> Uncategorised : OK
+[08:45:00] Step 5 - 3 NEW narrative datasets + 4 templates : running reporting_queries/58_dashboard_narrative_cards.sql
+[08:45:01] Step 5 - 3 NEW narrative datasets + 4 templates : OK
+[08:45:01] Step 6 - Classification -> column 2 : running reporting_queries/59_menu_engineering_reorder.sql
+[08:45:01] Step 6 - Classification -> column 2 : OK
+[08:45:01] Step 7 - InvUseAnalisys 19 -> 9 columns : running reporting_queries/60_invuseanalisys_column_cut.sql
+[08:45:01] Step 7 - InvUseAnalisys 19 -> 9 columns : OK
+[08:45:01] === Deployed 7 step(s); skipped 0 ===
+[08:45:01] Step 8 - 88_verify_plan4.sql (the gate)
+[08:45:01] Gate summary: 0 FAIL, 0 VACUOUS, 0 REVIEW
+[08:45:01] === Plan 4 WAREHOUSE side complete and gated. ===
+[08:45:01] NEXT: report_config\91_deploy_plan4.ps1 (grants + dataset map + layout).

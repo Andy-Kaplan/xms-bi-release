@@ -1,0 +1,10 @@
+﻿[17:33:22] === Growyze dashboards Plan 4 - layout, REPORT-DB side (O5) ===
+[17:33:22] Environment   : UAT
+[17:33:22] report server : xms-sql-fog-uat.database.windows.net  (database: report)
+[17:33:22] MI server     : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342      (read-only, cross-server check)
+[17:33:22] Log           : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\report_config\deploy_PLAN4_UAT_20260803_173322.log
+[17:33:22] MODE          : -WhatIf (no changes will be made)
+[17:33:22] All 2 scripts plus the verifier are present.
+[17:33:22] Step 1 - card-type grants + dataset map (gated) : would run 08_grants_and_dataset_map_plan4.sql
+[17:33:22] Step 2 - re-lay-out Overview / Sales / Inventory : would run 07_layout_rev2.sql
+[17:33:22] === -WhatIf complete; nothing was changed ===

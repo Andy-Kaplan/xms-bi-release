@@ -1,0 +1,15 @@
+﻿[08:46:01] === Growyze dashboards Plan 4 - layout, REPORT-DB side (O5) ===
+[08:46:01] Environment   : UAT
+[08:46:01] report server : xms-sql-fog-uat.database.windows.net  (database: report)
+[08:46:01] MI server     : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342      (read-only, cross-server check)
+[08:46:01] Log           : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\report_config\deploy_PLAN4_UAT_20260804_084601.log
+[08:46:01] All 2 scripts plus the verifier are present.
+[08:46:01] Step 1 - card-type grants + dataset map (gated) : running 08_grants_and_dataset_map_plan4.sql
+[08:46:02] Step 1 - card-type grants + dataset map (gated) : OK
+[08:46:02] Step 2 - re-lay-out Overview / Sales / Inventory : running 07_layout_rev2.sql
+[08:46:02] Step 2 - re-lay-out Overview / Sales / Inventory : OK
+[08:46:02] === Applied 2 step(s); skipped 0 ===
+[08:46:02] Step 3 - 92_verify_plan4.sql (report-DB gate)
+[08:46:02] Report-DB gate: 0 FAIL, 0 REVIEW
+[08:46:02] Step 4 - cross-server check: every wired DataSet must exist on the MI
+[08:46:02]   29 distinct (DataSet, card type) pairs are wired across the three grids.

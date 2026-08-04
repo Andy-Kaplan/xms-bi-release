@@ -1,0 +1,16 @@
+﻿[17:33:10] === Growyze dashboards Plan 4 - layout & formatting, WAREHOUSE side (O5) ===
+[17:33:10] Environment : UAT
+[17:33:10] Server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342  (database: core)
+[17:33:10] Log         : C:\threerocks_data\XMS BI\Release\.claude\worktrees\growyze-dashboards-o5\ClaudeDevelopment\integrations\Growyze\deploy_PLAN4_UAT_20260803_173310.log
+[17:33:10] MODE        : -WhatIf (no changes will be made)
+[17:33:10] All 7 scripts plus the verifier are present.
+[17:33:11] Encoding guard: all step scripts are pure ASCII.
+[17:33:11] Step 1 - currency symbols + type tokens : would run reporting_queries/54_currency_percent_tokens.sql
+[17:33:11] Step 2 - InvCOGSByCategory - 5 defects, both card types : would run reporting_queries/55_invcogs_category_fixes.sql
+[17:33:11] Step 3 - sentence case + duplicate [Type11] alias : would run reporting_queries/56_grid_header_hygiene.sql
+[17:33:11] Step 4 - D_INVITEM sentinel -> Uncategorised : would run reporting_queries/57_category_stock_trend_sentinel.sql
+[17:33:11] Step 5 - 3 NEW narrative datasets + 4 templates : would run reporting_queries/58_dashboard_narrative_cards.sql
+[17:33:11] Step 6 - Classification -> column 2 : would run reporting_queries/59_menu_engineering_reorder.sql
+[17:33:11] Step 7 - InvUseAnalisys 19 -> 9 columns : would run reporting_queries/60_invuseanalisys_column_cut.sql
+[17:33:11] === -WhatIf complete; nothing was changed ===
+[17:33:11] Next after a real run: report_config\91_deploy_plan4.ps1
