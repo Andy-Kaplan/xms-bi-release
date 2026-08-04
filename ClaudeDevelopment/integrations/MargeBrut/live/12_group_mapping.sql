@@ -1,4 +1,30 @@
 -- 12_group_mapping.sql
+--
+-- ##################################################################################
+-- ## SUPERSEDED 2026-07-29 -- DO NOT RUN. Retained for history only.              ##
+-- ##                                                                              ##
+-- ## Replaced by an inline grouping CASE inside 13_f_margebrut_month_control.sql,  ##
+-- ## derived from D_PRODUCT.TOP_NAME and D_INVITEM.TOP_NAME/MIDDLE_1_NAME (the     ##
+-- ## source systems' own categories). Two reasons this script was withdrawn:      ##
+-- ##                                                                              ##
+-- ##  1. MICROSERVICE_NAME is the platform's product/item DISPLAY-NAME resolver -- ##
+-- ##     8_VisualisationQueries.sql resolves labels as COALESCE(<dim>.BOTTOM_      ##
+-- ##     MICROSERVICE_NAME, <dim>.BOTTOM_PRODUCT_NAME) in 82 places. Writing the   ##
+-- ##     6 group strings here collapses every product and inventory-item label on  ##
+-- ##     the organisation to 6 values, and collides with the MDM/join role that    ##
+-- ##     column is being moved toward (ledger O20).                                ##
+-- ##  2. The keyword lists below were calibrated against other catalogues (Mews    ##
+-- ##     DEV proxy org 19, Growyze UAT Padel Social) and mis-group real Ibis        ##
+-- ##     revenue: the portion sub-lines that carry wine/spirit revenue ("125 ml",  ##
+-- ##     "50 ml", "Bottle") match no keyword, and San Miguel, Portobello London    ##
+-- ##     Pilsner, Shiraz, Gordons, Kraken, Courvoisier, Chivas Regal and Martell   ##
+-- ##     VS all fell through to the ELSE 'Food' catch-all. The dimension           ##
+-- ##     hierarchy classifies every one of them correctly with no keywords.        ##
+-- ##                                                                              ##
+-- ## See 13_f_margebrut_month_control.sql's GROUPING header for the full rationale ##
+-- ## and the observed category values on Ibis Gloucester Road (UAT OrgID 21).      ##
+-- ##################################################################################
+--
 -- Marge Brut live dashboard: MICROSERVICE_NAME group mapping for both product dimensions.
 --
 -- MICROSERVICE_NAME is the platform's manual-only MDM layer (see CLAUDE.md "Key Conventions" --

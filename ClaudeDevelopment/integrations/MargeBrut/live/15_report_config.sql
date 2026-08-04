@@ -39,13 +39,27 @@
 
    Idempotent: guarded by IF NOT EXISTS / MERGE on natural keys. Safe to re-run.
 
-   @OrgId / @DbPrefix below are PLACEHOLDERS -- the new "Three Rocks Hotel" UAT
-   org does not exist yet. Task 9 (01_provision_uat_org.sql) creates it and
-   mints the real GUID + MI DB prefix (format {DbPrefix}_XMS_{OrgId}); paste
-   those values in below before running. The placeholder GUID text is
-   deliberately NOT a valid UNIQUEIDENTIFIER literal, so running this script
-   unmodified fails fast at the DECLARE instead of silently inserting rows
-   against a wrong or empty org.
+   @OrgId / @DbPrefix are now SET (2026-07-29) to the real target: Ibis
+   Gloucester Road, UAT OrganisationID 21 -- 67CA4E6F-9A7E-F111-B337-002248A1EC3D
+   / prefix 20260722. The invented "Three Rocks Hotel" org this script was
+   drafted against was superseded by ledger O19, which provisioned the two real
+   Ibis hotels; 01_provision_uat_org.sql is therefore obsolete and must not be
+   run. Gloucester (not Heathrow) is the validation target -- Heathrow has no
+   Mews turnover.
+
+   PREREQUISITE STATE ON UAT (all satisfied 2026-07-29 except where noted):
+     - reference.MARGEBRUT_MANUAL created on all 20 orgs (11a), seeded on
+       Gloucester (11)
+     - presentation.F_MARGEBRUT_MONTH registered (10) + build step registered
+       (13) + table created and built on Gloucester: 18 rows, June 2026 complete
+       (turnover GBP 17,138.71 / consumption GBP 4,701.37 / cost 27.4%)
+     - the 9 MargeBrut* VisualisationQueries rewired to live reads (14)
+     - OUTSTANDING: presentation.D_SUPPLIER on Gloucester holds only the
+       "Unknown" sentinel even though datavault.HUB_SUPPLIER has 8 rows, so
+       MargeBrutPurchasesBySupplier returns no data rows (its TotalValue header
+       still resolves, because that subquery does not join D_SUPPLIER). Run the
+       "Supplier Dimension" PresentationControl step on Gloucester before
+       expecting that one card to render.
    ============================================================================= */
 
 SET NOCOUNT ON;
@@ -133,8 +147,16 @@ SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 BEGIN TRY
 
-DECLARE @OrgId    UNIQUEIDENTIFIER = N'<<SET AT GO-LIVE -- new UAT "Three Rocks Hotel" org GUID from Task 9 / 01_provision_uat_org.sql>>';
-DECLARE @DbPrefix NVARCHAR(8)      = N'00000000';  -- <<SET AT GO-LIVE -- new UAT "Three Rocks Hotel" MI DB prefix from Task 9>>
+-- Ibis Gloucester Road, UAT OrganisationID 21. Provisioned by O19 (which
+-- superseded the invented "Three Rocks Hotel" org this script was drafted
+-- against), verified 2026-07-29 against core.core.Organisations:
+--   OrganisationCode = 67CA4E6F-9A7E-F111-B337-002248A1EC3D
+--   DatabaseName     = 20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D  (ACTIVE)
+-- Build/validate on Gloucester, NOT Ibis Heathrow (OrgID 20): Heathrow has no
+-- Mews POS transactions and only one stocktake, so it has no turnover and no
+-- computable consumption.
+DECLARE @OrgId    UNIQUEIDENTIFIER = N'67CA4E6F-9A7E-F111-B337-002248A1EC3D';
+DECLARE @DbPrefix NVARCHAR(8)      = N'20260722';
 
 ----------------------------------------------------------------------
 -- 1. BiConfig -- org -> MI client DB mapping ({DbPrefix}_XMS_{OrgId})
