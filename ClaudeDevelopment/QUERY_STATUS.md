@@ -2543,3 +2543,74 @@ Scripts 86-90 in `prod-baseline/` support the first Production deployment, per t
 **Left for a human (master files are read-only to Claude):** add `EXEC core.sp_ApplyEventInbox @JobID = @JobID;` to `sp_DataVaultLoad` immediately **before** `EXEC core.sp_ProcessPresentation` (~line 3000 of `8_Deployment_Objects_Records.sql`), non-fatal on failure — same region as ledger item O5, so coordinate if both are actioned. Then fold 01–06 back into the master files, run against Test/UAT/Prod, and promote to `releases/v{X.Y}/`.
 
 **⚠️ Gate:** `SB_OUTBOX_ENABLED` is app-global — do **not** set it in any environment until 06 Part 1 is all-PASS there, or store-list staging fails on the enqueue for org DBs missing `EVENT_OUTBOX`. It has **not** been set in Dev or anywhere else.
+
+
+## Provisioning, Mews rollout and report-DB palettes (versioned 2026-08-04)
+
+These five entries were written as the work was done but lived only on the working tree until the
+2026-08-04 branch consolidation. Renumbered to 123-127 on merge: their original numbers
+(85a, 92, 94, 95, 96) already belong to other entries on this line.
+
+*Originally filed under: Mews (int_mews001)*
+
+### 123. `integrations/Mews/91_deploy_mews_uat.ps1`
+
+**Purpose:** PowerShell runner that deploys the Mews001 staging/DV control plane to an environment and runs the per-org Data Vault load. Written 2026-07-29 after discovering that the Ibis orgs on UAT were provisioned and mapped to Mews (O19) but `core.int_mews001.StagingControl` / `.EntityMappings` were **both empty** — so Mews DL data had landed with no path into the Data Vault, leaving `presentation.F_LINEITEM_15MIN` at 0 rows and the Marge Brut Turnover metric (O8) dead.
+
+Follows the house runner pattern (`prod-baseline/90_deploy_baseline.ps1`): `XMS_BI_MANAGED_{ENV}_*` env vars, `-WhatIf` preflight, typed `DEPLOY` confirmation, `-StartAt` resume, `-SkipLoad`, halt-on-error, per-run timestamped log. Two safety details worth keeping: it **refuses any server whose name contains `prod`**, and it **discovers target orgs from `core.OrganisationIntegrations`** (joined to `Integrations.SchemaName = 'int_mews001'`, `IsEnabled = 1`) rather than hardcoding GUIDs, so it stays correct per environment. Runs `01` → `02` → `05` Section A (inlined — the file mixes core and org-DB scopes and fails at B5 if run whole against `core`) → `03`, verifies, then loads each org.
+
+**Status:** **DEPLOYED to UAT 2026-07-29 — PASS.** Control plane verified staging=15 / load=16 / mappings=16 / crm=0 (exactly the `DEPLOY.txt` expectation). DV loads succeeded for both Ibis orgs. **Ibis Gloucester Road** (OrgID 21): HUB_LINEITEM 107, SAT_LINEITEM 107, HUB_CUSTORDER 47, LNK_CUSTORDER_LINEITEM 107, HUB_PRODUCT 389, HUB_LOCATION 2 → `F_LINEITEM_15MIN` **0 → 62 rows** (36 PROD £1,349.02 net, 26 TAX £269.73), `LINEITEM_TIMESTAMP` 100% populated. **Ibis Heathrow** (OrgID 20): dimensions only (HUB_PRODUCT 570, HUB_LOCATION 2), zero transactions — expected, no Mews POS yet. Data spans only 2 days (2026-06-29→06-30). **Test + Prod outstanding** (`-Environment TEST` when Test's SQL DB resumes; Prod human-run).
+
+---
+
+*Originally filed under: Prod v1.0 Baseline Validation Kit (2026-07-06)*
+
+### 124. `ibis-provisioning/01–04` (+01b) + `DEPLOY.txt` (O19)
+
+**Purpose:** Provision the two real Accor Ibis hotel orgs and map each to Growyze001 + Mews001 across Test/UAT/Prod, then hand Integrations O10 the deterministic `db_name`/`schema_name`/`kv_prefix` mapping. 01 registers Mews001 (`AddIntegration`, guarded) + sets type POS; **01b seeds the int_mews001 STAGE_DDL (22 DL_* rows, MERGE-upsert, extracted verbatim from DEV 2026-07-22)**; 02 `AddOrganisation` ×2 (fixed prefix `20260722`, reused microservice GUID, guarded); 03 `MapOrganisationToIntegration` Growyze+Mews ×2 (upsert; halts if Mews STAGE_DDL unseeded); 04 read-only verify + emits the O10 rows. All target `core`, SP-only, idempotent.
+
+**Status:** **UAT + TEST FULLY EXECUTED 2026-07-24; Prod remaining (human-run).** Test (via Invoke-Sqlcmd, no timeouts): Heathrow=OrgID 7, Gloucester Road=OrgID 8, both ACTIVE; Mews001=IntegrationID 7 +21 STAGE_DDL; 4 mappings (IDs 8–11); int_growyze001 13 DL + int_mews001 21 DL each. Same DatabaseName/kv_prefix as UAT. — UAT detail below:
+**UAT FULLY EXECUTED 2026-07-24** — 01+01b+02+03+04 all run; both Ibis orgs live. Heathrow (`7CE02464…`)=OrgID 20, Gloucester Road (`67CA4E6F…`)=OrgID 21, both ACTIVE; mapped to Growyze001+Mews001 (map IDs 31–34); org DBs have int_growyze001 (13 DL) + int_mews001 (**21** DL, DL_CUSTOMERS omitted per GDPR). Mews001=IntegrationID 7. 01/01b/03/04 ran via MCP `execute`; **02 via Invoke-Sqlcmd** (MCP execute's 15s cap cancels the long CREATE DATABASE+deploy — first attempt left an empty Heathrow DB, recovered by DROP+DELETE then re-ran on the runner; `ALTER DATABASE SET SINGLE_USER` unsupported on MI). GUIDs baked into 02/03/04. O10 handoff kv_prefix values concrete (ledger O19). **Remaining:** Test + Prod (same order, 02 via runner). GDPR: DL_CUSTOMERS permanently omitted from 01b.
+
+*Originally filed under: Oak & Vine → Growyze + Mews Mapping (2026-07-29, ledger O24 / Integrations O10)*
+
+### 125. `oak-vine-mapping/01–02` + `90_deploy_oak_vine_mapping.ps1`
+
+**Purpose:** Map **The Oak & Vine** (UAT org 16) to Growyze001 + Mews001 so it mirrors the Ibis Gloucester Road (org 21) source feed — two BI orgs, one feed — letting the org↔integration INSERT trigger provision its DL tables. Release-side half of Integrations O10; that item owns the Key Vault secrets and the load. 01 runs 5 preflight guards then `MapOrganisationToIntegration` once per feed (the trigger fires per insert); 02 is read-only verify + emits the O10 `kv_prefix` handoff rows + a DL-table diff against Ibis Gloucester Road. Both target `core`, SP-only, no hardcoded DB names. **UAT only** — the runner's `ValidateSet` is deliberately `('UAT')` and it refuses any server name matching `prod`.
+
+**Guard worth reusing:** 01 **halts if a mapping already exists while its `int_*` schema has 0 DL tables**. `MapOrganisationToIntegration` upserts, so a re-run silently takes the UPDATE path and the consumed INSERT trigger never re-provisions — without this guard a re-run reports success over a permanently empty schema. Also guarded: org identity cross-checked by *name* not just ID, `DatabaseStatus` must be ACTIVE, both feeds' `STAGE_DDL` must be seeded, and Mews `STAGE_DDL` must contain **no** `CUSTOMER` row (GDPR ruling O14/O19 01b).
+
+**Status:** **UAT EXECUTED + VERIFIED 2026-07-29 22:24** (log `deploy_O24_UAT_20260729_222404.log`). `-WhatIf` preflight clean; both mappings created — `OrganisationIntegrationID` **35** (Growyze001=5) and **36** (Mews001=7), `IsEnabled=1`, `SyncStatus=PENDING`. Trigger provisioned `int_growyze001` **13** DL + `int_mews001` **21** DL (no `DL_CUSTOMERS`) into `20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87` — both PASS, and the DL table *names* are byte-identical to Ibis Gloucester Road's (13/13 + 21/21, **0 missing / 0 extra**), re-checked independently via MCP. `kv_prefix` values match those predicted when O24 was raised, so O10's runbook needs no edit. No control-plane deploy was needed — `core.int_growyze001`/`int_mews001` `StagingControl`+`EntityMappings` are central, not per-org (O19). **Do not re-run 01.** Now waiting on Integrations O10 (clone Gloucester's UAT secrets, fire the load). Test/Prod out of scope — needs a ledger follow-on.
+
+**Execution note:** the runner had to be launched by the developer — Claude's permission classifier blocked it. From Git Bash the `!` prefix needs `powershell.exe -NoProfile -ExecutionPolicy Bypass -File …` (bare `&` is a bash parse error), plus `-Force`, since `Read-Host` doesn't render through Git Bash without `winpty`.
+
+### 126. `microservice-report/02_growyze_palette_additional_orgs.sql`
+
+**Purpose:** Add the `Growyze` organisation palette (`#000055` Deep Blue / `#34DBD1` Turquoise / `#FC3762` Pink / `#F3F3FF` Soft Light) to three further Growyze-fed UAT orgs — **The Oak & Vine** (`7ED2E768…`, org 16), **Ibis Gloucester Road** (`67CA4E6F…`, org 21) and **Ibis Heathrow** (`7CE02464…`, org 20) — matching the palette already live for Padel Social and Dirty Sixth. Targets the **microservice `report` DB**, not the MI.
+
+**Idempotent, unlike its predecessor.** `integrations/Growyze/growyze_org_palette.sql` did a bare `INSERT` then looked the parent up by name; because there is **no unique constraint on `(OrganisationId, Name)`**, re-running it silently creates a second identical palette and **both appear in the picker**. This script guards every insert with `NOT EXISTS` (parent on org+name+live, colours on palette+`SortOrder`+live) and is set-based, so no `OUTPUT` capture is needed. House rules observed: PK and `TransactionId` never specified, `IsDeleted = 0` always explicit.
+
+**Status:** **UAT EXECUTED + VERIFIED 2026-07-30.** Run via `Invoke-Sqlcmd` against `xms-sql-fog-uat.database.windows.net` → `report` (`@@SERVERNAME` = `xms-mssql-ne-uat`) using the `AZURE_MICROSERVICE_UAT_{SERVER,USER,PASSWORD}` env vars — MCP is read-only on all `microservice-*` servers. Before: 3 live palettes / 9 colours. After: **6 / 21**, all five Growyze orgs showing exactly 4 colours in the right `SortOrder`. **Idempotency proven by running it twice** — second run inserted nothing (`palettes_all_states` stayed 6, `Audit.OrganisationDashboardPalette` stayed 6, i.e. exactly 3 insert events).
+
+**⚠️ Two caveats, both known limitations rather than script faults:**
+1. **A cache clear is required before the palettes appear in the UI.** The app caches report-DB config and a direct SQL write does not invalidate it (adding via the admin tools does). This is exactly what hid the Padel Social / Dirty Sixth palettes for three months from 2026-04-16.
+2. **Defining an org palette makes it *selectable*, not applied.** There is no organisation-level default — all three palette-selection tables are keyed `StaffId NOT NULL` and are empty. Users must pick `Growyze` from the picker themselves until **XMSE-1756** ships. See ledger **O26**.
+
+**Note on Ibis Heathrow:** it had **no `BiConfig` row** in the report DB at the time of running, i.e. not yet onboarded to the microservice. The palette row is harmless and simply unused until it is — included deliberately so the branding is pre-staged.
+
+### 127. `microservice-report/03_growyze_extended_palette.sql`
+
+**Purpose:** Add a **second** organisation palette, `Growyze Extended` (9 colours), to all five Growyze-fed UAT orgs, alongside the existing 4-colour `Growyze`. Motivation: 4 colours exhausts on any card with more than 4 series, against system palettes' 6-10.
+
+**Colours** (`SortOrder` 0-80 in tens): `#000055` Deep Blue · `#34DBD1` Turquoise · `#FC3762` Pink · `#F5A524` Amber · `#6A4BD8` Violet · `#17A673` Green · `#A02463` Plum · `#2E86E0` Azure · `#0B6F6B` Deep Teal.
+
+**Design decisions worth knowing:**
+- **Does NOT carry `#F3F3FF`** (Soft Light) from the original palette — a near-white neutral is effectively invisible as a chart series. The first three colours are unchanged, so Extended reads as a superset of the brand identity in practice.
+- **Palette `SortOrder` = 10**, deliberately distinct from `Growyze` at 0. No palette `_Load` procedure has an `ORDER BY`, so two palettes tied at the same `SortOrder` would order non-deterministically in the picker.
+- Both palettes coexist per org; the original is untouched.
+
+**Status:** **UAT EXECUTED + VERIFIED 2026-07-30**, same connection method as 95. Before: 6 live palettes / 21 colours. After: **11 / 66** (5 new palettes × 9 colours = 45). `palettes_all_states` = 11 confirms **no duplicates**; all 9 hexes verified present in exact `SortOrder` for all 5 orgs via an independent MCP read. Idempotent by the same `NOT EXISTS` guards as 95.
+
+**Same two caveats as 95:** a cache clear is required before it appears in the UI, and it is *selectable* not applied — no org-level default until **XMSE-1756** (ledger **O26**).
+
+---
