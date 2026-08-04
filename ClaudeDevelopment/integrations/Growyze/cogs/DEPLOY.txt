@@ -1,0 +1,139 @@
+Growyze Pantry COGS - deploy order
+===================================
+
+Spec: docs/superpowers/specs/2026-07-30-growyze-pantry-cogs-dashboard-design.md
+Plan: docs/superpowers/plans/2026-07-30-growyze-pantry-cogs-dashboard.md
+
+Target for first deploy: Ibis Gloucester Road, UAT org 21
+  - Exactly two stocktake dates (31 May 2026, 30 Jun 2026) -> one complete
+    stocktake period. Enough to build and shape-test against, not enough to
+    prove long-run behaviour - that comes later, on a venue with more history.
+  - This is the org where the prior UOM_COST fix was verified (closing values
+    of GBP 10,175.54 and GBP 8,127.01), so it is a known-good starting point.
+    RECONCILED 2026-07-31 by executing the build read-only against this org:
+      31 May  F_COGS_PERIOD CLOSING_VALUE = 10,151.06 vs F_INV_COUNTS_DAY
+              10,175.54. The GBP 24.48 gap is NOT an error in the new fact -
+              F_INV_COUNTS_DAY holds 158 rows for 157 distinct items on that
+              date, double-counting one item worth GBP 24.48 twice.
+              10,175.54 - 24.48 = 10,151.06 exactly. F_COGS_PERIOD's grain is
+              unique (732 rows / 732 distinct keys) so it counts it once.
+              The duplicate in the LIVE F_INV_COUNTS_DAY is a separate
+              pre-existing defect worth raising on its own.
+      30 Jun  F_COGS_PERIOD 8,496.68 vs F_INV_COUNTS_DAY 8,127.01. Expected
+              and correct: 220 items were not counted at the 30 Jun
+              stocktake, so this fact carries their May counts forward by
+              design, while F_INV_COUNTS_DAY only values the 150 items
+              actually counted that day.
+  - KNOWN SOURCE-DATA CAVEAT ON THIS ORG, read before showing anyone the
+    Variance KPI: Growyze sends only COUNT and ORDER events here - there are
+    NO WASTE, SALE, TRANSFER or PRODUCTION events at all. So WASTE_VALUE is
+    0.00 on every row and VARIANCE_VALUE comes out as exactly -COG_SOLD
+    (June: -3,387.77). That is arithmetically correct given the inputs, but
+    it means the "unexplained shrink" KPI is reporting the entire
+    consumption as unexplained, because nothing in the feed explains any of
+    it. This is a source-data condition, not a build defect - but do not
+    present that KPI as a shrink figure on this org.
+  - Do NOT use Padel Social or Dirty Sixth for value reconciliation. Both have
+    more count dates but implausible stock values (roughly GBP 587k-1.2M) from
+    a separate, unresolved cause (see PREFLIGHT.md background / open item O5).
+    Reconciling against either would validate the new dashboard against
+    numbers that are already known to be wrong.
+
+PREFLIGHT  Read cogs/PREFLIGHT.md. If Q2 says only one category level lands, STOP.
+           (Current PREFLIGHT.md verdict: both levels are distinct - no stop.
+           Re-check this line if PREFLIGHT.md is updated before you deploy.)
+
+ 1  99_verify_cogs_period.sql   -- run FIRST, expect FAIL (table absent). This is the test.
+ 2  01_cogs_period_table.sql    -- PresentationTables MERGE
+ 3  02_cogs_period_build.sql    -- PresentationControl MERGE (tier 110)
+ 4  03_report_group_config.sql  -- GlobalParameters MERGE, run against the CLIENT
+                                -- database (the GUID-named org database), NOT `core`.
+                                -- 02's build query reads [core].[GlobalParameters] with a
+                                -- TWO-part name, and sp_ProcessPresentation executes that
+                                -- query in the client database's context, so the row must
+                                -- exist in <client_db>.core.GlobalParameters. Putting it in
+                                -- the central `core` database instead is silent: the build
+                                -- reads nothing, STRING_SPLIT(NULL,'|') returns zero rows
+                                -- rather than erroring, REPORT_GROUP collapses to CATEGORY
+                                -- for every row, and every card still renders. Verify
+                                -- check 11 (step 7/9) is what catches this.
+ 5  Deploy F_COGS_PERIOD for the org - THIS TABLE ONLY, never DeployPresentationTables
+ 6  Presentation rebuild (tier 110)
+                                -- AFTER THIS, CHECK 1 IS NOT A ONE-OFF (defect C6). A Fact step
+                                -- whose PresentationControl row has a NULL
+                                -- time_series_target_column APPENDS instead of replacing:
+                                -- sp_ExecuteQuery gates its pre-insert DELETE on that column
+                                -- being non-NULL, but runs the INSERT unconditionally. The step
+                                -- then adds a full copy of the fact on EVERY scheduled
+                                -- presentation rebuild, silently and cumulatively. This step now
+                                -- sets time_series_target_column = PERIOD_END_DATE, so the
+                                -- rebuild is a true full replace and is idempotent (proven by
+                                -- rebuilding twice in a row and confirming the row count is
+                                -- unchanged). If you ever re-register this step by hand, keep
+                                -- that column set, and re-run check 1 a day AFTER deploying -
+                                -- the deploy-time PASS cannot see a duplicate that a later
+                                -- scheduled refresh introduces.
+ 7  99_verify_cogs_period.sql   -- expect PASS on checks 1,3,4,6a,7,9,10,12 and PASS-or-WARN on 11.
+                                -- On UAT org 21 the expected verdicts are now MEASURED, not
+                                -- predicted: the build SELECT was executed read-only against
+                                -- that org before deployment (2026-07-31). Expect 732 rows,
+                                -- 732 distinct grain keys, 2 periods
+                                -- ("Opening - 31 May 2026" and "31 May 2026 - 30 Jun 2026"),
+                                -- and check 11 = WARN (org 21's categories are Food /
+                                -- Beverages / Other; it has no "Can't Live Without It", so
+                                -- the break-out is UNPROVEN here, not broken).
+                                -- Check 12 is the cost-resolution gate added after defect C4
+                                -- was found by that same execution. It MUST be PASS. If it
+                                -- FAILs, the ItemCost OUTER APPLY in 02 has lost its
+                                -- EFFECTIVEFROM fallback and every money column is NULL.
+                                -- READ CHECK 10 FIRST. It guards UOM_CONVERSION fan-out, and
+                                -- its PASS is load-bearing for THIS fact in a way it is not for
+                                -- the three sibling inventory facts: there a multi-row FROM_UOM
+                                -- only inflates a movement SUM, whereas here the same fan-out in
+                                -- ItemCost propagates through Calc's LEFT JOIN and multiplies the
+                                -- fact's GRAIN. Treat no figure from F_COGS_PERIOD as trustworthy
+                                -- until check 10 has passed.
+                                -- Checks 5 and 6b report INFO, not PASS - they surface
+                                -- source-data conditions (unpriced stock; closing counts
+                                -- carried forward) that are NOT build defects and must not
+                                -- halt the deploy. Only a FAIL halts.
+                                -- Check 11 is the break-out proof: it FAILs if step 4's
+                                -- config landed in the wrong database (see step 4 above), and
+                                -- reports WARN if the config is readable but this org has no
+                                -- rows in any configured category - in which case the
+                                -- break-out is UNPROVEN here, not proven. Compare the
+                                -- configured names against the org's own CATEGORY values.
+                                -- Check 2 = SKIPPED (no Growyze export loaded).
+                                -- Check 8 is VACUOUS here - zero PantryCOGS%
+                                -- VisualisationQueries rows exist until step 8 runs, so
+                                -- it PASSes having tested nothing. IGNORE its PASS at
+                                -- this point; it is not coverage. Do not treat this run
+                                -- as proof check 8 works.
+ 8  04_vis_kpis.sql / 05_vis_charts.sql / 06_vis_grids.sql / 07_vis_filters.sql
+ 9  99_verify_cogs_period.sql   -- expect PASS INCLUDING check 8, which is only
+                                -- meaningful now that PantryCOGS vis rows exist.
+                                -- This is the real acceptance gate for check 8.
+                                -- Check 2 still SKIPPED until a Growyze export exists.
+10  08_report_db_config.sql     -- run DIRECTLY against `report`, by hand, not via the runner
+11  UI check - exercise all three filters as the target org
+
+Runner: 90_deploy_cogs.ps1 automates steps 1-9 against the XMS BI Managed
+Instance (env vars XMS_BI_MANAGED_{ENV}_*). It refuses to run step 10 outright
+(that script targets the `report` microservice database on a different
+server) and it never invokes [core].[DeployPresentationTables] - see the
+script's own header comment and README.md for why both matter. Step 11 is
+manual by design; nothing in this folder drives the front end.
+
+Why verify runs three times, not two: the original two-run version let check 8
+pass vacuously between the table-deploy/rebuild and the vis-script deploy,
+because at that point zero PantryCOGS% VisualisationQueries rows exist for it
+to check length limits against - a check that cannot fail is worse than no
+check. Splitting step 7/9 apart means step 7 covers everything that should
+already be true (table shape, data quality) and step 9 is the only run whose
+PASS on check 8 means anything.
+
+  .\90_deploy_cogs.ps1 -Environment UAT -TargetDatabase <client_db> -WhatIf
+  .\90_deploy_cogs.ps1 -Environment UAT -TargetDatabase <client_db>
+  .\90_deploy_cogs.ps1 -Environment UAT -TargetDatabase <client_db> -StartAt 5
+
+Nothing in this folder has been executed yet - see README.md "Current state".

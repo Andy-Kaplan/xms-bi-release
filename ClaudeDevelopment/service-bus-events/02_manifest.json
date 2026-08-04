@@ -1,0 +1,17 @@
+{
+  "out": "02_mdm_registry_deployment_objects.sql",
+  "header": "XMS Service Bus messaging - core.MDM_RECORD / core.MDM_PROJECTION",
+  "notes": [
+    "The generic MDM registry. MDM_RECORD is the system of record for",
+    "microservice-supplied identity; SAT MICROSERVICE_ columns are a projection",
+    "of it, re-derived on every sp_ApplyEventInbox run."
+  ],
+  "objects": [
+    {"name": "MDM_RECORD", "type": "TABLE", "order": 111, "category": "Core Tables",
+     "body": "02a_mdm_record_body.sql",
+     "description": "Generic MDM registry - system of record for microservice-supplied identity, keyed (EntityName, IntegrationSrc, BusinessKey)"},
+    {"name": "MDM_PROJECTION", "type": "TABLE", "order": 112, "category": "Core Tables",
+     "body": "02a_mdm_projection_body.sql",
+     "description": "MDM projection rules - maps canonical registry fields to SAT MICROSERVICE_ columns; wildcard EntityName star applies to all entities"}
+  ]
+}

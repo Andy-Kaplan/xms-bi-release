@@ -1,0 +1,92 @@
+O19 — Provision 2 Ibis hotel orgs + map to Growyze & Mews (Test / UAT / Prod)
+=============================================================================
+Ledger: docs/outstanding/O19-ibis-org-provisioning-mapping.md
+Purpose: stand up the two real Accor Ibis hotels as BI orgs carrying BOTH
+Growyze (inventory/consumption) and Mews (turnover), so O8 Marge Brut can
+reconcile Consumption ÷ Turnover — and hand Integrations O10 the exact
+db_name/schema_name/kv_prefix mapping its Key Vault secret names embed.
+
+All state-changing SQL runs via the PowerShell runner (Invoke-Sqlcmd against
+XMS_BI_MANAGED_{TEST|UAT|PROD}_*), executed by Andy — never SSMS-by-hand.
+Every script targets the `core` database and calls stored procedures only
+(no direct INSERT into control tables). All scripts are idempotent.
+
+DECISIONS (agreed 2026-07-22)
+-----------------------------
+1. GUID reuse .... same Prod-microservice GUID as @OrganisationCode in ALL
+                   three BI envs (org identity aligns with the single
+                   canonical microservice org).
+2. Fixed prefix .. @Prefix in script 02 is FIXED at '20260722' (CONFIRMED by
+                   Andy 2026-07-22) and identical across envs — NOT the live
+                   provisioning date. With GUID reuse this makes DatabaseName +
+                   O10 kv_prefix deterministic and env-independent, so O10 step
+                   1 (KV secrets) needs no wait on provisioning. Do NOT change
+                   @Prefix per env — that would break the determinism O10 relies
+                   on.
+3. Env scope ..... author all three; UAT first (O8 targets UAT), then Test,
+                   then Prod (Prod needs GUIDs pulled from Prod microservice).
+
+BEFORE YOU RUN — fill placeholders in scripts 02/03/04:
+   @Ibis1Name / @Ibis1Code  and  @Ibis2Name / @Ibis2Code
+from the microservice Prod `organisation` DB Organisations table. (No Prod
+microservice MCP is configured here — pull at execution.) The same GUIDs go in
+02, 03 and 04.
+
+DEPLOY ORDER (per environment)
+------------------------------
+0.  Preflight (read-only): confirm Growyze001 exists in this env's core
+    (SELECT ... FROM core.Integrations WHERE IntegrationName='Growyze001').
+    In UAT it is IntegrationID 5. If Growyze is missing in Test/Prod, register
+    it the same way script 01 registers Mews (AddIntegration 'Growyze001').
+
+1.  01_register_mews_integration.sql        (core)  — registers Mews001.
+1b. 01b_seed_mews_stage_ddl.sql             (core)  — seeds int_mews001 STAGE_DDL
+                                                      (22 DL_* rows). MUST run
+                                                      before step 3. See §Mews-STAGE_DDL.
+2.  02_add_ibis_orgs.sql                    (core)  — AddOrganisation ×2.
+       ⚠ MUST run via the PowerShell runner / Invoke-Sqlcmd (-QueryTimeout 0),
+       NOT the MCP `execute` tool: AddOrganisation does CREATE DATABASE + full
+       object deploy (minutes) and the MCP execute tool has a 15s request cap —
+       it will cancel mid-deploy and leave an empty half-built org DB. If that
+       happens: the DB is empty (0 objects) and the org row is stuck CREATING;
+       recover by DROP DATABASE + DELETE the org row, then re-run 02 via the
+       runner. Note `ALTER DATABASE ... SET SINGLE_USER` is UNSUPPORTED on MI —
+       just DROP the empty DB directly (no sessions to evict).
+       01 / 01b / 03 / 04 are fine via MCP execute (03's per-mapping trigger
+       builds ~13+21 DL tables per feed but stays under the cap in practice;
+       if a mapping ever times out, run 03 via the runner too).
+3.  03_map_orgs_to_integrations.sql         (core)  — Growyze+Mews ×2 orgs.
+    (Halts if Mews STAGE_DDL is absent — that is the step-1b guard.)
+4.  04_verify_and_export_o10_mapping.sql    (core, read-only)
+       RESULT 1: orgs + mappings enabled.
+       RESULT 2: per-org schemas provisioned (int_mews001 with dl_table_count=0
+                 ⇒ STAGE_DDL was not seeded — fix 1b, then re-map).
+       RESULT 3: the O10 handoff rows (db_name/schema_name/kv_prefix).
+    Capture RESULT 3 → paste into Integrations O10 runbook table (4 rows/env).
+
+§Mews-STAGE_DDL — now scripted (01b)
+------------------------------------
+DONE — extracted from DEV [core].[int_mews001].[GlobalParameters] on 2026-07-22
+(22 DL_* rows) and baked verbatim into 01b_seed_mews_stage_ddl.sql (MERGE on
+ParameterKey, idempotent). Run 01b in each env after 01 and before 03. Column
+names/order are byte-faithful to DEV so they match the fetcher's JSON:API DL
+shape. Tracked under O14 / Integrations O1.
+
+⚠ GDPR — DL_CUSTOMERS is included for DEV parity but holds PII (name, email,
+phone, address, DOB). The CRM lane is GDPR-removed downstream and the fetcher
+is asked to drop the customers endpoint. To physically block PII landing for
+the Ibis orgs, delete the DL_CUSTOMERS row from 01b's VALUES block before
+running (confirm with Andy per the O14 ruling) — expect 21 rows then, not 22.
+
+NOTES / GOTCHAS
+---------------
+· AddIntegration has no @IntegrationType — script 01 UPDATEs it to 'POS' after.
+· AddOrganisation @OrganisationCode is uniqueidentifier; RAISERRORs on dup
+  (guarded). @OrganisationPrefix is the caller-supplied string prepended to
+  '_XMS_'+GUID to form DatabaseName.
+· MapOrganisationToIntegration takes int IDs and UPSERTS; the provisioning
+  trigger fires only on the FIRST insert, so a re-run will NOT re-provision a
+  schema that failed the first time — drop/rebuild the org DB if you need a
+  clean re-provision.
+· O10 also wants each hotel's Growyze org GUID for the optional
+  '{prefix}-api-org-filter' secret — capture it alongside RESULT 3.

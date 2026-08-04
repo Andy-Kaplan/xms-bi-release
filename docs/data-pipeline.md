@@ -74,7 +74,7 @@ EXEC [core].[AddIntegration]
     @IntegrationDisplayName = N'NCR Aloha Version 1'
 ```
 
-The `Integrations` table is then updated with a JSON `APIEndpointDetail` blob that describes API endpoints, field mappings, unravel strategies for nested objects, and delta extraction columns. For TROAP (a SQL-source integration) this blob lists source tables and their `delta_columns` (e.g., `DateUpdated`, `DateCreated`) for incremental extraction.
+The `Integrations` table is then updated with an `APIEndpointDetail` value that describes API endpoints, field mappings, unravel strategies for nested objects, and delta extraction columns. This value is **Python-literal configuration, not valid JSON** — it uses tuple keys (e.g. `("clears", "id")`), `None`, and `True` (see `NCRAloha001_INIT.sql`), and is consumed by the Python fetcher; `ISJSON()` returns 0 on the live rows. For TROAP (a SQL-source integration) this value lists source tables and their `delta_columns` (e.g., `DateUpdated`, `DateCreated`) for incremental extraction.
 
 When an organisation is mapped to an integration, a row is inserted into `core.OrganisationIntegrations`. The trigger `trg_OrganisationIntegrations_AfterInsert` fires at this point.
 
@@ -93,6 +93,8 @@ PROCEDURE [core].[sp_CreateIntegrationTables]
 ```
 
 This procedure creates three control tables in the `core` database under the integration schema (e.g. `[core].[int_ncraloha001].[StagingControl]`). These are central configuration tables shared across all organisations using that integration:
+
+> **Provisioned automatically — authors never call this by hand.** Registering an integration via `[core].[AddIntegration]` (with its default `@CreateSchemaImmediately = 1`) calls `[core].[CreateIntegrationSchema]`, which in turn runs `sp_CreateIntegrationTables` and `sp_CreateGlobalParametersTools` to create these tables in the integration schema (`3_CoreStoredProceduresAndFunctions.sql`). An integration `_INIT.sql` therefore only calls `AddIntegration` — the control tables appear as a side effect.
 
 > **Note:** Line references below are approximate and may shift as files are updated — use procedure/table names for navigation.
 
@@ -132,7 +134,7 @@ CREATE TABLE [core].[EntityMappings] (
     entity_columns      NVARCHAR(MAX),           -- JSON: ["HUB_ID", "ATTR1", ...]
     type2_columns       NVARCHAR(MAX),           -- JSON: columns triggering SCD Type 2
     cdc_exclude_columns NVARCHAR(MAX),
-    date_filter_column  VARCHAR(255),
+    date_filter_column  VARCHAR(255),   -- currently unused: NULL in every shipped mapping, no consumer in the load/CDC path; load windowing comes from DataVaultEntities.TIME_SERIES / TIME_SERIES_COLUMN
     exclude_conditions  NVARCHAR(MAX),
     track_deletions     BIT DEFAULT 0,
     split_by_source     BIT DEFAULT 0,
@@ -460,7 +462,7 @@ CREATE TABLE [datavault].[SAT_LNK_LOCATION_OCCASION_PRODUCT] (
 
 A `load.*` staging table mirrors every `datavault.*` table structure (lines 170-180, 270-276). These are intermediate tables truncated and repopulated each pipeline run before the final DV insert/update. Load tables have the same column structure as their SAT or SAT_LNK counterparts, keyed by `(HUB_ID, LOAD_TS)` or `(LNK_ID, LOAD_TS)`.
 
-A parallel `load.CDC_{ENTITY}` table holds the change-type classification for each record before application.
+A parallel `load.CDC_{ENTITY}` table holds the change-type classification for each record before application. Note that `sp_GenerateDataVaultTables` does **not** create these CDC tables — they are created at load runtime by `sp_GenerateCDC` (`IF NOT EXISTS ... CREATE TABLE load.CDC_{ENTITY}`, see §4.5), then truncated and repopulated on each run.
 
 ### 4.3 EntityMappings and Load Step Generation
 
@@ -479,7 +481,7 @@ PROCEDURE [core].[UploadEntityMappings]
 EXEC [core].[UploadEntityMappings] @intSchema = N'int_ncraloha001'
 ```
 
-This procedure translates EntityMappings rows into `StagingControl` rows with `step_type = 'Load'`. For each active entity mapping it:
+This procedure translates EntityMappings rows into `StagingControl` rows with `step_type = 'Load'`. It processes **every** mapping row — the `WHERE` clause filters only by the optional `@entity` parameter (`WHERE (@entity IS NULL OR entity_name = @entity)`); there is no `is_active` filter, so rows with `is_active = 0` are still translated into Load steps. For each entity mapping it:
 
 1. Parses `source_columns` JSON (via `OPENJSON`) to extract column names and hash types.
 2. Parses `entity_columns` JSON to extract target column names.
@@ -505,6 +507,8 @@ FROM (
 ```
 
 5. Upserts this query into `StagingControl` as a `Load`-type step (lines 1376-1404) using a MERGE statement.
+
+> **Retiring a mapping:** The MERGE in `ProcessSingleEntityMapping` matches only on `step_name` (`'Data Vault load - ' + @entityName`) and has `WHEN MATCHED` / `WHEN NOT MATCHED` branches only — no `WHEN NOT MATCHED BY SOURCE`. It therefore never deletes generated Load steps. Deleting an `EntityMappings` row alone does **not** remove its load step; to fully retire a mapping you must delete both the `EntityMappings` row and its generated `Load`-type `StagingControl` step.
 
 For hub entities the standard columns added to the SELECT are:
 ```sql

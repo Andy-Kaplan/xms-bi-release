@@ -1,0 +1,20 @@
+[16:47:10] Target environment : PROD
+[16:47:10] Target server      : xms-mssqlman-ne-prod.public.37d7076aa32b.database.windows.net,3342
+[16:47:10] Baseline path      : C:\threerocks_data\XMS BI\Release\releases\v1.0-baseline
+[16:47:10] Steps              : 39 (TBTBookingMetrics on hold)
+[16:47:10] All 39 baseline files present.
+[16:47:11] Connected: xms-mssqlman-ne-prod.37d7076aa32b.database.windows.net (SQL 12.0.2000.8)
+[16:47:11] NOTE: [core] database already exists on the target. Scripts are idempotent, but confirm this is intended (re-run/resume) and not the wrong server.
+[16:47:11] STEP  5/39 [core] 5_CreateIntegrationTables.sql
+[16:47:11] STEP  5 OK
+[16:47:11] STEP  6/39 [core] 6_GenerateDataVaultTables.sql
+[16:47:12] STEP  6 OK
+[16:47:12] STEP  7/39 [core] 6_DeployPresentationTables.sql
+[16:47:12] STEP  7 OK
+[16:47:12] STEP  8/39 [core] 7_IntegrationTrigger.sql
+[16:47:12] STEP  8 OK
+[16:47:12] STEP  9/39 [core] 7_Dynamic Suggestion Tables.sql
+[16:47:12] STEP  9 FAILED: Column already has a DEFAULT bound to it.
+Could not create constraint or index. See previous errors. 
+ Msg 1781, Level 16, State 1, Procedure , Line 3.
+[16:47:12] Deployment halted. Fix the issue and resume with: .\90_deploy_baseline.ps1 -Environment PROD -StartAt 9

@@ -1,0 +1,16 @@
+﻿[11:56:12] === Mews001 staging/DV mapping deploy ===
+[11:56:12] Environment : UAT
+[11:56:12] Server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[11:56:12] Log         : C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\integrations\Mews\deploy_MEWS_UAT_20260729_115612.log
+[11:56:12] Discovering organisations mapped to int_mews001...
+[11:56:28]   org 20  Ibis Heathrow            20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D
+[11:56:28]   org 21  Ibis Gloucester Road     20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D
+[11:56:28] 
+[11:56:28] --- WHATIF: planned steps (nothing executed) ---
+[11:56:28]   1. [core] 01_staging_control.sql  ->  C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\integrations\Mews\01_staging_control.sql
+[11:56:28]   2. [core] 02_entity_mappings.sql  ->  C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\integrations\Mews\02_entity_mappings.sql
+[11:56:28]   3. [core] 05_remove_crm_pii (A)  ->  inline query
+[11:56:28]   4. [core] 03_upload_load_steps.sql  ->  C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\integrations\Mews\03_upload_load_steps.sql
+[11:56:28]   5. [20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D] sp_DataVaultLoad @SchemaList='int_mews001'
+[11:56:28]   6. [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] sp_DataVaultLoad @SchemaList='int_mews001'
+[11:56:28] --- end WHATIF ---

@@ -2481,3 +2481,65 @@ All scripts in `integrations/Mews/`. Created 2026-07-03. Design/plan: `docs/supe
 **Purpose:** GDPR removal of the Mews CRM lane. Section A (vs `core`): deletes the 5 CRM EntityMappings rows (INDIVIDUAL, ADDRESS, CONTACT, ADDRESS_INDIVIDUAL, CONTACT_INDIVIDUAL), the 3 CRM staging steps, and the 5 generated Load steps. Section B (vs org DB): drops `stage.MEWS_CUSTOMER/MEWS_ADDRESS/MEWS_CONTACT`, clears the CRM `load.*`/`load.CDC_*` tables, and purges Mews-sourced rows (`SRC = 'int_mews001'`) from the CRM hubs/satellites/links loaded on 2026-07-03 (365 names, 258 contacts, 258 link rows). Idempotent; deliberately not flag-reversible. **Must run before 03** or the CRM load steps regenerate. Landing-layer `DL_CUSTOMERS` still holds raw PII — flagged to the fetcher team (remove customers endpoint from the fetch config).
 
 **Status:** created 2026-07-03 — not deployed.
+
+---
+
+## Prod v1.0 Baseline Validation Kit (2026-07-06)
+
+Scripts 86-90 in `prod-baseline/` support the first Production deployment, per the 2026-07-06 ruling that the Prod MI itself is the validation environment (the baseline cannot be validation-deployed to Dev/Test/UAT — `1__DBInit.sql` creates a `core` DB that already exists there). Full procedure: `prod-baseline/VALIDATION_RUNBOOK.md`.
+
+### 86. `prod-baseline/90_deploy_baseline.ps1`
+
+**Purpose:** PowerShell runner that executes the 39 `releases/v1.0-baseline/` scripts in DEPLOY_ORDER (TBTBookingMetrics held) against `-Environment DEV|TEST|UAT|PROD` using `XMS_BI_MANAGED_{ENV}_*` env vars. Preflight (`-WhatIf`), typed confirmation, halt-on-error with `-StartAt` resume, per-run log.
+
+**Status:** EXECUTED against Prod 2026-07-06 — all 39 steps deployed (halted once at step 26 on the GlobalParameters width defect, fixed via 96 + patched SP, resumed clean). Logs: `deploy_PROD_*.log`.
+
+### 87. `prod-baseline/91_validate_core_deployment.sql`
+
+**Purpose:** 30 PASS/FAIL checks on the deployed core DB: 15 core tables, 43 programmable objects, control-table row counts (146/60/42/44/425), MargeBrut absent, 5 integrations, TBT absent, per-integration STAGE_DDL / Staging / Load / EntityMappings counts.
+
+**Status:** EXECUTED against Prod 2026-07-06 — **30/30 PASS**. (Earlier UAT logic test: 26/30 with exactly the 4 intentional deltas failing, as designed.)
+
+### 88. `prod-baseline/92_provision_test_orgs.sql`
+
+**Purpose:** Creates 5 `BaselineTest_*` orgs (prefix `VALTEST`), one per integration, via `AddOrganisation` + `MapOrganisationToIntegration` — exercises the full provisioning chain (client DB, schemas, DV tables, deployed objects, presentation tables, integration schema + DL tables). Idempotent (skips existing).
+
+**Status:** EXECUTED against Prod 2026-07-06 — 5 orgs provisioned, all ACTIVE with integrations mapped. Note: RuleOverrides logs ERROR per org (stray duplicate ALTER in its DeploymentObjects record — benign, end state verified correct; see BASELINE_NOTES defect 3).
+
+### 89. `prod-baseline/93_validate_test_orgs.sql`
+
+**Purpose:** Per-org schema parity vs the UAT reference profile captured 2026-07-06: datavault 115 (35 HUB/35 SAT/40 LNK/5 SAT_LNK), load 88, core 16, presentation 43 (all LIVE defs — fresh orgs get all 43; older UAT orgs show fewer), stage 0 (lazy), 31 procs, 5 fns, DL tables 21/34/13/41/48 per integration. SELECT-only dynamic SQL.
+
+**Status:** EXECUTED against Prod 2026-07-06 — **60/60 PASS** after re-baselining expectations to the fresh-provisioning profile (datavault 118, load 76, procs 37; the original profile came from a stale older UAT org — every delta was verified by name-level object diff).
+
+### 90. `prod-baseline/94_cleanup_test_orgs.sql`
+
+**Purpose:** Removes the validation orgs (no RemoveOrganisation SP exists): drops `VALTEST_XMS_*` databases, deletes OrganisationIntegrations + Organisations rows. Triple-guarded name filters, `@DryRun = 1` default.
+
+**Status:** created 2026-07-06 — not executed.
+
+### 91. `prod-baseline/95_set_prod_env.ps1` / `96_fix_globalparameters_widths.sql`
+
+**Purpose:** 95: interactive setup of `XMS_BI_MANAGED_PROD_*` env vars (secure prompt + connection test). 96: widens `int_*.GlobalParameters` columns to UAT-actual shape (ParameterKey 200, ParameterValue MAX, Category 100, Description 1000, CreatedBy/ModifiedBy 200); widen-only, idempotent.
+
+**Status:** 95 run by developer 2026-07-06. 96 EXECUTED against Prod 2026-07-06 (18 columns altered across 3 schemas) — **still to run on UAT**, together with the sp_CreateIntegrationTables width patch, or the next baseline regen reintroduces the defect.
+
+---
+
+## XMS Service Bus Messaging — Generic MDM Registry (2026-07-27 → 2026-07-30, Integrations ledger O8)
+
+### 93. `service-bus-events/01–06` + `HANDOVER.md` (generic MDM registry, supersedes the 2026-07-27 LOCATION-specific design)
+
+**Purpose:** Warehouse-side SQL for the XMS Service Bus outbox/inbox mechanism, redesigned 2026-07-28 as a **generic MDM registry** so any of the ~18 dimension entities carrying `MICROSERVICE_ID`/`_NAME`/`_ID_BIN` can receive microservice identity with zero warehouse DDL and zero configuration per entity — the original LOCATION-only apply did not generalise. Files renumbered so file order equals execution order, and every registration script is now **generated** from a plain, readable T-SQL body file via `build_registration.py` (edit the `*a_*` body, never the generated file): 01 registers `core.EVENT_OUTBOX` (109) + `core.EVENT_INBOX` (110); 02 registers the two new registry tables, `core.MDM_RECORD` (111, system of record keyed `EntityName`/`IntegrationSrc`/`BusinessKey`) + `core.MDM_PROJECTION` (112, wildcard projection rules, seeded with 2 rows); 03 registers the generic `core.sp_ApplyEventInbox` (113, contains no entity names); 04 (renamed from the old 03) appends `OrganisationGuid` as the 4th column of `core.GetOrgIntegrations`; 05 (renamed from 04) rolls all 5 objects into every ACTIVE org DB (`@WhatIf = 1` default); 06 (renamed from 05) is read-only PASS/FAIL + health, extended with registry row counts, orphans and SAT projection drift. `check_literals.py` + `test_check_literals.py` guard every generated script's string literals. All idempotent, all `core`-targeted, no hardcoded DB names.
+
+**Key design corrections found during implementation (both proven on Dev, both now baked into the code):**
+1. **A SAT-only write would not have held.** `sp_ProcessHubSat` step 2 DELETEs T1/N SAT rows and step 5 re-INSERTs from `load.{Entity}` using only the mapping's `entity_columns` — `MICROSERVICE_*` is in none of them, so any ordinary name change silently wipes the identity, and the microservice only emits it once. Fix: `core.MDM_RECORD` is the durable, entity-agnostic system of record; `SAT_<Entity>.MICROSERVICE_*` is a projection **re-derived in full on every run**, which self-heals T1/T2 rebuilds. Safe for CDC because `MICROSERVICE_*` is absent from every `entity_columns` list (M3 caveat unchanged: fix it before any mapping ever adds them).
+2. **`core.SHA256Hash` does not exist in org databases** — only in the `core` control DB. Every hash is computed inline with `HASHBYTES('SHA2_256', CAST(… AS VARBINARY(MAX)))`.
+3. **`HUB_ID` is salted with the integration schema**, not a bare hash of the business key: `HASHBYTES('SHA2_256', CAST(CONCAT_WS('|', BusinessKey, IntegrationSrc) AS VARBINARY(MAX)))`. Proven on Dev: matches 9/9 `int_marketman001` + 6/6 `int_ncraloha001` current `SAT_LOCATION` rows and 1015/1015 + 234/234 `SAT_PRODUCT` rows; the un-salted form matches 0. `MICROSERVICE_ID_BIN` stays unsalted (identity hash, not a hub key). `int_troap001` is a known, out-of-scope exception (different hashed source column; TROAP never publishes discovery events).
+4. **No new org-GUID column is needed** — `core.Organisations.OrganisationCode` already *is* the XMS org GUID.
+
+**Status:** **DEPLOYED and smoke-tested on Dev only (2026-07-30).** Test, UAT and Prod are untouched. 01→02→03→04 ran clean against Dev CORE (5 objects registered, orders 109–113, `IsActive=1`); 05 dry-run then real rollout succeeded across all **20 ACTIVE org DBs** (100/100, 0 errors); 06 flipped from the pre-deployment 100/100 FAIL baseline to **all-PASS** — Part 1 100/100, Part 2 80/80 (column counts 10/8/12/4), Part 3 all-zero across 20 health rows. `MDM_PROJECTION` holds exactly the 2 seed rows, `MICROSERVICE_NAME` at `IsActive = 0`. All **8** spec smoke cases passed against `20250917_XMS_C14CF568-588D-F011-B3CD-000D3AD9E9D4` (real `int_marketman001`/`int_ncraloha001` data — the plan's original nominee DB had 0 current rows and would have passed vacuously): identity apply + idempotency; the **T1-wipe-and-repair** case on real data (drift 2 → apply → drift 0, restored exactly — the design's central claim); PRODUCT projected as a second entity with **zero configuration added**; GUID canonicalisation; all 5 failure paths classified exactly per spec; both safety guards (table `CHECK` + in-proc guard) independently refusing a bad `PRODUCT_NAME` rule. Synthetic data cleaned up afterwards; the one org DB with real curated MDM data (`20251208_XMS_94A4B719-EB0F-421F-AD03-ABECDD888B14`, 7 `SAT_LOCATION` + 2162 `SAT_PRODUCT` rows) received the additive rollout but was never touched by any smoke case, and its counts are unchanged. Full detail in `HANDOVER.md` and `DEPLOY.txt`'s Dev deployment record.
+
+**Left for a human (master files are read-only to Claude):** add `EXEC core.sp_ApplyEventInbox @JobID = @JobID;` to `sp_DataVaultLoad` immediately **before** `EXEC core.sp_ProcessPresentation` (~line 3000 of `8_Deployment_Objects_Records.sql`), non-fatal on failure — same region as ledger item O5, so coordinate if both are actioned. Then fold 01–06 back into the master files, run against Test/UAT/Prod, and promote to `releases/v{X.Y}/`.
+
+**⚠️ Gate:** `SB_OUTBOX_ENABLED` is app-global — do **not** set it in any environment until 06 Part 1 is all-PASS there, or store-list staging fails on the enqueue for org DBs missing `EVENT_OUTBOX`. It has **not** been set in Dev or anywhere else.

@@ -1,0 +1,24 @@
+[07:53:04] Target environment : UAT
+[07:53:04] Target server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[07:53:04] Target database    : 20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D
+[07:53:04] Cogs script path    : C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\integrations\Growyze\cogs
+[07:53:04] Tier filter         : 110
+[07:53:04] Steps               : 14 (DEPLOY.txt 1-11; step 10 refused, step 11 manual)
+[07:53:04] All required .sql files present.
+[07:53:04] WhatIf: preflight complete, no scripts executed. Planned order:
+[07:53:04]      1. [File       ] [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] Verify (expect FAIL - table absent; this is the test)
+[07:53:04]      2. [File       ] [core              ] PresentationTables MERGE
+[07:53:04]      3. [File       ] [core              ] PresentationControl MERGE (tier 110)
+[07:53:04]      4. [File       ] [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] GlobalParameters MERGE - against the CLIENT database, not core
+[07:53:04]      5. [TableDeploy] [(TargetDatabase)  ] Deploy F_COGS_PERIOD - THIS TABLE ONLY, never DeployPresentationTables
+[07:53:04]      6. [Rebuild    ] [(TargetDatabase)  ] Presentation rebuild (tier 110)
+[07:53:04]      7. [File       ] [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] Verify (expect PASS on 1,3,4,6a,7,9,10; PASS-or-WARN on 11; INFO on 5,6b; check 2 SKIPPED; check 8 VACUOUS - see note)
+[07:53:04]    8.1. [File       ] [core              ] VisualisationQueries: KPIs
+[07:53:04]    8.2. [File       ] [core              ] VisualisationQueries: charts
+[07:53:04]    8.3. [File       ] [core              ] VisualisationQueries: grids
+[07:53:04]    8.4. [File       ] [core              ] VisualisationQueries: filters
+[07:53:04]      9. [File       ] [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] Verify (expect PASS INCLUDING check 8, now that PantryCOGS vis rows exist)
+[07:53:04]     10. [Refuse     ] [-                 ] Report-DB wiring - REFUSED by this runner, run by hand against report
+[07:53:04]     11. [Manual     ] [-                 ] UI check - exercise all three filters as the target org
+[07:53:04] REFUSED step (10): 08_report_db_config.sql - targets 'report' on a different server. Run by hand.
+[07:53:04] NEVER called: [core].[DeployPresentationTables] (drops and recreates every registered presentation table).

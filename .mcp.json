@@ -9,7 +9,8 @@
         "MSSQL_PASSWORD":   "${XMS_BI_MANAGED_DEV_PASSWORD}",
         "MSSQL_PORT":       "${XMS_BI_MANAGED_DEV_PORT:-3342}",
         "MSSQL_ENCRYPT":    "true",
-        "MSSQL_TRUST_CERT": "false"
+        "MSSQL_TRUST_CERT": "false",
+        "MSSQL_ALLOW_WRITE": "true"
       }
     },
     "xms-bi-test": {
@@ -21,7 +22,8 @@
         "MSSQL_PASSWORD":   "${XMS_BI_MANAGED_TEST_PASSWORD}",
         "MSSQL_PORT":       "${XMS_BI_MANAGED_TEST_PORT:-3342}",
         "MSSQL_ENCRYPT":    "true",
-        "MSSQL_TRUST_CERT": "false"
+        "MSSQL_TRUST_CERT": "false",
+        "MSSQL_ALLOW_WRITE": "true"
       }
     },
     "xms-bi-uat": {
@@ -33,7 +35,8 @@
         "MSSQL_PASSWORD":   "${XMS_BI_MANAGED_UAT_PASSWORD}",
         "MSSQL_PORT":       "${XMS_BI_MANAGED_UAT_PORT:-3342}",
         "MSSQL_ENCRYPT":    "true",
-        "MSSQL_TRUST_CERT": "false"
+        "MSSQL_TRUST_CERT": "false",
+        "MSSQL_ALLOW_WRITE": "true"
       }
     },
     "microservice-dev": {

@@ -1,7 +1,7 @@
 ﻿-- ============================================
 -- Entity Mappings Export
 -- Source: UAT [core].[int_ncraloha001].[EntityMappings]
--- Generated: 2026-06-02 10:45:23
+-- Generated: 2026-07-06 15:17:46
 -- Total Records: 34
 -- ============================================
 

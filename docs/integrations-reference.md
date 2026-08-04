@@ -26,7 +26,7 @@ The XMS BI platform ingests data from external APIs and internal databases into 
 
 | File Suffix | Purpose |
 |---|---|
-| `_INIT.sql` | Registers the integration in `[core].[Integrations]`, stores the API endpoint configuration as JSON, and sets the `IntegrationType` flag. |
+| `_INIT.sql` | Registers the integration in `[core].[Integrations]`, stores the API endpoint configuration (Python-literal, not valid JSON — see "API Endpoint Configuration" below), and sets the `IntegrationType` flag. |
 | `_DDL.sql` | Upserts DDL strings into `[GlobalParameters]` under `Category = 'STAGE_DDL'`. Each DL table definition is stored as a parameter and executed at runtime to (re)create the raw landing table. |
 | `_Staging.sql` | Upserts staging control records into `[StagingControl]`. Each record defines a staging step with its SQL query, tier number, staging table name, and dependency metadata. |
 | `_Mapping.sql` | Upserts entity mapping records into `[EntityMappings]`. Each record maps a staging table to a Data Vault hub or link entity, specifying column hashes and Type 2 SCD tracking columns. |
@@ -62,7 +62,7 @@ All DL tables include two mandatory system columns:
 
 ### API Endpoint Configuration
 
-The INIT file stores the endpoint configuration as a JSON blob. NCR Aloha exposes five logical endpoints:
+The INIT file stores the endpoint configuration as **Python-literal configuration (not valid JSON — it uses tuple keys such as `("clears", "id")`, `None`, and `True`; consumed by the Python fetcher, `ISJSON()` returns 0)**. NCR Aloha exposes five logical endpoints:
 
 | Endpoint Key | API Path | Description | Pagination |
 |---|---|---|---|

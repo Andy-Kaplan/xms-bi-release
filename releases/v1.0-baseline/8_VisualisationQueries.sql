@@ -1,7 +1,7 @@
 ﻿-- ============================================
 -- Visualisation Queries Export
 -- Source: UAT (xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net)
--- Generated: 2026-06-02 10:45:20
+-- Generated: 2026-07-06 15:41:01
 -- Total Records: 425
 -- Natural Key: DataSetName, VisualizationType
 -- ============================================

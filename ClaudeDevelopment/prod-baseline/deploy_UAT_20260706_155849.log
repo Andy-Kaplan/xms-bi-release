@@ -1,0 +1,47 @@
+[15:58:49] Target environment : UAT
+[15:58:49] Target server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[15:58:49] Baseline path      : C:\threerocks_data\XMS BI\Release\releases\v1.0-baseline
+[15:58:49] Steps              : 39 (TBTBookingMetrics on hold)
+[15:58:49] All 39 baseline files present.
+[15:58:50] Connected: xms-mssqlman-ne-uat.9358333fb9bd.database.windows.net (SQL 12.0.2000.8)
+[15:58:50] NOTE: [core] database already exists on the target. Scripts are idempotent, but confirm this is intended (re-run/resume) and not the wrong server.
+[15:58:50] WhatIf: preflight complete, no scripts executed. Planned order:
+[15:58:50]    1. [master] 1__DBInit.sql
+[15:58:50]    2. [core] 2_CoreTableCreateScripts.sql
+[15:58:50]    3. [core] 3_CoreStoredProceduresAndFunctions.sql
+[15:58:50]    4. [core] 4_DeploymentTools.sql
+[15:58:50]    5. [core] 5_CreateIntegrationTables.sql
+[15:58:50]    6. [core] 6_GenerateDataVaultTables.sql
+[15:58:50]    7. [core] 6_DeployPresentationTables.sql
+[15:58:50]    8. [core] 7_IntegrationTrigger.sql
+[15:58:50]    9. [core] 7_Dynamic Suggestion Tables.sql
+[15:58:50]   10. [core] 8_DataVaultEntities.sql
+[15:58:50]   11. [core] 8_Deployment_Objects_Records.sql
+[15:58:50]   12. [core] 8_PresentationControl.sql
+[15:58:50]   13. [core] 8_PresentationTables.sql
+[15:58:50]   14. [core] 8_VisualisationQueries.sql
+[15:58:50]   15. [core] NCRAloha\NCRAloha001_INIT.sql
+[15:58:50]   16. [core] NCRAloha\NCRAloha001_DDL.sql
+[15:58:50]   17. [core] NCRAloha\NCRAloha001_Staging.sql
+[15:58:50]   18. [core] NCRAloha\NCRAloha001_Mapping.sql
+[15:58:50]   19. [core] NCRAloha\NCRAloha001_Final.sql
+[15:58:50]   20. [core] MarketMan\Marketman001_INIT.sql
+[15:58:50]   21. [core] MarketMan\Marketman001_DDL.sql
+[15:58:50]   22. [core] MarketMan\Marketman001_Staging.sql
+[15:58:50]   23. [core] MarketMan\Marketman001_Mapping.sql
+[15:58:50]   24. [core] MarketMan\Marketman001_Final.sql
+[15:58:50]   25. [core] Growyze\Growyze001_INIT.sql
+[15:58:50]   26. [core] Growyze\Growyze001_DDL.sql
+[15:58:50]   27. [core] Growyze\Growyze001_Staging.sql
+[15:58:50]   28. [core] Growyze\Growyze001_Mapping.sql
+[15:58:50]   29. [core] Growyze\Growyze001_Final.sql
+[15:58:50]   30. [core] SurveyHero\SurveyHero001_INIT.sql
+[15:58:50]   31. [core] SurveyHero\SurveyHero001_DDL.sql
+[15:58:50]   32. [core] SurveyHero\SurveyHero001_Staging.sql
+[15:58:50]   33. [core] SurveyHero\SurveyHero001_Mapping.sql
+[15:58:50]   34. [core] SurveyHero\SurveyHero001_Final.sql
+[15:58:50]   35. [core] TROAP\TROaP001_INIT.sql
+[15:58:50]   36. [core] TROAP\TROaP001_DDL.sql
+[15:58:50]   37. [core] TROAP\TROaP001_Staging.sql
+[15:58:50]   38. [core] TROAP\TROaP001_Mapping.sql
+[15:58:50]   39. [core] TROAP\TROaP001_Final.sql

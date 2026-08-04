@@ -10,8 +10,66 @@ deployment and the starting point for all subsequent delta releases.
 |---|---|
 | Source environment | UAT (`xms-mssqlman-ne-uat`) |
 | Generation tool | `ClaudeDevelopment/prod-baseline/run_all.ps1` |
-| Generation date | 2026-05-19 16:45 (re-run any time the scripts are re-executed) |
+| Generation date | 2026-07-06 15:17 (previous: 2026-05-19 16:45) |
 | Snapshot scope | UAT state at generation time. No unreleased ClaudeDevelopment work is included. |
+
+## 2026-07-06 regeneration — drift vs 2026-05-19 snapshot
+
+Verified with `git diff --ignore-cr-at-eol`: the **only content drift** in seven
+weeks is **9 new `MargeBrut*` visualisation queries** (425 → 434) — the mocked
+Marge Brut dashboard added to UAT Oak & Vine on 2026-06-08. No records were
+removed or modified anywhere else; all other file changes are regeneration
+timestamps and a one-time line-ending normalisation.
+
+Corrections to the table below found during regeneration (counts were stale in
+the 2026-05-19 notes, not real drift — the committed files already matched UAT):
+DeploymentObjects is **60** (not 57; includes the 6 TUBR `sp_Api_*` SPs and
+`StaticBoxCard`), Growyze staging steps are **39** (not 38).
+
+**Rulings (2026-07-06)** — all open decision points resolved:
+
+| Decision | Ruling |
+|---|---|
+| 9 `MargeBrut*` demo queries | **Excluded** via extraction filter in `02_extract_control_data.ps1` (`DataSetName NOT LIKE 'MargeBrut%'`). Baseline ships 425 queries, byte-identical to the reviewed 2026-05-19 snapshot. |
+| TBTBookingMetrics001 | **On hold** — not deployed day-one. Scripts remain in the folder for a later delta release. |
+| Integration name casing | **Keep UAT casing** (`Marketman001`, `TROaP001`) so Prod stays byte-identical to UAT. |
+
+## 2026-07-06 Prod deployment record
+
+The baseline was deployed to the Prod MI (`xms-mssqlman-ne-prod`) the same day,
+using the Prod-as-validation route (`ClaudeDevelopment/prod-baseline/VALIDATION_RUNBOOK.md`).
+Outcome: **all 39 scripts deployed; core validation 30/30 PASS; five
+BaselineTest orgs provisioned; per-org parity 60/60 PASS.**
+
+Three defects surfaced during the run:
+
+1. **GlobalParameters column widths (FIXED).** `sp_CreateIntegrationTables`
+   created `int_*.GlobalParameters` narrower than the UAT tables actually are
+   (`ParameterValue` 4000 vs MAX etc.) — the Growyze `DL_DISHES` DDL truncated
+   (Msg 2628) at step 26. Fixed on Prod via
+   `96_fix_globalparameters_widths.sql` + SP patched in
+   `5_CreateIntegrationTables.sql`. **Outstanding:** apply both to UAT (its
+   `int_ncraloha001.ParameterValue` is still 4000, and its stored SP still has
+   the old widths — the next baseline regen would reintroduce them).
+2. **DDL scripts not fully re-runnable (open, low priority).** The SMO
+   extraction guards `CREATE TABLE` with `IF NOT EXISTS` but emits DEFAULT
+   constraint ALTERs unconditionally — re-running `2_CoreTableCreateScripts.sql`
+   or `7_Dynamic Suggestion Tables.sql` on an existing DB fails with Msg 1781.
+   First runs are unaffected. Fix in `01_extract_core_ddl.ps1` (guard the
+   constraint ALTERs) when convenient.
+3. **RuleOverrides DeploymentObjects record (open, benign).** Its
+   CreationScript ends with a stray
+   `ALTER TABLE [core].[RuleExecutionState] ADD DEFAULT ... FOR UpdatedDate` —
+   duplicating RuleExecutionState's own default, so sp_DeployObjects logs
+   RuleOverrides as ERROR in every org while actually leaving a fully correct
+   end state (table + its 3 defaults created; verified on Prod). Same noise
+   exists on UAT. Fix: remove the stray ALTER from the DeploymentObjects
+   record (UAT + master files) so provisioning logs run clean.
+
+Fresh-org provisioning profile (per-org parity reference, replaces any
+older-org-based numbers): datavault 118 (36 HUB / 36 SAT / 40 LNK / 6 SAT_LNK),
+load 76 (`load.CDC_*` created lazily at first load), core 16, presentation 43,
+stage 0, procedures 37, functions 5.
 
 ## Surprises vs the previous repo state
 

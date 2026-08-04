@@ -6,11 +6,50 @@ XMS BI is a multi-organisation business intelligence platform built on **SQL Ser
 
 The markdown files in `docs/` are the primary context source for Claude Code when making changes to this codebase. They must accurately reflect the SQL source files — the SQL is always the source of truth. Before making any change, read the relevant doc section and verify it against the SQL. If a doc is wrong, correct it as part of the work.
 
+## XMS BI Development Team — Automatic Delegation
+
+Claude in this project acts as the **tech lead** for a team of specialist subagents (defined in `~/.claude/agents/`). When given a work item — especially a large end-to-end one — decompose it into phases and dispatch the team via the Agent tool **proactively, at the appropriate points, without waiting to be told which agent to use**. The user should never need to name an agent.
+
+### The team
+
+| Agent | Remit |
+|---|---|
+| `sql-dwh-engineer` | T-SQL, Data Vault DDL, release/ClaudeDevelopment scripts, SPs, presentation & vis queries |
+| `data-ingestion-engineer` | Azure Functions landing layer, source integrations, DL-table shape |
+| `frontend-dashboard-dev` | Dashboard UI, components, chart wiring |
+| `report-db-operator` | Microservice report DB: dashboard config, groups, entitlements, palettes |
+| `vis-query-tester` | Runs vis queries against org DBs via MCP (transform recipe baked in); parallel-dispatchable for bulk runs |
+| `data-quality-tester` | Data outcomes: row counts, join loss/fan-out, load completeness |
+| `test-engineer` | Automated tests for application/Functions code |
+| `code-reviewer` | Independent pre-merge review of any substantial diff |
+| `conclusion-auditor` | Audits investigation conclusions and sign-off claims before they're acted on |
+| `doc-sync-engineer` | Propagates SQL changes through the doc-sync matrices (markdown + HTML snapshots) |
+
+### End-to-end pipeline for a large work item
+
+1. **Design** — stays in the main loop with the user (brainstorm/plan skills as applicable). Decisions belong to the user, not to subagents.
+2. **Build** — dispatch the matching builder(s): `sql-dwh-engineer`, `data-ingestion-engineer`, `frontend-dashboard-dev`, `report-db-operator`. Independent pieces go out in parallel.
+3. **Verify** — `vis-query-tester` for vis queries, `data-quality-tester` after anything that changes row counts, `test-engineer` for code. Verification is not optional on data-touching changes.
+4. **Review** — `code-reviewer` on the completed diff; `conclusion-auditor` on any "root cause found / no data lost / safe to ship" claim before acting on it.
+5. **Document** — `doc-sync-engineer` whenever a Document Sync matrix (below) is triggered.
+6. **Deploy** — **never delegated.** Runner deployments and anything touching Prod stay in the main loop, human-approved per stage (see Deployments section).
+
+Small single-phase requests skip the pipeline and route straight to the one matching specialist; trivial questions need no delegation at all. The main loop owns sequencing, integration of results, QUERY_STATUS.md/ledger upkeep, commits, and reporting back — subagents never commit.
+
 ## MCP Database Safety Rules
 
-**Claude must never execute SQL statements that modify data via MCP.** All MCP queries must be read-only (`SELECT`/`WITH` only). The following operations are strictly forbidden through any MCP database connection: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `MERGE`, `EXEC`, `CREATE`, and any other DDL or DML that changes database state.
+**Read (`query`) is unrestricted; state-changing execution is scoped to DEV/TEST/UAT only, and Prod is hard-blocked.**
 
-Development scripts that modify data belong in `ClaudeDevelopment/` — they are authored by Claude but executed by the developer.
+- **`query` tool** — read-only (`SELECT`/`WITH`) on any connection, including the microservice servers.
+- **`execute` tool** (added 2026-07-24) — runs state-changing T-SQL (`INSERT`/`UPDATE`/`DELETE`/`EXEC`/DDL/`MERGE`, GO-separated batches). It is enabled **only** on the `xms-bi-dev` / `xms-bi-test` / `xms-bi-uat` servers, guarded by two independent locks in `mcp-sqlserver/index.js`: (1) `MSSQL_ALLOW_WRITE=true`, set only on those three server entries in `.mcp.json`; (2) a refusal if the connected server name contains `prod`. The `microservice-*` servers do **not** carry the flag, so they stay read-only.
+- **Prod is never reachable via MCP** — no `xms-bi-prod` server is configured, and even if one were added the server-name guard would refuse `execute`. All Prod state changes remain **human-run** via the PowerShell runner (see below).
+- Prefer running vetted `ClaudeDevelopment/` scripts through `execute`; treat destructive statements (`DROP`/`DELETE`/`TRUNCATE`) with care and confirm intent before firing. Large, logged, resumable deployments still belong on the PowerShell runner.
+
+Development scripts that modify data live in `ClaudeDevelopment/` — Claude may now execute them against DEV/TEST/UAT via the `execute` tool, but they must remain committed/reviewable.
+
+## Deployments via PowerShell Runners
+
+**PROD and large/logged/resumable deployments** are executed through **PowerShell runner scripts** (`Invoke-Sqlcmd` + `XMS_BI_MANAGED_{DEV|TEST|UAT|PROD}_*` env vars), never by hand in SSMS. (Ad-hoc DEV/TEST/UAT changes may instead go through the MCP `execute` tool — see MCP Database Safety Rules; Prod may not.) The runner is the established house method — see `docs/release-guide.md` §6 "Execution Method: PowerShell Runners" for the full pattern and `ClaudeDevelopment/prod-baseline/90_deploy_baseline.ps1` for the reference implementation (used for the v1.0 Prod deployment, 2026-07-06). Key elements: `-WhatIf` preflight, typed confirmation, halt-on-error with `-StartAt` resume, per-run log, PASS/FAIL validation SELECT scripts run through the same connection. Claude may execute these runners **only with the user's explicit go-ahead per deployment stage**, and the scripts must be committed/reviewable before execution.
 
 ## SQL File Editing Rules
 

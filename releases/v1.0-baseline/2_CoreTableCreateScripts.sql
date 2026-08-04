@@ -1,6 +1,6 @@
 ﻿-- ============================================
 -- 2_CoreTableCreateScripts.sql
--- Regenerated from UAT 2026-06-02 10:44:53
+-- Regenerated from UAT 2026-07-06 15:17:16
 -- Server: xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net
 -- ============================================
 

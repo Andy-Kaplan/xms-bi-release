@@ -1,0 +1,122 @@
+[22:24:04] O24 - map The Oak & Vine (org 16) to Growyze001 + Mews001
+[22:24:04] Target environment : UAT
+[22:24:04] Target server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[22:24:04] Script path        : C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\oak-vine-mapping
+[22:24:04] All 2 script files present.
+[22:24:05] Connected: xms-mssqlman-ne-uat.9358333fb9bd.database.windows.net (SQL 12.0.2000.8)
+[22:24:05] Preflight: org 16 'The Oak & Vine' [ACTIVE] currently mapped to: Marketman001, NCRAloha001
+[22:24:05] STEP 1/2 [core] 01_map_oak_vine_to_growyze_mews.sql (state-changing)
+    Preflight OK — org 16 "The Oak & Vine" [20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87]
+      Growyze001 = 5, Mews001 = 7
+    Mapping Growyze001 (provisions 13 DL tables)...
+    Created schema: int_growyze001
+    Schema creation completed for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 5
+    Organisation-Integration mapping created (ID: 35)
+    
+OrganisationIntegrationID
+-------------------------
+                       35
+    Mapping Mews001 (provisions 21 DL tables, no DL_CUSTOMERS)...
+    Created schema: int_mews001
+    Schema creation completed for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Successfully executed DDL for Organisation ID: 16, Integration ID: 7
+    Organisation-Integration mapping created (ID: 36)
+    
+OrganisationIntegrationID
+-------------------------
+                       36
+    
+OrganisationID OrganisationName IntegrationID IntegrationName IsEnabled SyncStatus CreatedDate         Notes
+-------------- ---------------- ------------- --------------- --------- ---------- -----------         -----
+            16 The Oak & Vine               1 Marketman001         True PENDING    18/03/2026 11:59:26
+    
+OrganisationID OrganisationName IntegrationID IntegrationName IsEnabled SyncStatus CreatedDate         Notes
+-------------- ---------------- ------------- --------------- --------- ---------- -----------         -----
+            16 The Oak & Vine               2 NCRAloha001          True PENDING    18/03/2026 11:59:32
+    
+OrganisationID OrganisationName IntegrationID IntegrationName IsEnabled SyncStatus CreatedDate         Notes           
+-------------- ---------------- ------------- --------------- --------- ---------- -----------         -----           
+            16 The Oak & Vine               5 Growyze001           True PENDING    29/07/2026 21:24:06 O24 Oak & Vin...
+    
+OrganisationID OrganisationName IntegrationID IntegrationName IsEnabled SyncStatus CreatedDate         Notes           
+-------------- ---------------- ------------- --------------- --------- ---------- -----------         -----           
+            16 The Oak & Vine               7 Mews001              True PENDING    29/07/2026 21:24:06 O24 Oak & Vin...
+[22:24:06] STEP 1 OK
+[22:24:06] STEP 2/2 [core] 02_verify_dl_provisioning.sql (read-only)
+    
+OrganisationID OrganisationName DatabaseName                                      DatabaseStatus IntegrationID Integrat
+                                                                                                               ionName 
+-------------- ---------------- ------------                                      -------------- ------------- --------
+            16 The Oak & Vine   20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87 ACTIVE                     1 Marke...
+    
+OrganisationID OrganisationName DatabaseName                                      DatabaseStatus IntegrationID Integrat
+                                                                                                               ionName 
+-------------- ---------------- ------------                                      -------------- ------------- --------
+            16 The Oak & Vine   20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87 ACTIVE                     2 NCRAl...
+    
+OrganisationID OrganisationName DatabaseName                                      DatabaseStatus IntegrationID Integrat
+                                                                                                               ionName 
+-------------- ---------------- ------------                                      -------------- ------------- --------
+            16 The Oak & Vine   20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87 ACTIVE                     5 Growy...
+    
+OrganisationID OrganisationName DatabaseName                                      DatabaseStatus IntegrationID Integrat
+                                                                                                               ionName 
+-------------- ---------------- ------------                                      -------------- ------------- --------
+            16 The Oak & Vine   20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87 ACTIVE                     7 Mews001
+    
+schema_name    dl_table_count expected result
+-----------    -------------- -------- ------
+int_growyze001             13       13 PASS
+    
+schema_name dl_table_count expected result
+----------- -------------- -------- ------
+int_mews001             21       21 PASS
+    
+Org            db_name                                           schema_name                  kv_prefix                
+---            -------                                           -----------                  ---------                
+The Oak & Vine 20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87 (db-login — bare org prefix) 20260317-XMS-7ED2E768-...
+    
+Org            db_name                                           schema_name    kv_prefix                              
+---            -------                                           -----------    ---------                              
+The Oak & Vine 20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87 int_growyze001 20260317-XMS-7ED2E768-0D22-F111-832F...
+    
+Org            db_name                                           schema_name kv_prefix                                 
+---            -------                                           ----------- ---------                                 
+The Oak & Vine 20260317_XMS_7ED2E768-0D22-F111-832F-000D3AB27D87 int_mews001 20260317-XMS-7ED2E768-0D22-F111-832F-00...
+[22:24:06] STEP 2 OK
+[22:24:06] Complete. Review the RESULT sets above in C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\oak-vine-mapping\deploy_O24_UAT_20260729_222404.log
+[22:24:06] Expected: int_growyze001 = 13 DL tables, int_mews001 = 21 DL tables, mirror diff = 0 rows.
+[22:24:06] Next: hand the RESULT 3 kv_prefix rows back to Integrations O10 (clone Ibis Gloucester Road's UAT secrets), then O10 fires the load.

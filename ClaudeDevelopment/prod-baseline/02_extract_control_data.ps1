@@ -66,6 +66,9 @@ $extractions = @(
         KeyCols  = @('DataSetName','VisualizationType')
         OrderBy  = 'DataSetName, VisualizationType'
         SkipCols = @()
+        # Prod day-one ruling 2026-07-06: MargeBrut* cards are demo artefacts
+        # (mocked Oct-2025 data on UAT Oak & Vine) - excluded from the baseline.
+        Where    = "DataSetName NOT LIKE 'MargeBrut%'"
         Title    = 'Visualisation Queries'
     }
 )
@@ -147,7 +150,9 @@ foreach ($cfg in $extractions) {
     $colMeta = Get-ColumnList -schema $cfg.Schema -table $cfg.TableName
     Write-Host "    columns: $($colMeta.Count)"
 
-    $rows = Invoke-UatQuery -Database 'core' -Query "SELECT * FROM $($cfg.Table) ORDER BY $($cfg.OrderBy)"
+    $whereSql = if ($cfg.ContainsKey('Where') -and $cfg.Where) { " WHERE $($cfg.Where)" } else { '' }
+    if ($whereSql) { Write-Host "    filter:$whereSql" }
+    $rows = Invoke-UatQuery -Database 'core' -Query "SELECT * FROM $($cfg.Table)$whereSql ORDER BY $($cfg.OrderBy)"
     $rowCount = if ($null -eq $rows) { 0 } elseif ($rows -is [array]) { $rows.Count } else { 1 }
     Write-Host "    rows: $rowCount"
 

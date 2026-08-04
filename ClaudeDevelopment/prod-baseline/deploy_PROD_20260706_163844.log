@@ -1,0 +1,307 @@
+[16:38:44] Target environment : PROD
+[16:38:44] Target server      : xms-mssqlman-ne-prod.public.37d7076aa32b.database.windows.net,3342
+[16:38:44] Baseline path      : C:\threerocks_data\XMS BI\Release\releases\v1.0-baseline
+[16:38:44] Steps              : 39 (TBTBookingMetrics on hold)
+[16:38:44] All 39 baseline files present.
+[16:38:45] Connected: xms-mssqlman-ne-prod.37d7076aa32b.database.windows.net (SQL 12.0.2000.8)
+[16:38:45] [core] database does not exist - fresh deployment.
+[16:38:45] STEP  1/39 [master] 1__DBInit.sql
+    Changed database context to 'master'.
+    core database created successfully.
+    Changed database context to 'core'.
+    Schema [core] created successfully.
+[16:39:06] STEP  1 OK
+[16:39:06] STEP  2/39 [core] 2_CoreTableCreateScripts.sql
+[16:39:11] STEP  2 OK
+[16:39:11] STEP  3/39 [core] 3_CoreStoredProceduresAndFunctions.sql
+    The module 'AddIntegration' depends on the missing object 'core.CreateIntegrationSchema'. The module will still be created; however, it cannot run successfully until the object exists.
+    The module 'AddOrganisation' depends on the missing object 'core.CreateOrganisationDatabase'. The module will still be created; however, it cannot run successfully until the object exists.
+[16:39:13] STEP  3 OK
+[16:39:13] STEP  4/39 [core] 4_DeploymentTools.sql
+[16:39:14] STEP  4 OK
+[16:39:14] STEP  5/39 [core] 5_CreateIntegrationTables.sql
+[16:39:14] STEP  5 OK
+[16:39:14] STEP  6/39 [core] 6_GenerateDataVaultTables.sql
+[16:39:14] STEP  6 OK
+[16:39:14] STEP  7/39 [core] 6_DeployPresentationTables.sql
+[16:39:14] STEP  7 OK
+[16:39:14] STEP  8/39 [core] 7_IntegrationTrigger.sql
+[16:39:14] STEP  8 OK
+[16:39:14] STEP  9/39 [core] 7_Dynamic Suggestion Tables.sql
+[16:39:16] STEP  9 OK
+[16:39:16] STEP 10/39 [core] 8_DataVaultEntities.sql
+[16:39:27] STEP 10 OK
+[16:39:27] STEP 11/39 [core] 8_Deployment_Objects_Records.sql
+[16:39:31] STEP 11 OK
+[16:39:31] STEP 12/39 [core] 8_PresentationControl.sql
+[16:39:33] STEP 12 OK
+[16:39:33] STEP 13/39 [core] 8_PresentationTables.sql
+[16:39:36] STEP 13 OK
+[16:39:36] STEP 14/39 [core] 8_VisualisationQueries.sql
+[16:39:59] STEP 14 OK
+[16:39:59] STEP 15/39 [core] NCRAloha\NCRAloha001_INIT.sql
+    Changed database context to 'core'.
+    Job 'CreateIntegrationSchema_1' started successfully.
+    Trigger: Queued schema creation job for integration: NCRAloha001 (Job: CreateIntegrationSchema_1)
+    Integration added: NCRAloha001 (ID: 1)
+    Schema will be: [int_ncraloha001]
+    Creating schema immediately...
+    Creating schema: [int_ncraloha001]
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT
+    Target Database: core
+    Target Schema: int_ncraloha001
+    Started: 2026-07-06 15:40:03
+    =====================================================================================
+    
+    ?? SECTION 1: VALIDATION AND SETUP
+    -----------------------------------------------------------------------------------
+    15:40:04 | SUCCESS | Database Validation
+      ? Schema already exists: int_ncraloha001
+    15:40:04 | SUCCESS | Schema Setup
+    
+    ???  SECTION 3: CREATE TABLES
+    -----------------------------------------------------------------------------------
+      ? Created StagingControl table
+    15:40:04 | SUCCESS | StagingControl Table Creation
+      ? Created EntityMappings table
+    15:40:04 | SUCCESS | EntityMappings Table Creation
+      ? Created GlobalParameters table
+    15:40:04 | SUCCESS | GlobalParameters Table Creation
+    
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT SUMMARY
+    =====================================================================================
+    Database: core
+    Schema: int_ncraloha001
+    Started: 2026-07-06 15:40:03
+    Completed: 2026-07-06 15:40:04
+    Duration: 1 seconds
+    Steps Executed: 5
+    Errors: 0
+    
+    DETAILED LOG:
+    ---------------------------------------------------------------------------------
+    
+Step                    Status  Time     Error
+----                    ------  ----     -----
+01. Database Validation SUCCESS 15:40:04
+    
+Step             Status  Time     Error
+----             ------  ----     -----
+02. Schema Setup SUCCESS 15:40:04
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+03. StagingControl Table Creation SUCCESS 15:40:04
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+04. EntityMappings Table Creation SUCCESS 15:40:04
+    
+Step                                Status  Time     Error
+----                                ------  ----     -----
+05. GlobalParameters Table Creation SUCCESS 15:40:04
+    ?? TABLE CREATION DEPLOYMENT COMPLETED SUCCESSFULLY!
+    =====================================================================================
+    Schema creation failed
+    
+IntegrationID IntegrationCode                      SchemaName     
+------------- ---------------                      ----------     
+            1 804bd148-2987-43fe-a1d3-f879bb05af5a int_ncraloha001
+    
+Return Value
+------------
+           0
+[16:40:04] STEP 15 OK
+[16:40:04] STEP 16/39 [core] NCRAloha\NCRAloha001_DDL.sql
+[16:40:06] STEP 16 OK
+[16:40:06] STEP 17/39 [core] NCRAloha\NCRAloha001_Staging.sql
+[16:40:11] STEP 17 OK
+[16:40:11] STEP 18/39 [core] NCRAloha\NCRAloha001_Mapping.sql
+[16:40:14] STEP 18 OK
+[16:40:14] STEP 19/39 [core] NCRAloha\NCRAloha001_Final.sql
+    Changed database context to 'core'.
+    
+RowsAffected
+------------
+          34
+    
+Return Value
+------------
+           0
+[16:40:15] STEP 19 OK
+[16:40:15] STEP 20/39 [core] MarketMan\Marketman001_INIT.sql
+    Changed database context to 'core'.
+    Job 'CreateIntegrationSchema_2' started successfully.
+    Trigger: Queued schema creation job for integration: Marketman001 (Job: CreateIntegrationSchema_2)
+    Integration added: Marketman001 (ID: 2)
+    Schema will be: [int_marketman001]
+    Creating schema immediately...
+    Creating schema: [int_marketman001]
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT
+    Target Database: core
+    Target Schema: int_marketman001
+    Started: 2026-07-06 15:40:18
+    =====================================================================================
+    
+    ?? SECTION 1: VALIDATION AND SETUP
+    -----------------------------------------------------------------------------------
+    15:40:18 | SUCCESS | Database Validation
+      ? Schema already exists: int_marketman001
+    15:40:18 | SUCCESS | Schema Setup
+    
+    ???  SECTION 3: CREATE TABLES
+    -----------------------------------------------------------------------------------
+      ? Created StagingControl table
+    15:40:18 | SUCCESS | StagingControl Table Creation
+      ? Created EntityMappings table
+    15:40:18 | SUCCESS | EntityMappings Table Creation
+      ? Created GlobalParameters table
+    15:40:18 | SUCCESS | GlobalParameters Table Creation
+    
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT SUMMARY
+    =====================================================================================
+    Database: core
+    Schema: int_marketman001
+    Started: 2026-07-06 15:40:18
+    Completed: 2026-07-06 15:40:18
+    Duration: 0 seconds
+    Steps Executed: 5
+    Errors: 0
+    
+    DETAILED LOG:
+    ---------------------------------------------------------------------------------
+    
+Step                    Status  Time     Error
+----                    ------  ----     -----
+01. Database Validation SUCCESS 15:40:18
+    
+Step             Status  Time     Error
+----             ------  ----     -----
+02. Schema Setup SUCCESS 15:40:18
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+03. StagingControl Table Creation SUCCESS 15:40:18
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+04. EntityMappings Table Creation SUCCESS 15:40:18
+    
+Step                                Status  Time     Error
+----                                ------  ----     -----
+05. GlobalParameters Table Creation SUCCESS 15:40:18
+    ?? TABLE CREATION DEPLOYMENT COMPLETED SUCCESSFULLY!
+    =====================================================================================
+    Schema creation failed
+    
+IntegrationID IntegrationCode                      SchemaName      
+------------- ---------------                      ----------      
+            2 a2b34db3-90d5-4cc4-96ca-704724c519e6 int_marketman001
+    
+Return Value
+------------
+           0
+[16:40:18] STEP 20 OK
+[16:40:18] STEP 21/39 [core] MarketMan\Marketman001_DDL.sql
+[16:40:21] STEP 21 OK
+[16:40:21] STEP 22/39 [core] MarketMan\Marketman001_Staging.sql
+[16:40:24] STEP 22 OK
+[16:40:24] STEP 23/39 [core] MarketMan\Marketman001_Mapping.sql
+[16:40:27] STEP 23 OK
+[16:40:27] STEP 24/39 [core] MarketMan\Marketman001_Final.sql
+    Changed database context to 'core'.
+    
+RowsAffected
+------------
+          24
+    
+Return Value
+------------
+           0
+[16:40:27] STEP 24 OK
+[16:40:27] STEP 25/39 [core] Growyze\Growyze001_INIT.sql
+    Changed database context to 'core'.
+    Job 'CreateIntegrationSchema_3' started successfully.
+    Trigger: Queued schema creation job for integration: Growyze001 (Job: CreateIntegrationSchema_3)
+    Integration added: Growyze001 (ID: 3)
+    Schema will be: [int_growyze001]
+    Creating schema immediately...
+    Creating schema: [int_growyze001]
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT
+    Target Database: core
+    Target Schema: int_growyze001
+    Started: 2026-07-06 15:40:30
+    =====================================================================================
+    
+    ?? SECTION 1: VALIDATION AND SETUP
+    -----------------------------------------------------------------------------------
+    15:40:30 | SUCCESS | Database Validation
+      ? Schema already exists: int_growyze001
+    15:40:30 | SUCCESS | Schema Setup
+    
+    ???  SECTION 3: CREATE TABLES
+    -----------------------------------------------------------------------------------
+      ? Created StagingControl table
+    15:40:30 | SUCCESS | StagingControl Table Creation
+      ? Created EntityMappings table
+    15:40:30 | SUCCESS | EntityMappings Table Creation
+      ? Created GlobalParameters table
+    15:40:30 | SUCCESS | GlobalParameters Table Creation
+    
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT SUMMARY
+    =====================================================================================
+    Database: core
+    Schema: int_growyze001
+    Started: 2026-07-06 15:40:30
+    Completed: 2026-07-06 15:40:30
+    Duration: 0 seconds
+    Steps Executed: 5
+    Errors: 0
+    
+    DETAILED LOG:
+    ---------------------------------------------------------------------------------
+    
+Step                    Status  Time     Error
+----                    ------  ----     -----
+01. Database Validation SUCCESS 15:40:30
+    
+Step             Status  Time     Error
+----             ------  ----     -----
+02. Schema Setup SUCCESS 15:40:30
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+03. StagingControl Table Creation SUCCESS 15:40:30
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+04. EntityMappings Table Creation SUCCESS 15:40:30
+    
+Step                                Status  Time     Error
+----                                ------  ----     -----
+05. GlobalParameters Table Creation SUCCESS 15:40:30
+    ?? TABLE CREATION DEPLOYMENT COMPLETED SUCCESSFULLY!
+    =====================================================================================
+    Schema creation failed
+    
+IntegrationID IntegrationCode                      SchemaName    
+------------- ---------------                      ----------    
+            3 e56dc8af-bdce-4573-9376-61b8ed63d551 int_growyze001
+    
+Return Value
+------------
+           0
+[16:40:30] STEP 25 OK
+[16:40:30] STEP 26/39 [core] Growyze\Growyze001_DDL.sql
+[16:40:30] STEP 26 FAILED: String or binary data would be truncated in table 'core.int_growyze001.GlobalParameters', column 'ParameterValue'. Truncated value: 'CREATE TABLE [int_growyze001].[DL_DISHES](
+	[id] [nvarchar](max) NULL,
+	[mainDishId] [nvarchar](max)'.
+The statement has been terminated. 
+ Msg 2628, Level 16, State 1, Procedure , Line 105.
+[16:40:30] Deployment halted. Fix the issue and resume with: .\90_deploy_baseline.ps1 -Environment PROD -StartAt 26

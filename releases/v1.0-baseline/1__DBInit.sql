@@ -1,13 +1,13 @@
 ﻿-- ============================================
 -- 1__DBInit.sql
--- Regenerated from UAT 2026-06-02 10:44:53
+-- Regenerated from UAT 2026-07-06 15:17:16
 -- Server: xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net
 -- ============================================
 
 -- =============================================
 -- SQL Server Managed Instance Initialization Script
 -- Creates databases and schemas for new instances
--- Regenerated from UAT 2026-06-02 10:44:53
+-- Regenerated from UAT 2026-07-06 15:17:16
 -- =============================================
 
 USE master;

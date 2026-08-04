@@ -343,7 +343,7 @@ DatabaseStatus varchar(20) PENDING|CREATING|ACTIVE|FAILED|INACTIVE|MAINTENANCE|A
 
 -- Integrations
 IntegrationID INT IDENTITY | IntegrationType NVARCHAR(50) POS|INVENTORY|SURVEY
-SchemaName NVARCHAR(128) int_ncraloha001 | APIEndpointDetail NVARCHAR(MAX) JSON
+SchemaName NVARCHAR(128) int_ncraloha001 | APIEndpointDetail NVARCHAR(MAX) Python-literal (not JSON)
 
 -- DataVaultEntities
 ENTITY_NAME NVARCHAR(255) | VERSION INT | RELEASE_STATE Build|Live|Retired

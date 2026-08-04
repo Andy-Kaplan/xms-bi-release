@@ -1,0 +1,16 @@
+{
+  "out": "01_event_tables_deployment_objects.sql",
+  "header": "XMS Service Bus messaging - core.EVENT_OUTBOX / core.EVENT_INBOX",
+  "notes": [
+    "Column names and types match Integrations shared/services/sql.py exactly.",
+    "Do NOT rename or reorder columns - the function app addresses them by name."
+  ],
+  "objects": [
+    {"name": "EVENT_OUTBOX", "type": "TABLE", "order": 109, "category": "Core Tables",
+     "body": "01a_event_outbox_body.sql",
+     "description": "Service Bus transactional outbox - events queued by the XMSBI function app, drained by PublishOutboxEvents"},
+    {"name": "EVENT_INBOX", "type": "TABLE", "order": 110, "category": "Core Tables",
+     "body": "01a_event_inbox_body.sql",
+     "description": "Service Bus inbox - inbound envelopes landed by ServiceBusInboundTrigger, applied by sp_ApplyEventInbox"}
+  ]
+}
