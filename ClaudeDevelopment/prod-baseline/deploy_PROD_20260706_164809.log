@@ -1,0 +1,209 @@
+[16:48:09] Target environment : PROD
+[16:48:09] Target server      : xms-mssqlman-ne-prod.public.37d7076aa32b.database.windows.net,3342
+[16:48:09] Baseline path      : C:\threerocks_data\XMS BI\Release\releases\v1.0-baseline
+[16:48:09] Steps              : 39 (TBTBookingMetrics on hold)
+[16:48:09] All 39 baseline files present.
+[16:48:10] Connected: xms-mssqlman-ne-prod.37d7076aa32b.database.windows.net (SQL 12.0.2000.8)
+[16:48:10] NOTE: [core] database already exists on the target. Scripts are idempotent, but confirm this is intended (re-run/resume) and not the wrong server.
+[16:48:10] STEP 26/39 [core] Growyze\Growyze001_DDL.sql
+[16:48:11] STEP 26 OK
+[16:48:11] STEP 27/39 [core] Growyze\Growyze001_Staging.sql
+[16:48:13] STEP 27 OK
+[16:48:13] STEP 28/39 [core] Growyze\Growyze001_Mapping.sql
+[16:48:16] STEP 28 OK
+[16:48:16] STEP 29/39 [core] Growyze\Growyze001_Final.sql
+    Changed database context to 'core'.
+    
+RowsAffected
+------------
+          23
+    
+Return Value
+------------
+           0
+[16:48:16] STEP 29 OK
+[16:48:16] STEP 30/39 [core] SurveyHero\SurveyHero001_INIT.sql
+    Changed database context to 'core'.
+    Job 'CreateIntegrationSchema_4' started successfully.
+    Trigger: Queued schema creation job for integration: SurveyHero001 (Job: CreateIntegrationSchema_4)
+    Integration added: SurveyHero001 (ID: 4)
+    Schema will be: [int_surveyhero001]
+    Creating schema immediately...
+    Creating schema: [int_surveyhero001]
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT
+    Target Database: core
+    Target Schema: int_surveyhero001
+    Started: 2026-07-06 15:48:19
+    =====================================================================================
+    
+    ?? SECTION 1: VALIDATION AND SETUP
+    -----------------------------------------------------------------------------------
+    15:48:19 | SUCCESS | Database Validation
+      ? Schema already exists: int_surveyhero001
+    15:48:19 | SUCCESS | Schema Setup
+    
+    ???  SECTION 3: CREATE TABLES
+    -----------------------------------------------------------------------------------
+      ? Created StagingControl table
+    15:48:19 | SUCCESS | StagingControl Table Creation
+      ? Created EntityMappings table
+    15:48:19 | SUCCESS | EntityMappings Table Creation
+      ? Created GlobalParameters table
+    15:48:19 | SUCCESS | GlobalParameters Table Creation
+    
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT SUMMARY
+    =====================================================================================
+    Database: core
+    Schema: int_surveyhero001
+    Started: 2026-07-06 15:48:19
+    Completed: 2026-07-06 15:48:19
+    Duration: 0 seconds
+    Steps Executed: 5
+    Errors: 0
+    
+    DETAILED LOG:
+    ---------------------------------------------------------------------------------
+    
+Step                    Status  Time     Error
+----                    ------  ----     -----
+01. Database Validation SUCCESS 15:48:19
+    
+Step             Status  Time     Error
+----             ------  ----     -----
+02. Schema Setup SUCCESS 15:48:19
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+03. StagingControl Table Creation SUCCESS 15:48:19
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+04. EntityMappings Table Creation SUCCESS 15:48:19
+    
+Step                                Status  Time     Error
+----                                ------  ----     -----
+05. GlobalParameters Table Creation SUCCESS 15:48:19
+    ?? TABLE CREATION DEPLOYMENT COMPLETED SUCCESSFULLY!
+    =====================================================================================
+    Schema creation failed
+    
+IntegrationID IntegrationCode                      SchemaName       
+------------- ---------------                      ----------       
+            4 04f2d7ee-61f7-48f5-802d-a5e242933992 int_surveyhero001
+    
+Return Value
+------------
+           0
+[16:48:19] STEP 30 OK
+[16:48:19] STEP 31/39 [core] SurveyHero\SurveyHero001_DDL.sql
+[16:48:23] STEP 31 OK
+[16:48:23] STEP 32/39 [core] SurveyHero\SurveyHero001_Staging.sql
+[16:48:24] STEP 32 OK
+[16:48:24] STEP 33/39 [core] SurveyHero\SurveyHero001_Mapping.sql
+[16:48:24] STEP 33 OK
+[16:48:24] STEP 34/39 [core] SurveyHero\SurveyHero001_Final.sql
+    Changed database context to 'core'.
+    
+RowsAffected
+------------
+           4
+    
+Return Value
+------------
+           0
+[16:48:24] STEP 34 OK
+[16:48:24] STEP 35/39 [core] TROAP\TROaP001_INIT.sql
+    Changed database context to 'core'.
+    Job 'CreateIntegrationSchema_5' started successfully.
+    Trigger: Queued schema creation job for integration: TROaP001 (Job: CreateIntegrationSchema_5)
+    Integration added: TROaP001 (ID: 5)
+    Schema will be: [int_troap001]
+    Creating schema immediately...
+    Creating schema: [int_troap001]
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT
+    Target Database: core
+    Target Schema: int_troap001
+    Started: 2026-07-06 15:48:27
+    =====================================================================================
+    
+    ?? SECTION 1: VALIDATION AND SETUP
+    -----------------------------------------------------------------------------------
+    15:48:27 | SUCCESS | Database Validation
+      ? Schema already exists: int_troap001
+    15:48:27 | SUCCESS | Schema Setup
+    
+    ???  SECTION 3: CREATE TABLES
+    -----------------------------------------------------------------------------------
+      ? Created StagingControl table
+    15:48:28 | SUCCESS | StagingControl Table Creation
+      ? Created EntityMappings table
+    15:48:28 | SUCCESS | EntityMappings Table Creation
+      ? Created GlobalParameters table
+    15:48:28 | SUCCESS | GlobalParameters Table Creation
+    
+    =====================================================================================
+    TABLE CREATION DEPLOYMENT SUMMARY
+    =====================================================================================
+    Database: core
+    Schema: int_troap001
+    Started: 2026-07-06 15:48:27
+    Completed: 2026-07-06 15:48:28
+    Duration: 1 seconds
+    Steps Executed: 5
+    Errors: 0
+    
+    DETAILED LOG:
+    ---------------------------------------------------------------------------------
+    
+Step                    Status  Time     Error
+----                    ------  ----     -----
+01. Database Validation SUCCESS 15:48:27
+    
+Step             Status  Time     Error
+----             ------  ----     -----
+02. Schema Setup SUCCESS 15:48:27
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+03. StagingControl Table Creation SUCCESS 15:48:28
+    
+Step                              Status  Time     Error
+----                              ------  ----     -----
+04. EntityMappings Table Creation SUCCESS 15:48:28
+    
+Step                                Status  Time     Error
+----                                ------  ----     -----
+05. GlobalParameters Table Creation SUCCESS 15:48:28
+    ?? TABLE CREATION DEPLOYMENT COMPLETED SUCCESSFULLY!
+    =====================================================================================
+    Schema creation failed
+    
+IntegrationID IntegrationCode                      SchemaName  
+------------- ---------------                      ----------  
+            5 2dfd3b21-ec41-45ac-bb77-17592451d4e2 int_troap001
+    
+Return Value
+------------
+           0
+[16:48:28] STEP 35 OK
+[16:48:28] STEP 36/39 [core] TROAP\TROaP001_DDL.sql
+[16:48:32] STEP 36 OK
+[16:48:32] STEP 37/39 [core] TROAP\TROaP001_Staging.sql
+[16:48:36] STEP 37 OK
+[16:48:36] STEP 38/39 [core] TROAP\TROaP001_Mapping.sql
+[16:48:38] STEP 38 OK
+[16:48:38] STEP 39/39 [core] TROAP\TROaP001_Final.sql
+    Changed database context to 'core'.
+    
+RowsAffected
+------------
+          22
+    
+Return Value
+------------
+           0
+[16:48:38] STEP 39 OK
+[16:48:38] Deployment complete. Next: run 91_validate_core_deployment.sql against the core DB.

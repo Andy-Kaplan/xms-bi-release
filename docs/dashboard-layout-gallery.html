@@ -1,0 +1,414 @@
+<meta charset="utf-8">
+<title>XMS BI — Dashboard Layout Gallery</title>
+<style>
+  :root {
+    --ink: #1F2C44;
+    --ink-soft: #5A6478;
+    --ink-faint: #8C94A3;
+    --rule: #DFDCD4;
+    --rule-soft: #EBE8E1;
+    --paper: #FBF9F5;
+    --card: #FFFFFF;
+    --accent: #E97359;
+    --kpi: #3E5C76;
+    --bar: #6B8F9C;
+    --line: #8A9B68;
+    --pie: #C08552;
+    --grid: #7A6B8F;
+    --heat: #B5654F;
+    --narrative: #98918A;
+    --warn: #FDF3EE;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Calibri, "Segoe UI", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 56px 32px 96px; }
+
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 28px; margin-bottom: 40px; }
+  h1 { font-size: 2.1rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
+  .sub { color: var(--ink-soft); font-size: 1.05rem; max-width: 62ch; margin: 0; }
+  .meta { color: var(--ink-faint); font-size: 0.85rem; margin-top: 16px; }
+  .meta code { background: var(--rule-soft); padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+
+  h2 {
+    font-size: 1.35rem; font-weight: 600; margin: 56px 0 6px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+  }
+  h2 .count { color: var(--ink-faint); font-weight: 400; font-size: 0.8em; }
+  .fam-note { color: var(--ink-soft); font-size: 0.95rem; margin: 10px 0 28px; max-width: 72ch; }
+
+  .board { background: var(--card); border: 1px solid var(--rule); border-radius: 4px; margin-bottom: 26px; }
+  .board-head { padding: 16px 20px 14px; border-bottom: 1px solid var(--rule-soft); }
+  .board-title { font-size: 1.05rem; font-weight: 600; margin: 0; }
+  .board-sub { font-size: 0.82rem; color: var(--ink-faint); margin: 4px 0 0; font-family: Consolas, monospace; }
+  .orgs { font-size: 0.85rem; color: var(--ink-soft); margin: 8px 0 0; }
+  .orgs b { font-weight: 600; color: var(--ink); }
+  .shared { color: var(--accent); font-weight: 600; }
+
+  .filters { padding: 10px 20px; background: var(--paper); border-bottom: 1px solid var(--rule-soft); font-size: 0.82rem; color: var(--ink-soft); }
+  .filters .chip {
+    display: inline-block; background: var(--card); border: 1px solid var(--rule);
+    border-radius: 11px; padding: 1px 10px; margin: 2px 4px 2px 0;
+    font-family: Consolas, monospace; font-size: 0.92em; color: var(--ink);
+  }
+
+  .rows { padding: 16px 20px 20px; }
+  .row { display: flex; gap: 6px; margin-bottom: 6px; align-items: stretch; position: relative; }
+  .cell {
+    border-radius: 3px; padding: 8px 9px; min-height: 58px;
+    color: #fff; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .cell .ct { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.82; }
+  .cell .ds { font-size: 0.78rem; font-family: Consolas, monospace; line-height: 1.3; word-break: break-word; }
+  .cell .sp { font-size: 0.66rem; opacity: 0.7; font-family: Consolas, monospace; }
+  .gap {
+    border: 1px dashed var(--rule); border-radius: 3px; min-height: 58px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; color: var(--ink-faint); background: repeating-linear-gradient(45deg, transparent, transparent 6px, #F4F1EB 6px, #F4F1EB 12px);
+  }
+  .rowsum {
+    position: absolute; right: -34px; top: 50%; transform: translateY(-50%);
+    font-size: 0.7rem; color: var(--ink-faint); font-family: Consolas, monospace;
+  }
+
+  .flag { margin: 0 20px 18px; padding: 10px 13px; background: var(--warn); border-left: 2px solid var(--accent); font-size: 0.87rem; color: var(--ink); }
+  .flag b { font-weight: 600; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 8px; padding: 16px 20px; background: var(--card); border: 1px solid var(--rule); border-radius: 4px; }
+  .legend .li { display: flex; align-items: center; gap: 7px; font-size: 0.85rem; }
+  .swatch { width: 13px; height: 13px; border-radius: 2px; }
+
+  .scale { display: flex; gap: 6px; margin: 0 20px 10px; }
+  .scale div { flex: 1; text-align: center; font-size: 0.66rem; color: var(--ink-faint); border-top: 1px solid var(--rule); padding-top: 3px; font-family: Consolas, monospace; }
+
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule); font-size: 0.87rem; color: var(--ink-soft); }
+  footer a { color: var(--ink); }
+
+  @media (max-width: 700px) {
+    .wrap { padding: 32px 18px 64px; }
+    .rowsum { display: none; }
+    .cell .ds { font-size: 0.68rem; }
+  }
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Dashboard Layout Gallery</h1>
+  <p class="sub">Every distinct XMS BI dashboard layout, drawn to scale on the 12-column grid. Companion to <code>dashboard-design-handoff.md</code>.</p>
+  <p class="meta">Widths shown are the <code>md</code> breakpoint (desktop). Queried live from UAT report DB on 2026-07-31 — 82 live grids, collapsing to the 16 patterns below.</p>
+</header>
+
+<div class="legend" id="legend"></div>
+<div class="scale" id="scale"></div>
+
+<div id="out"></div>
+
+<footer>
+  <p><b>Reading this:</b> each block is one card; its width is its <code>md</code> span out of 12. Hatched blocks are dead columns — a row that doesn't sum to 12. The number at the right of each row is its column total.</p>
+  <p>Layout source: <code>DashboardGridItem</code> in the <code>report</code> database. Card content, titles and colours come from <code>core.core.VisualisationQueries</code> on the Managed Instance and are not configurable here — see the handoff doc §3.</p>
+</footer>
+</div>
+
+<script>
+const TYPES = {
+  SingleKPICard:         { c: 'var(--kpi)',       s: 'KPI' },
+  BarChartCard:          { c: 'var(--bar)',       s: 'Bar' },
+  StackedBarChartCard:   { c: 'var(--bar)',       s: 'Stacked bar' },
+  LineChartCard:         { c: 'var(--line)',      s: 'Line' },
+  MultiLineChartCard:    { c: 'var(--line)',      s: 'Multi-line' },
+  CombinedChartCard:     { c: 'var(--line)',      s: 'Combined' },
+  PieChartCard:          { c: 'var(--pie)',       s: 'Pie' },
+  CustomDataGrid:        { c: 'var(--grid)',      s: 'Data grid' },
+  CustomGroupedDataGrid: { c: 'var(--grid)',      s: 'Grouped grid' },
+  HeatmapCard:           { c: 'var(--heat)',      s: 'Heatmap' },
+  RadarChartCard:        { c: 'var(--heat)',      s: 'Radar' },
+  StaticBoxCard:         { c: 'var(--narrative)', s: 'Alert box' },
+  MarkdownCard:          { c: 'var(--narrative)', s: 'Markdown' }
+};
+
+// [cardType, dataSet, xs, sm, md]
+const FAMILIES = [
+{
+  name: 'The Growyze three-pack',
+  note: 'Three grids shared by five organisations — the highest blast radius in the platform. Editing one changes all five dashboards simultaneously.',
+  boards: [
+  { title: 'Overview', gid: 'B0A1D000-0001-4A00-9E00-000000000001', shared: 5,
+    orgs: 'The Oak & Vine · Ibis Heathrow · Ibis Gloucester Road · Dirty Sixth · Padel Social',
+    filters: ['Locations', 'InvItems'],
+    items: [
+      ['SingleKPICard','NetSales',12,6,4], ['SingleKPICard','GrowyzeProfit',12,6,4], ['SingleKPICard','GrowyzeProfitPct',12,6,4],
+      ['SingleKPICard','GrowyzeActiveStocktakes',12,6,4], ['SingleKPICard','GrowyzeDeliveriesValue',12,6,4], ['SingleKPICard','InvWasteCost',12,6,4],
+      ['MultiLineChartCard','InvStockActivity',12,12,12],
+      ['CustomDataGrid','GrowyzeCategoryStockTrend',12,12,12]
+    ] },
+  { title: 'Sales & Profitability', gid: 'B0A1D000-0002-4A00-9E00-000000000002', shared: 5,
+    orgs: 'same five organisations',
+    filters: ['Locations','Products','GrowyzeProductsCompFilter'],
+    items: [
+      ['SingleKPICard','NetSales',12,6,2], ['SingleKPICard','GrowyzeProfit',12,6,2], ['SingleKPICard','GrowyzeProfitPct',12,6,2],
+      ['SingleKPICard','OakVineMenuAvgItemValue',12,6,2], ['SingleKPICard','GrowyzeAvgCostSpend',12,6,2], ['SingleKPICard','GrowyzeBestCategory',12,6,2],
+      ['SingleKPICard','GrowyzeTopRevenueItem',12,6,3], ['SingleKPICard','GrowyzeHighestGPItem',12,6,3],
+      ['SingleKPICard','GrowyzeMostSoldItem',12,6,3], ['SingleKPICard','GrowyzeLowestItem',12,6,3],
+      ['PieChartCard','GrowyzeSalesByCategory',12,12,5], ['CustomDataGrid','ProductComparison',12,12,7],
+      ['CombinedChartCard','GrowyzeMenuProfitabilityTrend',12,12,12],
+      ['CustomDataGrid','GrowyzeMenuEngineering',12,12,12],
+      ['HeatmapCard','GrowyzeSalesHeatmap',12,12,12]
+    ],
+    flag: 'The densest layout in the platform — 10 KPI cards before any chart. Proves six-across at <b>md=2</b> and asymmetric <b>5/7</b> splits both work.' },
+  { title: 'Inventory Control', gid: 'B0A1D000-0003-4A00-9E00-000000000003', shared: 5,
+    orgs: 'same five organisations',
+    filters: ['Locations','InvItems'],
+    items: [
+      ['SingleKPICard','GrowyzeActiveStocktakes',12,6,4], ['SingleKPICard','GrowyzeDeliveriesValue',12,6,4], ['SingleKPICard','InvWasteCost',12,6,4],
+      ['StackedBarChartCard','InvStockActivity',12,12,12],
+      ['SingleKPICard','GrowyzeHighestVenue',12,6,6], ['SingleKPICard','GrowyzeLowestVenue',12,6,6],
+      ['CustomGroupedDataGrid','InvKPIGrouped',12,12,12],
+      ['PieChartCard','InvCOGSByCategory',12,12,6], ['CustomDataGrid','InvUseAnalisys',12,12,6]
+    ],
+    flag: 'Row 3 uses half-width KPIs — unusual; KPIs elsewhere are 2, 3 or 4 columns. <code>InvUseAnalisys</code> is a live misspelling that must be matched exactly.' }
+  ]
+},
+{
+  name: 'Pantry COGS',
+  note: 'Deployed as three separate grids (Padel Social, Ibis Gloucester Road, Dirty Sixth) with identical structure. A textbook shape: KPI row, paired charts, then full-width detail.',
+  boards: [
+  { title: 'Pantry COGS', gid: '3931A79E-61B1-4157-B006-B8E7DAA0B708', orgs: 'Padel Social',
+    filters: ['PantryCOGSVenues','PantryCOGSPeriods','PantryCOGSCategories'],
+    items: [
+      ['SingleKPICard','PantryCOGSSpendKPI',12,6,3], ['SingleKPICard','PantryCOGSSoldKPI',12,6,3],
+      ['SingleKPICard','PantryCOGSClosingStockKPI',12,6,3], ['SingleKPICard','PantryCOGSVarianceKPI',12,6,3],
+      ['PieChartCard','PantryCOGSConsumptionMix',12,12,6], ['BarChartCard','PantryCOGSPeriodComparison',12,12,6],
+      ['BarChartCard','PantryCOGSTopItemsByCategory',12,12,6], ['BarChartCard','PantryCOGSSlowMovers',12,12,6],
+      ['BarChartCard','PantryCOGSByVenue',12,12,12],
+      ['CustomDataGrid','PantryCOGSBillingTotals',12,12,12],
+      ['CustomGroupedDataGrid','PantryCOGSItemTable',12,12,12],
+      ['CustomDataGrid','PantryCOGSExceptions',12,12,12]
+    ],
+    flag: 'Rows 5–7 are three consecutive full-width tables — a long uninterrupted scroll.' }
+  ]
+},
+{
+  name: 'Marge Brut',
+  note: 'Bespoke French gross-margin dashboard, live on The Oak & Vine and Ibis Gloucester Road.',
+  boards: [
+  { title: 'Marge Brut', gid: 'FA17D12F-1CFB-4D15-87D6-21B22DFA5EE3', orgs: 'The Oak & Vine',
+    filters: ['MargeBrutGroups'],
+    items: [
+      ['SingleKPICard','MargeBrutCostRatioKPI',12,12,3], ['SingleKPICard','MargeBrutConsumptionKPI',12,12,3],
+      ['SingleKPICard','MargeBrutTurnoverKPI',12,12,3], ['SingleKPICard','MargeBrutPurchasesKPI',12,12,3],
+      ['CustomDataGrid','MargeBrutGrid',12,12,12],
+      ['BarChartCard','MargeBrutCostRatioByGroup',12,12,6], ['BarChartCard','MargeBrutPurchasesBySupplier',12,12,6],
+      ['PieChartCard','MargeBrutConsumptionMix',12,12,6]
+    ],
+    flag: 'Two defects. The KPI row uses <b>sm=12</b>, stacking one-per-line on tablet where every other dashboard fits 2 or 4. And the final pie chart is an <b>orphan</b>, leaving 6 dead columns.' }
+  ]
+},
+{
+  name: 'Margin Management',
+  note: 'Shared by six organisations. The only dashboard using the narrative card types, and the only one with conditional cards that hide themselves when their SQL trigger does not fire.',
+  boards: [
+  { title: 'Margin Management', gid: '050FCDB8-0D64-4B3A-969B-E06F529673CD', shared: 6,
+    orgs: 'Three Rocks Cafe · Dover Street Counter · Kudu · Martinos · Myrtos · The Dover Restaurant',
+    filters: ['Locations'],
+    items: [
+      ['StaticBoxCard','InvMMHeader',12,12,12],
+      ['StaticBoxCard','InvMMHeader2',12,12,12],
+      ['MarkdownCard','InvMMHeader',12,12,12],
+      ['SingleKPICard','NetSales',3,3,3], ['SingleKPICard','InvPosVar',3,3,3],
+      ['SingleKPICard','InvWasteCost',3,3,3], ['SingleKPICard','InvNegVar',3,3,3],
+      ['PieChartCard','InvTheoMargin',3,3,3], ['StackedBarChartCard','InvTop20Variance',9,9,9],
+      ['CombinedChartCard','InvCountVariance',12,12,12]
+    ],
+    flag: 'The only <b>3/9</b> asymmetric split in the platform. But the KPI row uses <b>xs=3</b> — four KPIs across a phone screen, almost certainly too cramped. <code>SortOrder</code> is deliberately gapped (1,2,3,12–15,25,28,37) to leave insertion room.' }
+  ]
+},
+{
+  name: 'The Oak & Vine bespoke set',
+  note: 'Ten dashboards unique to one organisation, so safe to restyle without cross-org fallout. Four representative layouts shown.',
+  boards: [
+  { title: 'Weekly P&L', gid: '055D05C2-8E33-F111-9A49-000D3AB27214', orgs: 'The Oak & Vine',
+    filters: ['Locations'],
+    items: [
+      ['SingleKPICard','OakVineNetRevenue',6,3,3], ['SingleKPICard','OakVineFoodRevenue',6,3,3],
+      ['SingleKPICard','OakVineDrinkRevenue',6,3,3], ['SingleKPICard','OakVineGrossProfit',6,3,3],
+      ['BarChartCard','OakVineRevenueByWeek',12,12,8], ['PieChartCard','OakVineFoodDrinkSplit',12,6,4],
+      ['BarChartCard','OakVineCOSByWeek',12,12,6], ['LineChartCard','OakVineCOSPercentByWeek',12,12,6],
+      ['MultiLineChartCard','OakVineFoodDrinkCOSPercent',12,12,12],
+      ['BarChartCard','OakVineLabourCostByWeek',12,12,6], ['LineChartCard','OakVineLabourPercentByWeek',12,12,6],
+      ['BarChartCard','OakVineGPByWeek',12,12,6], ['LineChartCard','OakVineGPPercentByWeek',12,12,6],
+      ['BarChartCard','OakVineExpensesByWeek',12,12,12]
+    ],
+    flag: 'The strongest convention in the platform: <b>absolute value as a bar beside the same metric as a percentage as a line</b>, repeated three times for cost of sales, labour and gross profit. Worth propagating.' },
+  { title: 'Product Mix', gid: '159CCC16-E733-F111-9A49-000D3AB27214', orgs: 'The Oak & Vine',
+    filters: ['Locations','ProductCategories','Products','Occasions'],
+    items: [
+      ['SingleKPICard','OakVineMenuTotalRevenue',6,3,3], ['SingleKPICard','OakVineMenuTotalOrders',6,3,3],
+      ['SingleKPICard','OakVineMenuAvgItemValue',6,3,3], ['SingleKPICard','OakVineMenuTopSeller',6,3,3],
+      ['BarChartCard','OakVineMenuTop10Products',12,12,8], ['PieChartCard','OakVineMenuFoodDrinksSplit',12,6,4],
+      ['StackedBarChartCard','OakVineMenuRevenueByCategory',12,12,6], ['BarChartCard','OakVineMenuRevenueByOccasion',12,12,6],
+      ['HeatmapCard','OakVineMenuSalesByHour',12,12,12],
+      ['MultiLineChartCard','OakVineMenuWeeklyTrend',12,12,6], ['BarChartCard','OakVineMenuBottom10Products',12,12,6]
+    ],
+    flag: 'The <b>8/4</b> pairing in row 2 — a wide ranked bar chart beside a narrow pie — is reused on Weekly P&L.' },
+  { title: 'Market Basket', gid: '5AAE6529-F933-F111-9A49-000D3AB27214', orgs: 'The Oak & Vine',
+    filters: ['Locations','ProductCategories','Products','Occasions'],
+    items: [
+      ['SingleKPICard','OakVineBasketTotalOrders',6,3,3], ['SingleKPICard','OakVineBasketAvgItems',6,3,3],
+      ['SingleKPICard','OakVineBasketTopPair',6,3,3], ['SingleKPICard','OakVineBasketUniqueProducts',6,3,3],
+      ['HeatmapCard','OakVineBasketCategoryAffinity',12,12,6], ['BarChartCard','OakVineBasketOrderSize',12,12,6],
+      ['CustomDataGrid','OakVineBasketTopPairs',12,12,12]
+    ],
+    flag: 'The tightest dashboard in the platform at 7 cards and 3 rows. A good template for a focused, single-question view.' },
+  { title: 'Revenue & Trading', gid: 'EA052030-F933-F111-9A49-000D3AB27214', orgs: 'The Oak & Vine',
+    filters: ['Locations','Occasions'],
+    items: [
+      ['SingleKPICard','OakVineTradingDailyRevenue',6,3,3], ['SingleKPICard','OakVineTradingATV',6,3,3],
+      ['SingleKPICard','OakVineTradingFriSatPct',6,3,3], ['SingleKPICard','OakVineTradingPeakHour',6,3,3],
+      ['BarChartCard','OakVineTradingDailyTrend',12,12,12],
+      ['BarChartCard','OakVineTradingByDayOfWeek',12,12,6], ['BarChartCard','OakVineTradingATVByHour',12,12,6],
+      ['HeatmapCard','OakVineTradingHourlyByLocation',12,12,12],
+      ['BarChartCard','OakVineTradingATVByLocation',12,12,6],
+      ['CustomDataGrid','OakVineTradingDailyDetail',12,12,12]
+    ],
+    flag: '<b>Orphan half-row</b>: a 6-column bar chart followed by a 12-column grid cannot share a line, so it sits alone with 6 dead columns beside it. Easily fixed by pairing it.' }
+  ]
+},
+{
+  name: 'The brand set',
+  note: 'Six near-identical dashboard sets across Las Iguanas, Frankie & Bennys, Bella Italia, Amalfi, Chiquito and The Big Table Group. Each brand has its own grid, so changes are per-brand — but the pattern repeats six times and should be changed consistently.',
+  boards: [
+  { title: 'Sales Overview', gid: 'EBF2D548-7F67-4710-9748-1BC9722B0770', orgs: 'Las Iguanas (+5 sibling brands)',
+    filters: ['Locations','RevenueCentres','DayOfWeek'],
+    items: [
+      ['SingleKPICard','NetSales',12,6,3], ['SingleKPICard','TotalOrders',12,6,3],
+      ['SingleKPICard','GrossATV',12,6,3], ['SingleKPICard','DiscountPerc',12,6,3],
+      ['CombinedChartCard','NetSalesByHour',12,12,12],
+      ['CustomDataGrid','SalesKPIGrouped',12,12,12]
+    ],
+    flag: 'The minimal viable dashboard — 6 cards, 3 rows. Its <b>12/6/3</b> KPI progression (1-up phone, 2-up tablet, 4-up desktop) is the most common responsive pattern in the platform and the safest default.' },
+  { title: 'Bookings — Brand Deep Dive', gid: '9EB93034-B657-486D-9DA7-E13FFE172A96', orgs: 'Las Iguanas (+5 sibling brands)',
+    filters: ['BkgBrands'],
+    items: [
+      ['SingleKPICard','BkgBrandTotalBookings',12,6,3], ['SingleKPICard','BkgBrandTotalCovers',12,6,3],
+      ['SingleKPICard','BkgBrandAvgPartySize',12,6,3], ['SingleKPICard','BkgBrandGrowth',12,6,3],
+      ['StackedBarChartCard','BkgBrandMonthlyBookingsCovers',12,12,6], ['MultiLineChartCard','BkgBrandSessionsUsers',12,12,6],
+      ['CustomDataGrid','BkgBrandMonthlyTable',12,12,12]
+    ] },
+  { title: 'Group Overview', gid: '745A1F13-7150-4A21-AE1E-05A9BFB380E1', orgs: 'The Big Table Group (parent org)',
+    filters: ['ParentLocations','ParentOrganisations'],
+    items: [
+      ['SingleKPICard','ParentNetSales',12,6,4], ['SingleKPICard','ParentOrderCount',12,6,4], ['SingleKPICard','ParentAvgOrderValue',12,6,4],
+      ['PieChartCard','ParentRevenueShare',12,12,6], ['StackedBarChartCard','ParentOrgRevenue',12,12,6],
+      ['MultiLineChartCard','ParentOrgRevenueTrend',12,12,12],
+      ['CustomDataGrid','ParentOrgSummaryTable',12,12,12]
+    ],
+    flag: 'The parent-organisation rollup pattern — <code>Parent*</code> datasets aggregate across child organisations.' }
+  ]
+},
+{
+  name: 'Dirty Sixth',
+  note: 'Two inventory-led dashboards. Both break the KPI-first convention, and both read worse for it.',
+  boards: [
+  { title: 'Stock Activity', gid: '7ED51BEF-1DEE-496F-8B83-09BF7E357F1B', orgs: 'Dirty Sixth',
+    filters: ['Locations','InvItems'],
+    items: [
+      ['BarChartCard','InvConsumption',12,12,12],
+      ['CustomDataGrid','InvConsumption',12,12,12],
+      ['BarChartCard','InvWasteAnalysis',12,12,6], ['MultiLineChartCard','InvWasteAnalysis',12,12,6],
+      ['CustomDataGrid','InvWasteAnalysis',12,12,12],
+      ['StackedBarChartCard','InvStockActivity',12,12,6], ['MultiLineChartCard','InvStockActivity',12,12,6],
+      ['SingleKPICard','InvWasteCost',12,12,4], ['SingleKPICard','InvOrdersCost',12,12,4], ['SingleKPICard','InvNegVar',12,12,4],
+      ['StackedBarChartCard','InvTop20Variance',12,12,12],
+      ['CustomDataGrid','InvCountData',12,12,12],
+      ['MultiLineChartCard','InvVarianceTrend',12,12,12],
+      ['CustomDataGrid','InvAvgUsage',12,12,12]
+    ],
+    flag: '<b>The clearest restructuring candidate.</b> 14 cards, 10 rows — the longest scroll in the platform. The KPI row is buried at row 6 below five rows of charts. Six of ten rows are full-width. Three datasets each appear two or three times in different card types.' },
+  { title: 'Cost & Margins', gid: '7C83F241-9CD7-4326-B659-109CF4408793', shared: 2, orgs: 'Dirty Sixth · Padel Social',
+    filters: ['Locations','InvItems','Products'],
+    items: [
+      ['PieChartCard','InvCOGSByCategory',12,12,6], ['StackedBarChartCard','InvCOGSByCategory',12,12,6],
+      ['MultiLineChartCard','InvMarginTrend',12,12,12],
+      ['CustomGroupedDataGrid','InvMargeBrut',12,12,12],
+      ['PieChartCard','InvUsageByCategory',12,12,6], ['StackedBarChartCard','InvUsageBySubCategory',12,12,6]
+    ],
+    flag: 'Row 1 renders the same dataset as both a pie and a stacked bar — a <b>composition-plus-trend</b> pairing worth reusing. The only dashboard in the platform with <b>no KPI cards at all</b>.' }
+  ]
+},
+{
+  name: 'Survey',
+  note: 'Neighbours - Eastleigh runs 12 survey dashboards on this pattern.',
+  boards: [
+  { title: 'Survey — Lifestyle — Standard', gid: 'C79D83A8-DC32-F111-9A49-000D3AB27214', orgs: 'Neighbours - Eastleigh',
+    filters: ['SurveyDistCommunityFilter'],
+    items: [
+      ['BarChartCard','SurveyDistLifestyleArts',12,12,6], ['BarChartCard','SurveyDistLifestyleChildren',12,12,6],
+      ['BarChartCard','SurveyDistLifestyleEducation',12,12,6], ['BarChartCard','SurveyDistLifestyleFamily',12,12,6],
+      ['BarChartCard','SurveyDistLifestyleHealth',12,12,6], ['BarChartCard','SurveyDistLifestyleOver70',12,12,6],
+      ['BarChartCard','SurveyDistLifestyleSingles',12,12,6], ['BarChartCard','SurveyDistLifestyleSport',12,12,6],
+      ['BarChartCard','SurveyDistLifestyleYoungAdults',12,12,6], ['BarChartCard','SurveyDistLifestyleYouth',12,12,6]
+    ],
+    flag: '<b>The strongest case for redesign in the inventory.</b> Ten identical bar charts in five identical rows, no KPIs, no variation. A single <code>RadarChartCard</code> comparing all ten lifestyle dimensions on one axis set would replace five rows of scroll with one card — and radar queries already exist for other survey themes, so the pattern is proven.' }
+  ]
+}
+];
+
+// ---- render ----------------------------------------------------------------
+
+const seen = new Set();
+document.getElementById('legend').innerHTML = Object.entries(TYPES)
+  .filter(([, v]) => { if (seen.has(v.s)) return false; seen.add(v.s); return true; })
+  .map(([, v]) => `<div class="li"><span class="swatch" style="background:${v.c}"></span>${v.s}</div>`)
+  .join('');
+
+document.getElementById('scale').innerHTML =
+  Array.from({ length: 12 }, (_, i) => `<div>${i + 1}</div>`).join('');
+
+function packRows(items) {
+  const rows = [];
+  let row = [], sum = 0;
+  for (const it of items) {
+    const md = it[4];
+    if (sum + md > 12) { rows.push({ cells: row, sum }); row = []; sum = 0; }
+    row.push(it); sum += md;
+  }
+  if (row.length) rows.push({ cells: row, sum });
+  return rows;
+}
+
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+document.getElementById('out').innerHTML = FAMILIES.map(fam => `
+  <h2>${esc(fam.name)} <span class="count">${fam.boards.length} layout${fam.boards.length > 1 ? 's' : ''}</span></h2>
+  <p class="fam-note">${fam.note}</p>
+  ${fam.boards.map(b => `
+    <div class="board">
+      <div class="board-head">
+        <p class="board-title">${esc(b.title)}</p>
+        <p class="board-sub">${b.gid}</p>
+        <p class="orgs">${b.shared ? `<span class="shared">Shared by ${b.shared} organisations</span> — ` : ''}${esc(b.orgs)} · <b>${b.items.length}</b> cards</p>
+      </div>
+      ${b.filters.length ? `<div class="filters">Filter bar: ${b.filters.map(f => `<span class="chip">${esc(f)}</span>`).join('')}</div>` : ''}
+      <div class="rows">
+        ${packRows(b.items).map(r => `
+          <div class="row">
+            ${r.cells.map(([t, ds, xs, sm, md]) => `
+              <div class="cell" style="flex:${md};background:${TYPES[t].c}">
+                <div class="ct">${TYPES[t].s}</div>
+                <div class="ds">${esc(ds)}</div>
+                <div class="sp">${xs}/${sm}/${md}</div>
+              </div>`).join('')}
+            ${r.sum < 12 ? `<div class="gap" style="flex:${12 - r.sum}">${12 - r.sum} dead</div>` : ''}
+            <div class="rowsum">${r.sum}/12</div>
+          </div>`).join('')}
+      </div>
+      ${b.flag ? `<div class="flag">${b.flag}</div>` : ''}
+    </div>`).join('')}
+`).join('');
+</script>

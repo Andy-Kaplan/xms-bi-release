@@ -78,4 +78,4 @@ All subsequent +/- events apply their behaviour against the value of the most re
 | Integration | EVENT_TYPEs Used | Known Issues |
 |---|---|---|
 | MarketMan | ORDER, TRANSFER, WASTE, SALE, PRODUCTION | `INVOICE` in PRE_ORDEREVENT staging (should be `ORDER`); `STOCKCOUNT` in count staging (should be `COUNT`) |
-| Growyze | ORDER, WASTE, SALE, COUNT | `DELIVERY` used in GRYZ_DN_EVENTS (should be `ORDER`) — fix pending in 02_staging_tier1.sql. INTERNAL_REF bug fixed in 12_stocktake_staging.sql (was record ID, now item ID for all event types). |
+| Growyze | ORDER, WASTE, SALE, COUNT | ✅ **`DELIVERY` fix LANDED** — `ClaudeDevelopment/integrations/Growyze/02_staging_tier1.sql:290` now emits `''ORDER'' AS EVENT_TYPE` in `GRYZ_DN_EVENTS` (verified 2026-07-30 while building [O32](outstanding/O32-growyze-pantry-cogs-dashboard.md); this row previously said "fix pending" and was stale). INTERNAL_REF bug fixed in 12_stocktake_staging.sql (was record ID, now item ID for all event types) — but note `INTERNAL_REF` is still the **delivery-note id** for ORDER events, so it is not a safe item identity across event types; resolve items via `LNK_INVITEM_STOCKEVENT` instead. |
