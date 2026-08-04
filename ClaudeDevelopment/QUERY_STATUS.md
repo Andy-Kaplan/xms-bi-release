@@ -2141,6 +2141,40 @@ intact through the real deploy path. Not on Prod, and not yet release-prepped in
 | 112 | `98_deploy_plan2.ps1` | — | Runner: `-WhatIf`, `-StartAt`, `-SkipTaskL`; post-deploy check for LIVE / `ParameterMappings` / tokens / mojibake |
 | 113 | `99_verify_plan2.sql` | — | 9 control-plane + 8 per-org checks; run pre-deploy, correctly FAILs A1/A9 and reports `VACUOUS` elsewhere |
 
+### O5 Plan 4 — layout & formatting (2026-08-04, DEPLOYED to UAT)
+
+Spec `docs/superpowers/specs/2026-08-03-growyze-dashboards-layout-formatting-design.md`. Inputs: a Claude Design
+layout/formatting review plus the S1–S12 browser sub-items. **Warehouse 7/7 steps OK, gate 47 PASS / 0 FAIL
+(log `deploy_PLAN4_UAT_20260804_084457.log`). Report DB 2/2 steps OK, gate 71 PASS / 0 FAIL, cross-server PASS over
+29 pairs (log `report_config/deploy_PLAN4_UAT_20260804_084601.log`).**
+
+| # | Script | Target | Status |
+|---|---|---|---|
+| 114 | `reporting_queries/54_currency_percent_tokens.sql` | `NetSales`, `InvWasteCost`, `ProductComparison`, `GrowyzeCategoryStockTrend`, `InvKPIGrouped` | **deployed**. Currency via `NCHAR(163)` (see encoding note); 12 type tokens. All 10 search patterns dry-run verified to match exactly once, in the live column, before any write |
+| 115 | `reporting_queries/55_invcogs_category_fixes.sql` | `InvCOGSByCategory` ×2 card types | **deployed**. Five defects, four undocumented: centre total now derived from the same `Base` CTE (so it equals the slices *by construction*), `CAST` on `CALENDAR`, source resolver, cost guard on the StackedBar, `ProductCategories` grain `MIDDLE_1`→`TOP` |
+| 116 | `reporting_queries/56_grid_header_hygiene.sql` | `ProductComparison`, `InvKPIGrouped` | **deployed**. Sentence case; duplicate `[Type11]` header alias → `[Type21]`. `Subcategory` deliberately **kept** |
+| 117 | `reporting_queries/57_category_stock_trend_sentinel.sql` | `GrowyzeCategoryStockTrend` | **deployed**. `All INVITEMs` sentinel **relabelled** to `Uncategorised`, **not** filtered — it holds £1,164.56 across 9 real items on Dirty Sixth, so the doc's "filter it out" would have deleted counted stock |
+| 118 | `reporting_queries/58_dashboard_narrative_cards.sql` | `OverviewStockAlert`, `InvCountHealthAlert`, `SPProductSectionHeader` + 4 `SuggestionTemplates` | **deployed**. All three LIVE. `InvCountHealthAlert` **re-based** off quantities after the doc's variance version fired at 4,385% on Padel |
+| 119 | `reporting_queries/59_menu_engineering_reorder.sql` | `GrowyzeMenuEngineering` | **deployed**. `Classification` → column 2 by **re-aliasing branch 1 only** (outer SELECT picks by name; the UNION aligns positionally, so the O35 sentinel branch needs no change and must not be "tidied") |
+| 120 | `reporting_queries/60_invuseanalisys_column_cut.sql` | `InvUseAnalisys` | **deployed**. 19→9 columns; fixes swapped OPEN/CLOSE date and count headers and two bogus "variance" columns. **Invents no formula** — every column is a named fact column, because a computed variance would contradict `InvKPIGrouped` on the same dashboard |
+| 121 | `88_verify_plan4.sql` | — | **read-only.** Section A query-text assertions, B per-org data assumptions (production/transfer still zero; `COUNT_DATE` still midnight), C alert reachability as **INFO** not PASS/FAIL. 29 rows / 47 PASS / 0 FAIL |
+| 122 | `89_deploy_plan4.ps1` | — | Runner: `-WhatIf`, `-StartAt`, `-VerifyOnly`. **Refuses to deploy if any step script contains a non-ASCII byte** |
+| 123 | `report_config/07_layout_rev2.sql` | 3 shared grids | **deployed**. MERGE-driven; the spec table is the complete intended state, so `WHEN NOT MATCHED BY SOURCE` soft-deletes the heatmap. `TransactionId` is IDENTITY and must be omitted |
+| 124 | `report_config/08_grants_and_dataset_map_plan4.sql` | `VisualisationConfig`, `VisualisationDataSetMap` | **deployed**. Grants **before** map, hard-gated on the full 4×5 cross product. Without it all four added cards would have failed **silently** |
+| 125 | `report_config/92_verify_plan4.sql` | — | **read-only.** B1 reconstructs every emergent visual row from live data and asserts `md` sums to 12 — 19/19 PASS |
+| 126 | `report_config/91_deploy_plan4.ps1` | — | Runner + report-DB gate + **cross-server check** (reads the wired names out of `report`, looks each up on the MI — the only check that catches a dataset-name typo) |
+
+**Two traps worth carrying forward.**
+**(1) `ExecutionQuery` vs `QueryTemplate`.** Card SPs read `COALESCE(ExecutionQuery, QueryTemplate)`, so editing only
+the template on a dataset that has `ExecutionQuery` populated is a **silent no-op**. Four of the fourteen datasets
+touched here are in that state, and **`InvKPIGrouped`'s `ExecutionQuery` is 2,235 chars diverged from its template** —
+the template is stale against what actually runs. Every Plan 4 script asserts which column is live before writing.
+**(2) Encoding.** These files are UTF-8 **without BOM**, and `Invoke-Sqlcmd -InputFile` decodes such a file using the
+system ANSI codepage — which would mangle a `£` into mojibake **straight into the stored query**. All Plan 4 scripts are
+therefore **pure ASCII** with currency emitted as `NCHAR(163)`; the runner blocks on any non-ASCII byte and verifier A1
+FAILs if a literal symbol is found stored. Plan 2's runner already greps for this mojibake, which is evidence it has
+bitten before.
+
 **Why rev 2 exists.** Rev 1 (2026-07-10) predates the source-precedence retrofit and would have reintroduced five
 *measured* defect classes across all 12 cards: no resolver (six cards empty on Oak & Vine and both Ibis orgs);
 `MIDDLE_1` category grain (Mews `MIDDLE_1` = 98 product families vs `TOP` = 12 real categories); `ParameterMappings`
