@@ -189,16 +189,35 @@ Each row is a discrete follow-up from the browser smoke test on Dirty Sixth. IDs
 
 ## Pick-up notes (resume here)
 
-### Where this stands
-- **Plan 1, source precedence and Plan 2 are ALL deployed and verified on UAT across all five Growyze orgs.** Nothing on this item is half-done on the database side.
-- **The branch is merged.** `worktree-growyze-dashboards-o5` was fast-forwarded into local `main` on 2026-07-31 (`main` was not checked out in any worktree, so it was a clean FF). **`main` has NOT been pushed** — `origin/main` is still behind. Push, or open a PR, when you're ready.
-- **Not on Prod, and not release-prepped.** `releases/v1.1/` still does not exist. That is **Plan 2's Task M**, and it covers Plan 1's deltas (`17`, `18`, `08`, `39`, `40`) *and* Plan 2's (`42`–`53`), plus the master `8_VisualisationQueries.sql` sync, per release-guide §10.
+### Where this stands (refreshed 2026-08-04, after Plan 4)
+- **All FOUR plans are deployed and verified on UAT across all five Growyze orgs.** Plan 1 + source precedence + Plan 2 (2026-07-30/31), Plan 3 (2026-07-31), **Plan 4 layout & formatting (2026-08-04)**. Nothing on this item is half-done on the database side.
+- ⚠️ **THE BRANCH IS *NOT* MERGED — the note that used to sit here saying "the branch is merged" was true on 2026-07-31 and is now WRONG.** That fast-forward took `main` to `d175d30` (Plan 2). **Plan 3 and Plan 4 both landed afterwards and neither is on `main`.** Measured 2026-08-04:
+
+  | Branch | Commits ahead of `main` | Carries |
+  |---|---|---|
+  | `worktree-growyze-dashboards-o5` | **7** | Plan 3 + Plan 4 — **both live on UAT** |
+  | `worktree-margebrut-live` | **12** | O23 supplier fix + Marge Brut — **live on UAT** ([O39](O39-margebrut-branch-unmerged.md)) |
+  | `feature/v1.0-baseline-refresh` | **26** | O32 Pantry COGS + the MDM registry |
+  | `worktree-growyze-uom-cost` | 0 | already merged |
+
+  And **`origin/main` is 34 commits behind local `main`** — nothing has been pushed at all. So **three** separate branches carry work that is running in UAT but absent from the repo's main line. That is [O39](O39-margebrut-branch-unmerged.md) generalised: it was raised about one branch and is really about three. **A v1.1 cut from `main` as it stands would omit Plan 3, Plan 4, O23 and Marge Brut.**
+- **Not on Prod, and not release-prepped.** `releases/v1.1/` still does not exist. Scope is now Plan 1's deltas (`17`, `18`, `08`, `39`, `40`), Plan 2's (`42`–`53`), **Plan 4's (`54`–`60`)**, the report-DB scripts `ms_`-prefixed per release-guide §5, and the master `8_VisualisationQueries.sql` sync.
 
 ### The remaining pieces of work
-**All three plans are deployed. Nothing on the database side of this item is half-done.**
-1. **Front-end smoke test** — the one real gate left. Plan 3 Task 7 Step 6 tabulates the expected reading per card per org, so a wrong number is recognisable rather than merely plausible. Everything checkable *without* a browser has been checked; this is the part that cannot be.
-2. **Task 1c** — the Oak & Vine venue label, an **MI** change (`24_oakvine_growyze_location_name.sql`) needing a presentation rebuild. The replacement name still needs agreeing with Andy; the venue is a real place, so don't invent one.
-3. **Release-prep** (Plan 2 Task M) — delta folder, `ms_`-prefixed report-DB scripts per release-guide §5, master sync, `QUERY_STATUS.md` promotion. **Merge `worktree-margebrut-live` first** (see below).
+1. **Browser smoke test of the re-laid-out pack** — the real gate, and now larger than it was because Plan 4 changed the layout. Two things can *only* be settled by eye:
+   - **(a)** confirm `GrowyzeSalesHeatmap` has actually **disappeared** from Sales & Profitability. The removal is a soft delete and assumes the front end filters `DashboardGridItem.IsDeleted` — that is how Plan 3's rollback is documented but it has **never been observed directly**. (Contrast `DashboardGroupEntity`, where `IsDeleted` is known *not* to be filtered.)
+   - **(b)** check **`xl=2` / `xl=3` at ≥1536px**. Contract-legal, but **all 16 inventoried grids set `md`=`lg`=`xl`** — no live grid diverges. If it reads badly, set those cards back to `xl=4`/`xl=6`; nothing else in the layout depends on it.
+   - Expected while you are there: `InvCountHealthAlert` **shows** on Padel Social (Earls Court, 6 uncosted items) and is **absent** on Gloucester; `OverviewStockAlert` is **silent everywhere**, which is healthy not broken — Gloucester crosses the 35-day threshold and should start firing **2026-08-05**.
+2. **The S1–S6 empty-card cluster.** ⚠️ **Do not start from the ledger's original framing.** It groups these as one shared card-SP or `@FilterClause` bug; the design review shows **S1/S3/S4/S6 rendering correctly on Padel Social**, and **S5 is the only one reproducing on both orgs**. Two concrete leads: `InvKPIGrouped`'s `ExecutionQuery` is **2,235 chars diverged** from its `QueryTemplate` (the template is stale against what actually runs), and the duplicate `[Type11]` header alias sat in exactly the two failing grids — Plan 4 fixed that alias, so **if S5/S6 now behave, that is a finding to record, not the reason it was changed**. S6's misspelled dataset name is a red herring: MCP works with it.
+3. **S7 needs Andy's decision** (see the dispositions table above) — drop `InvItems` from Inventory Control, or re-key `InvCOGSByCategory`.
+4. **Task 1c** — the Oak & Vine venue label, an **MI** change (`24_oakvine_growyze_location_name.sql`) needing a presentation rebuild. The replacement name still needs agreeing with Andy; the venue is a real place, so don't invent one.
+5. **Merge the branches, then release-prep.** Merge order matters: `worktree-margebrut-live` first (O39), then this branch. Review each properly with `git log main..<branch>` — three branches, ~45 commits.
+
+### If you are picking this up cold, read these first
+- `docs/superpowers/specs/2026-08-03-growyze-dashboards-layout-formatting-design.md` — Plan 4's spec. §3 (`ExecutionQuery` vs `QueryTemplate`) and §4 (what is *not* SQL) will save you re-deriving both.
+- The **2026-08-04 progress entry** above — it records five things the design review got wrong on this data, each measured, so they are not re-attempted.
+- **Two traps that will bite silently.** (1) Card SPs read `COALESCE(ExecutionQuery, QueryTemplate)` — editing only the template on a dataset with `ExecutionQuery` populated is a **no-op with no error**; four of the datasets Plan 4 touched are in that state. (2) These `.sql` files are UTF-8 **without BOM** and `Invoke-Sqlcmd -InputFile` decodes them as ANSI, which mangles `£` into mojibake **inside the stored query** — hence every Plan 4 script is pure ASCII with currency as `NCHAR(163)`, and `89_deploy_plan4.ps1` refuses to run if that regresses.
+- **A gate blind spot to know about:** the runners count `FAIL`/`VACUOUS`/`REVIEW` verdicts, so a verifier that returned **no rows at all** would also report "0 FAIL". Plan 4's runs were re-checked directly (47 and 71 real `PASS` verdicts). Do the same rather than trusting a bare zero.
 
 ### The four gating decisions — ALL SETTLED 2026-07-31
 Recorded here because each one shapes what is deployed, and rev 2 encodes all four.
