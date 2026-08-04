@@ -178,6 +178,56 @@ server.tool(
   }
 );
 
+// ── Write-access guard (DEV/TEST/UAT only; Prod hard-blocked) ─
+// Two independent locks, both must pass:
+//   1. MSSQL_ALLOW_WRITE === "true"  — set ONLY on the xms-bi-{dev,test,uat}
+//      entries in .mcp.json. Absent on microservice-* and any Prod entry.
+//   2. server name must NOT contain "prod" — belt-and-braces, independent of
+//      the flag, so a Prod connection can never gain write even by mistake.
+const MSSQL_SERVER  = process.env.MSSQL_SERVER || "";
+const IS_PROD       = /prod/i.test(MSSQL_SERVER);
+const WRITE_ENABLED = process.env.MSSQL_ALLOW_WRITE === "true" && !IS_PROD;
+
+// Tool: execute (state-changing T-SQL — INSERT/UPDATE/DELETE/EXEC/DDL)
+server.tool(
+  "execute",
+  "Run a state-changing T-SQL batch (INSERT/UPDATE/DELETE/EXEC/DDL) against a database. Enabled on DEV/TEST/UAT only; refuses Prod. Supports GO-separated batches. Prod changes must be run by a human via the PowerShell runner.",
+  {
+    database: dbParam,
+    sql:      z.string().describe("The T-SQL to execute. May contain GO batch separators."),
+  },
+  async ({ database, sql: batchText }) => {
+    if (IS_PROD) {
+      return {
+        content: [{ type: "text", text: `Error: execute is disabled for Prod (server '${MSSQL_SERVER}'). Run Prod changes manually via the PowerShell runner.` }],
+        isError: true,
+      };
+    }
+    if (!WRITE_ENABLED) {
+      return {
+        content: [{ type: "text", text: "Error: write access is not enabled for this connection (MSSQL_ALLOW_WRITE is not 'true'). This tool is enabled only on the xms-bi-dev/test/uat servers." }],
+        isError: true,
+      };
+    }
+    const pool = await getPool(database);
+    // GO is a client batch separator, not valid T-SQL — split on it.
+    const batches = batchText
+      .split(/^\s*GO\s*;?\s*$/gim)
+      .map(b => b.trim())
+      .filter(b => b.length > 0);
+    const out = [];
+    for (let i = 0; i < batches.length; i++) {
+      const r = await pool.request().batch(batches[i]);
+      out.push({
+        batch: i + 1,
+        rowsAffected: r.rowsAffected,
+        recordset: r.recordset ? r.recordset.slice(0, 50) : undefined,
+      });
+    }
+    return { content: [{ type: "text", text: JSON.stringify({ server: MSSQL_SERVER, database, batchCount: batches.length, results: out }, null, 2) }] };
+  }
+);
+
 // ── Start ──────────────────────────────────────────────────
 const transport = new StdioServerTransport();
 await server.connect(transport);
