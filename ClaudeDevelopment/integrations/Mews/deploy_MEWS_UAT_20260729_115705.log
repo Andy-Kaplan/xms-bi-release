@@ -1,0 +1,263 @@
+﻿[11:57:05] === Mews001 staging/DV mapping deploy ===
+[11:57:05] Environment : UAT
+[11:57:05] Server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[11:57:05] Log         : C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\integrations\Mews\deploy_MEWS_UAT_20260729_115705.log
+[11:57:05] Discovering organisations mapped to int_mews001...
+[11:57:07]   org 20  Ibis Heathrow            20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D
+[11:57:07]   org 21  Ibis Gloucester Road     20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D
+[11:57:07] RUN   step 1 [core] 01_staging_control.sql
+[11:57:07] OK    step 1 01_staging_control.sql
+[11:57:07] RUN   step 2 [core] 02_entity_mappings.sql
+[11:57:08] OK    step 2 02_entity_mappings.sql
+[11:57:08] RUN   step 3 [core] 05_remove_crm_pii (A)
+[11:57:09] OK    step 3 05_remove_crm_pii (A)
+[11:57:09] RUN   step 4 [core] 03_upload_load_steps.sql
+[11:57:09] 
+RowsAffected
+------------
+          16
+
+
+
+[11:57:09] OK    step 4 03_upload_load_steps.sql
+[11:57:09] VERIFY control plane (expect staging=15, load=16, mappings=16, crm=0)
+[11:57:09] 
+check_name                 actual
+----------                 ------
+staging_steps                  15
+load_steps                     16
+entity_mappings                16
+crm_control_rows_remaining      0
+
+
+
+[11:57:09] RUN   step 5 DV load [20260722_XMS_7CE02464-9A7E-F111-B337-002248A1EC3D] (Ibis Heathrow)
+[11:57:15] 
+RowsInserted
+------------
+        1462
+           0
+          45
+           0
+           0
+           0
+           0
+           0
+           0
+           4
+           1
+           1
+           2
+           1
+         954
+           0
+           3
+           4
+           0
+         750
+           0
+           0
+           0
+           0
+           5
+           0
+           5
+           1
+           2
+           0
+           1
+        4880
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+
+
+
+[11:57:15] OK    DV load Ibis Heathrow
+[11:57:15] VERIFY DV row counts for Ibis Heathrow
+[11:57:15] 
+t                      rows_
+-                      -----
+HUB_LINEITEM               0
+SAT_LINEITEM               0
+HUB_CUSTORDER              0
+LNK_CUSTORDER_LINEITEM     0
+HUB_PRODUCT              570
+HUB_LOCATION               2
+
+
+
+[11:57:15] RUN   step 6 DV load [20260722_XMS_67CA4E6F-9A7E-F111-B337-002248A1EC3D] (Ibis Gloucester Road)
+[11:57:19] 
+RowsInserted
+------------
+        1462
+          56
+           1
+          31
+           0
+           0
+           0
+           0
+           0
+           3
+           1
+           1
+           2
+           1
+         502
+           0
+           2
+           4
+           0
+         402
+           0
+           0
+           0
+          62
+           1
+           0
+           7
+           1
+           2
+           0
+           1
+        4850
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+           0
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+
+
+
+[11:57:19] OK    DV load Ibis Gloucester Road
+[11:57:19] VERIFY DV row counts for Ibis Gloucester Road
+[11:57:20] 
+t                      rows_
+-                      -----
+HUB_LINEITEM             107
+SAT_LINEITEM             107
+HUB_CUSTORDER             47
+LNK_CUSTORDER_LINEITEM   107
+HUB_PRODUCT              389
+HUB_LOCATION               2
+
+
+
+[11:57:20] 
+[11:57:20] DONE. Next: rebuild the presentation layer for each org so
+[11:57:20] presentation.F_LINEITEM_15MIN picks up the new LINEITEM rows,
+[11:57:20] then re-check the Marge Brut Turnover source (ledger O8).

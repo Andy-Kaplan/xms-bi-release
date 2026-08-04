@@ -1,0 +1,12 @@
+[22:21:16] O24 - map The Oak & Vine (org 16) to Growyze001 + Mews001
+[22:21:16] Target environment : UAT
+[22:21:16] Target server      : xms-mssqlman-ne-uat.public.9358333fb9bd.database.windows.net,3342
+[22:21:16] Script path        : C:\threerocks_data\XMS BI\Release\ClaudeDevelopment\oak-vine-mapping
+[22:21:16] All 2 script files present.
+[22:21:16] Connected: xms-mssqlman-ne-uat.9358333fb9bd.database.windows.net (SQL 12.0.2000.8)
+[22:21:17] Preflight: org 16 'The Oak & Vine' [ACTIVE] currently mapped to: Marketman001, NCRAloha001
+[22:21:17] WhatIf: preflight complete, nothing executed. Planned order:
+[22:21:17]   1. [core] 01_map_oak_vine_to_growyze_mews.sql (state-changing)
+[22:21:17]   2. [core] 02_verify_dl_provisioning.sql (read-only)
+[22:21:17] Script 01 will EXEC MapOrganisationToIntegration twice (Growyze001, then Mews001).
+[22:21:17] Its INSERT trigger provisions int_growyze001 (13 DL) + int_mews001 (21 DL) in the Oak & Vine DB.
